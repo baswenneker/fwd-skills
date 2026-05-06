@@ -1,0 +1,6 @@
+{
+  "name": "fwd-skills",
+  "skills": [
+    "./skills/examples/hello-world"
+  ]
+}
