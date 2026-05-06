@@ -1,6 +1,10 @@
 {
   "name": "fwd-skills",
   "skills": [
-    "./skills/examples/hello-world"
+    "./skills/engineering/fwd:git-commit",
+    "./skills/productivity/fwd:grill-me",
+    "./skills/productivity/fwd:caveman",
+    "./skills/productivity/fwd:explain",
+    "./skills/productivity/fwd:plan"
   ]
 }
