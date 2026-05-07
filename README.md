@@ -6,13 +6,11 @@ A lightweight, plain-markdown skill registry, structured after [mattpocock/skill
 
 ## Installation
 
-Add this repo as a local plugin marketplace in Claude Code:
+> Only tested with [Claude Code](https://claude.ai/code).
 
 ```bash
-/plugin marketplace add /path/to/fwd-skills
+npx skills@latest add baswenneker/fwd-skills
 ```
-
-Then enable the `fwd-skills` plugin from the marketplace.
 
 ## Skills
 
@@ -21,7 +19,7 @@ Then enable the `fwd-skills` plugin from the marketplace.
 | engineering | [fwd:git-commit](skills/engineering/fwd:git-commit/SKILL.md) | Stage and commit with conventional message — pre-flight scan blocks risky files (.env, logs, keys, secrets, >1MB). |
 | productivity | [fwd:grill-me](skills/productivity/fwd:grill-me/SKILL.md) | Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. |
 | productivity | [fwd:caveman](skills/productivity/fwd:caveman/SKILL.md) | Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. |
-| productivity | [fwd:explain](skills/productivity/fwd:explain/SKILL.md) | Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Big picture first, then one chunk at a time on demand. |
+| productivity | [fwd:explain](skills/productivity/fwd:explain/SKILL.md) | Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Mental model first (problem framed + best-fit form: diagram, analogy, before/after, or causal narrative), then one chunk at a time on demand. |
 | productivity | [fwd:plan](skills/productivity/fwd:plan/SKILL.md) | Plan an implementation: gather context, ask numbered-choice clarifying questions inline, present three options (minimal / uitgebreid / pragmatisch) with TL;DR + details + changes table, close with a comparative verdict. |
 
 ## Adding a skill

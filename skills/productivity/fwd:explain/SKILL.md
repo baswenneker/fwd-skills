@@ -1,13 +1,13 @@
 ---
 name: fwd:explain
-description: Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Big picture first (TL;DR + ASCII diagram + structure tree), then one chunk at a time on demand. Use when the input is too long to skim, when you've come back to something and lost the thread, or when ramping up on unfamiliar material.
+description: Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Builds a mental model first (problem framed + best-fit form: diagram, analogy, before/after, or causal narrative — plus structure map), then one chunk at a time on demand. Use when the input is too long to skim, when you've come back to something and lost the thread, or when ramping up on unfamiliar material.
 argument-hint: <file | glob | "diff" | "pr 123" | URL | phrase | empty for most-recent-in-conversation>
 allowed-tools: Read, Bash, Glob, Grep, WebFetch
 ---
 
 # Explain
 
-Take anything heavy and unfold it on demand: a one-screen overview first, then one chunk at a time when the user asks. The chunk shape changes per input type (phases for a plan, sections for a code file, files for a diff) — the layered structure stays the same.
+Take anything heavy and build a mental model on demand: a one-screen frame (problem + mental model + map) first, then one chunk at a time when the user asks. The mental-model form adapts to the content; mechanical chunking does not replace pedagogical scaffolding. The chunk shape changes per input type (phases for a plan, sections for a code file, files for a diff) — the layered structure stays the same.
 
 Opposite of `/fwd:plan` and `/fwd:write-doc` — those *create*, this one *explains*.
 
@@ -59,29 +59,36 @@ Once content is loaded, classify it. The class picks the chunk model:
 
 **Always extract, regardless of class:**
 
-- **TL;DR** — 2 sentences, what + why. Plain language, no jargon dump.
-- **Core concept** — the one idea that drives the diagram. (Plan: *"three-layer cascade"*. Diff: *"moves auth out of middleware"*. Code: *"event-loop dispatcher"*. Stack: *"null deref in callback chain"*.)
+- **The Question** — what problem does this solve, or what question does it answer? 1 sentence, plain language. Frame the *problem*, not the artifact. ("How do I run code outside React's render cycle without breaking it?" beats "What does useEffect do?")
+- **Mental Model** — the bridge that lets a reader hold this in their head. Pick the form that lands hardest:
+  - Concrete + structural (architecture, flow, request lifecycle) → ASCII diagram
+  - Abstract concept (hook, principle, design pattern) → analogy ("Think of it as X")
+  - Migration / diff / refactor → contrast (before → after)
+  - Bug / stack trace → causal narrative (X → Y → crash)
+  - Nothing fits → first principles (1–2 sentences capturing the essence)
+- **Not** *(optional)* — what this is NOT, to sharpen boundaries. Only include when the line is naturally sharp (often: concepts, APIs). Skip if forced.
 
 Do **not** write any of this to the user yet. Hold it for Step 3.
 
 ## Step 3 — Render Layer 1 (Big Picture). Stop after.
 
-Output four blocks, in order. Whole response under 40 lines.
+Output five blocks, in order. Whole response under 40 lines.
 
-**A. TL;DR** — 2 sentences max.
+**A. The Question** — 1 line. Frame the *problem*, not the artifact. Plain language, no jargon dump.
 
-**B. Diagram** — ASCII art of the core concept. Pick the pattern that fits the content:
+**B. Mental Model** — pick the form that lands hardest for this content. Free judgment, no rigid table — let the heuristics from Step 2 guide you:
 
-- Layer cascade (priority chain, fallbacks)
-- Before / after (migration, refactor)
-- Sequence (linear flow, request lifecycle)
-- Tree (hierarchical decomposition)
-- Box-and-arrow (data flow, call graph)
-- Timeline (events, stack frames)
+- *Diagram* — for concrete, structural content (flow, layers, call graph). 8–15 lines max, `┌─┐│└─┘ → ↓ ─→`, no decoration. Patterns that fit well: layer cascade, before/after, sequence, tree, box-and-arrow, timeline.
+- *Analogy* — for abstract concepts. 2–4 lines, "Think of it as X" — bridge to a familiar domain.
+- *Before/after* — for migrations / diffs / refactors. 2–4 lines, old shape → new shape.
+- *Causal narrative* — for bugs / stack traces. 2–4 lines, X → Y → crash.
+- *First principles* — for content that none of the above fit. 1–2 sentences capturing the essence.
 
-8–15 lines max. Use `┌─┐│└─┘` for boxes, `→ ↓ ─→` for arrows. No decoration. If a diagram won't add clarity, skip B and say `no diagram — <reason>` instead of forcing one.
+If no form lands, write `no model added — <reason>` and move on. If the source already contains a useful diagram, re-use it instead of inventing one.
 
-**C. Structure tree** — one numbered line per chunk, prefixed with the noun:
+**C. Not** *(optional)* — 1–2 lines, only if the boundary is naturally sharp. Skip silently if forced — never invent contrast to fill the slot.
+
+**D. Map** — one numbered line per chunk, prefixed with the noun:
 
 ```
 1. Phase: <name>          (<N> files)
@@ -91,7 +98,7 @@ Output four blocks, in order. Whole response under 40 lines.
 
 (For diff: `1. File: <path>          (+12 −3)`. For code: `1. Section: <name>          (<N> defs)`. Same shape, different noun.)
 
-**D. Menu** — verbatim:
+**E. Menu** — verbatim:
 
 ```
 Reply with:
@@ -138,7 +145,9 @@ Under 25 lines. If item count > 5, show 5 and note that `more` reveals the rest.
 - Plain English. No filler ("Let's", "Now we will", "Great question"). Direct.
 - No emoji.
 - Bullets and one-liners over paragraphs.
-- Diagrams must aid clarity. If a diagram doesn't help, skip it.
+- Mental Model is not always a diagram. Pick analogy, contrast, narrative, or first principles when those land harder. Diagrams are one of five forms, not the default.
+- Contrast ("Not") is opt-in. Only include when the boundary is naturally sharp — never invent contrast.
+- The Question frames the *problem*, not the artifact. "What does useEffect do?" is weak; "How do I run code outside React's render cycle without breaking it?" is the right shape.
 - Never dump the original verbatim unless the user asks for `full`.
-- If the source already contains a useful ASCII diagram, re-use it (don't reinvent good art); otherwise draw your own.
+- If the source already contains a useful diagram, re-use it (don't reinvent good art); otherwise draw your own when a diagram is the right form.
 - Match depth to context — if the user clearly knows the domain, skip the basics.
