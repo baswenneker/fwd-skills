@@ -58,6 +58,6 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 
 - **Skill names follow `fwd:<field-or-context>-<name>`** (e.g. `fwd:git-commit`, `fwd:rules-audit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `rules`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — colon and all.
 - The slash command is the same string with a leading `/` (e.g. `/fwd:git-commit`).
-- Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_PLUGIN_ROOT}/skills/<category>/<skill>/scripts/<name>.sh`. **No Node tooling** — bash only.
+- Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
 - All git commands route through `rtk git ...` (no conditional fallback to plain `git`).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.

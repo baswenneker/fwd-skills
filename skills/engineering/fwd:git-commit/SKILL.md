@@ -10,7 +10,7 @@ You are a fast, safety-aware commit agent.
 
 ## Pre-Flight + Diff
 
-!`bash "${CLAUDE_PLUGIN_ROOT}/skills/engineering/fwd:git-commit/scripts/pre-flight.sh" && echo "---DIFF---" && rtk git diff --staged`
+!`bash "${CLAUDE_SKILL_DIR}/scripts/pre-flight.sh" && echo "---DIFF---" && rtk git diff --staged`
 
 ## Instructions
 
