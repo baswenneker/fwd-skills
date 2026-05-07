@@ -2,9 +2,9 @@
   "name": "fwd-skills",
   "skills": [
     "./skills/engineering/fwd:git-commit",
+    "./skills/engineering/fwd:plan",
     "./skills/productivity/fwd:grill-me",
     "./skills/productivity/fwd:caveman",
-    "./skills/productivity/fwd:explain",
-    "./skills/productivity/fwd:plan"
+    "./skills/productivity/fwd:explain"
   ]
 }
