@@ -4,6 +4,7 @@
     "./skills/engineering/fwd:git-commit",
     "./skills/engineering/fwd:plan",
     "./skills/engineering/fwd:setup",
+    "./skills/engineering/fwd:skill-eval",
     "./skills/productivity/fwd:grill-me",
     "./skills/productivity/fwd:caveman",
     "./skills/productivity/fwd:explain"
