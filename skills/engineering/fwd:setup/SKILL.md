@@ -21,7 +21,16 @@ Pass the chosen scope as `--scope user` or `--scope project` to each feature ins
 
 ### 2. Smartlint Stop-hook
 
-Ask via `AskUserQuestion` whether to install the smartlint Stop-hook. Simple Yes/No — no preview pane. The installer copies the wrapper scripts to `<scope>/.claude/hooks/` and merges a Stop-hook entry into the matching settings file (`~/.claude/settings.json` or `.claude/settings.local.json`).
+Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+
+Content to convey:
+
+- **Why** — consistent code quality: automatic lint after every Claude response
+- **How** — a Stop-hook fires after each response and runs `smart-lint.sh`
+- **What** — detects project type (TS / Go / Python / Rust / …) and runs the matching linters; merges an entry into `settings.local.json` + copies scripts to `.claude/hooks/`
+- **No trade-off** — no automatic lint checks after Claude actions
+
+Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
 
 If the user picks **Yes**, run:
 
@@ -39,7 +48,16 @@ If **No**, skip silently.
 
 ### 3. Lessons memory file
 
-Ask via `AskUserQuestion` whether to install the lessons memory feature. Simple Yes/No — no preview pane. The installer injects a `## Lessons` instruction section into CLAUDE.md (bracketed by `<!-- fwd:lessons:start -->` / `<!-- fwd:lessons:end -->` markers) and scaffolds an empty `LESSONS.md` at `$HOME/.claude/lessons/LESSONS.md` (user) or `.claude/lessons/LESSONS.md` (project).
+Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+
+Content to convey:
+
+- **Why** — self-learning codebase: Claude remembers corrections, conventions and patterns across sessions instead of starting each conversation blank
+- **How** — an instruction section in CLAUDE.md tells Claude when to read `LESSONS.md` and when to append proactively (after corrections, surprises, missing rules)
+- **What** — injects a marker-bracketed section (`<!-- fwd:lessons:start -->` … `<!-- fwd:lessons:end -->`) into CLAUDE.md + scaffolds an empty `LESSONS.md` at `$HOME/.claude/lessons/LESSONS.md` (user) or `.claude/lessons/LESSONS.md` (project)
+- **No trade-off** — no cross-session memory; Claude starts each conversation blank
+
+Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
 
 If the user picks **Yes**, run:
 
@@ -80,4 +98,4 @@ After all selected installers have run, print a short summary:
    - JSON settings → call `../lib/merge-json.sh`
    - Markdown / CLAUDE.md section → use sentinel markers + inline `head`/`tail` (see `scripts/lessons/install.sh`)
    - Plain file copy → just `cp` into `<scope>/.claude/<feature-dir>/`
-4. Add an `AskUserQuestion` block in this SKILL.md that gates the installer with a simple Yes/No (no preview pane — the question is *whether* to install, not *how* it's wired), and add the feature to the summary.
+4. Add an `AskUserQuestion` block in this SKILL.md that gates the installer with a simple Yes/No — no preview pane, but pack the question and `description` fields with **why / how / what** context (see sections 2 and 3 for the pattern). Then add the feature to the summary.
