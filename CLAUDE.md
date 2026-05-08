@@ -60,6 +60,7 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 - The slash command is the same string with a leading `/` (e.g. `/fwd:git-commit`).
 - Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
 - All git commands route through `rtk git ...` (no conditional fallback to plain `git`).
+- **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch — `fwd:plan` is the current example).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.
 
 <!-- fwd:lessons:start -->

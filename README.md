@@ -12,13 +12,44 @@ A lightweight, plain-markdown skill registry, structured after [mattpocock/skill
 npx skills@latest add baswenneker/fwd-skills
 ```
 
+## Setup
+
+After installing the plugin, run the setup wizard to enable optional HeadingFWD conventions:
+
+```
+/fwd:setup
+```
+
+Each feature has its own Yes/No prompt. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place.
+
+### Scope: project-local vs user-global
+
+Before any feature is installed, the wizard asks where it should land:
+
+- **Project-local** — payload lives under `<project>/.claude/`, settings merge into `.claude/settings.local.json`, instructions append to the project's `CLAUDE.md`. The convention applies to this repo only. Defaulted when you're inside a git repo.
+- **User-global** — payload lives under `~/.claude/`, settings merge into `~/.claude/settings.json`, instructions append to `~/.claude/CLAUDE.md`. The convention applies everywhere you run Claude Code.
+
+### Feature: smartlint Stop-hook
+
+- **Why** — consistent code quality without thinking about it: lint runs automatically after every Claude response.
+- **How** — a Stop-hook fires after each response and runs `smart-lint.sh`. The wrapper diffs against git so unchanged code is skipped.
+- **What** — copies `smart-lint.sh` + wrapper into `.claude/hooks/` and merges a hook entry into the matching `settings.json`. The script auto-detects project type (TS / Go / Python / Rust / Nix / shell) and runs the appropriate linters.
+- **Skip if** — you don't want automatic lint checks after Claude actions.
+
+### Feature: lessons memory file
+
+- **Why** — Claude remembers corrections, conventions and patterns across sessions instead of starting blank each conversation.
+- **How** — an instruction section in `CLAUDE.md` tells Claude when to read `LESSONS.md` and when to append (after corrections, surprises, missing rules).
+- **What** — injects a marker-bracketed section (`<!-- fwd:lessons:start -->` … `<!-- fwd:lessons:end -->`) into `CLAUDE.md` and scaffolds an empty `LESSONS.md` next to it. Existing entries are never overwritten on re-run.
+- **Skip if** — you'd rather Claude start each conversation with a clean slate.
+
 ## Skills
 
 | Category | Skill | Description |
 | --- | --- | --- |
 | engineering | [fwd:git-commit](skills/engineering/fwd:git-commit/SKILL.md) | Stage and commit with conventional message — pre-flight scan blocks risky files (.env, logs, keys, secrets, >1MB). |
 | engineering | [fwd:plan](skills/engineering/fwd:plan/SKILL.md) | Plan een implementatie: verzamel context, stel 1-5 verdiepende vragen (DoD altijd inline, keuzes via AskUserQuestion popup), kies expliciet 1 of 3 plannen, en presenteer in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit altijd af met (Recommended)-tag op het beste plan en een verdict-block met onderbouwing. |
-| engineering | [fwd:setup](skills/engineering/fwd:setup/SKILL.md) | Setup-wizard die optionele HeadingFWD-conventies installeert (nu: smartlint Stop-hook). Vraagt scope (user-global vs project-local) en per feature y/n via AskUserQuestion, kopieert bundled payload naar `.claude/hooks/`, en merget JSON snippets in `~/.claude/settings.json` of `.claude/settings.local.json` via `jq`. Modular en idempotent. Alleen via expliciete `/fwd:setup` invocation. |
+| engineering | [fwd:setup](skills/engineering/fwd:setup/SKILL.md) | Setup wizard for HeadingFWD's optional Claude Code conventions (smartlint Stop-hook, lessons memory file). Asks for scope and per-feature Yes/No, copies bundled payloads, and merges JSON snippets or markdown sections into the matching settings/CLAUDE.md. Idempotent. Explicit `/fwd:setup` invocation only. |
 | productivity | [fwd:grill-me](skills/productivity/fwd:grill-me/SKILL.md) | Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. |
 | productivity | [fwd:caveman](skills/productivity/fwd:caveman/SKILL.md) | Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. |
 | productivity | [fwd:explain](skills/productivity/fwd:explain/SKILL.md) | Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Mental model first (problem framed + best-fit form: diagram, analogy, before/after, or causal narrative), then one chunk at a time on demand. |
