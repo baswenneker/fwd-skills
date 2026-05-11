@@ -8,10 +8,17 @@ node_modules/
 .playwright-mcp/
 repo-structure.md
 
-# fwd:issue-fix runtime + local test install (skill is registered via .claude-plugin/plugin.json).
-# No trailing slash on the .claude/* entries so they also match the symlinks
-# that setup-worktree.sh creates inside worktrees (CC#28041 workaround).
-.claude/skills
-.claude/issue-loop
+.claude/skills/fwd:issue-fix
+
+# fwd:setup:gitignore:start (managed by /fwd:setup — do not edit manually)
+# fwd:issue-fix runtime: worktree dir + JSON state ledger.
+# Without these gitignored, preflight rejects every tick on a clean repo
+# because the state file it just wrote shows up as untracked.
 .trees/
-.worktrees/
+.claude/issue-loop/
+
+# Claude Code /loop scheduling state. Recreated on every ScheduleWakeup,
+# so it permanently dirties the tree unless ignored.
+.claude/scheduled_tasks.lock
+tmp/
+# fwd:setup:gitignore:end
