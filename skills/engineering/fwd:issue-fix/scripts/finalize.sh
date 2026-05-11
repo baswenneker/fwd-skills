@@ -9,7 +9,9 @@ REASON="${3:-}"
 
 [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "issue number must be numeric" >&2; exit 1; }
 
-REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
+# --git-common-dir resolves to main's .git from inside a worktree too, so
+# finalize works whether invoked from the main checkout or from a worktree.
+REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 STATE_FILE="$REPO_ROOT/.claude/issue-loop/state.json"
 BASE_BRANCH="${FWD_ISSUE_FIX_BASE_BRANCH:-main}"
 

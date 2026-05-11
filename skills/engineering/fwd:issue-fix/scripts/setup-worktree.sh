@@ -28,10 +28,19 @@ fi
 # Worktree off base branch.
 rtk git worktree add "$WT_PATH" -b "$BRANCH" "$BASE_BRANCH" >&2
 
-# Symlink .claude/ into the worktree so skills/hooks/settings are present.
-# Workaround for https://github.com/anthropics/claude-code/issues/28041
-if [[ -d "$REPO_ROOT/.claude" ]] && [[ ! -e "$WT_PATH/.claude" ]]; then
-  ln -s "$REPO_ROOT/.claude" "$WT_PATH/.claude"
+# Symlink children of .claude/ that aren't already in the worktree. Tracked
+# subdirs (hooks/, lessons/) get materialised by `git worktree add`; only the
+# gitignored ones (issue-loop/, skills/, settings.local.json) need linking, so
+# whole-dir symlinking would skip when any tracked child exists.
+# Workaround for https://github.com/anthropics/claude-code/issues/28041.
+if [[ -d "$REPO_ROOT/.claude" ]]; then
+  mkdir -p "$WT_PATH/.claude"
+  shopt -s nullglob
+  for child in "$REPO_ROOT/.claude"/*; do
+    target="$WT_PATH/.claude/$(basename "$child")"
+    [[ -e "$target" ]] || ln -s "$child" "$target"
+  done
+  shopt -u nullglob
 fi
 
 # Lock state.
