@@ -135,12 +135,40 @@ jq '.circuit_breaker.consecutive_failures=0' .claude/issue-loop/state.json > /tm
 - **Multi-runner coordination.** State file is local; multiple machines running this skill on the same repo will collide. Single-runner only.
 - **Push / PR creation.** Out of scope by design — the human reviews and pushes.
 
+## Relationship to Claude Code's built-in worktree support
+
+Claude Code v2.1.50 (announced by Boris Cherny — see Sources) introduced first-class worktree integration:
+
+- `claude --worktree [name]` launches a session in a fresh worktree, optionally with a custom name; `--tmux` adds a separate terminal pane.
+- Subagents can declare `isolation: worktree` in their frontmatter to run in an auto-managed worktree, which is **auto-cleaned up when the agent makes no changes**.
+- Desktop app exposes a "worktree mode" checkbox.
+
+`fwd:issue-fix` keeps its **manual** `setup-worktree.sh` despite this, because the built-in pattern is optimised for *short-lived, exploratory* subagent runs and ours is the opposite:
+
+| Concern | Built-in (`isolation: worktree`) | `fwd:issue-fix` |
+|---|---|---|
+| Worktree path | Auto-generated, opaque | Deterministic `.trees/<type>/<name>/` — matches the branch name |
+| Branch name | Generated per agent run | `<type>/<name>` — readable from `git branch` alone |
+| Lifecycle on success | **Cleaned up** | **Preserved** (the whole point — morning review reads the diff) |
+| Lifecycle on no-op | Cleaned up automatically | Marked `blocked`, worktree removed |
+| State linkage | Implicit (return value of one Agent call) | Persistent in `state.json.issues[N].{branch, worktree}` for cross-tick lookup |
+| Execution model | Subagent inside one session | Fresh top-level CC session per tick (`/loop` re-fires the skill) |
+| `.claude/` symlink workaround | Not needed (subagent inherits parent's session) | Needed (each tick is a new session — see CC#28041) |
+
+The two short-circuit blockers for adopting `isolation: worktree` directly:
+
+1. **Auto-cleanup on success destroys the artefact we exist to produce.** Morning review depends on the worktree being there with its committed branch.
+2. **The skill is driven by `/loop` (fresh session per tick), not by subagents inside one session.** `isolation: worktree` operates at the subagent boundary; we don't have that boundary to attach to.
+
+If a future version of this skill switches to a single long-running session that spawns parallel subagents (one per issue) instead of a `/loop` of sessions, swapping `setup-worktree.sh` for `isolation: worktree` becomes attractive — at that point the auto-cleanup objection goes away (we'd persist the diff via `git`, not the worktree) and the model alignment is cleaner. Until then, our explicit worktree is the right tool.
+
 ## Sources
 
 - [Ralph Wiggum technique](https://ghuntley.com/ralph/)
 - [continuous-claude](https://github.com/AnandChowdhary/continuous-claude) — circuit breaker & cost caps
 - [automazeio/ccpm](https://github.com/automazeio/ccpm) — label state machine (we explicitly don't do this)
 - [git worktrees + AI agents (Mitchinson)](https://www.nrmitchi.com/2025/10/using-git-worktrees-for-multi-feature-development-with-ai-agents/)
+- [Boris Cherny — Claude Code 2.1.50 worktree support](https://x.com/bcherny/status/2025007393290272904) — `--worktree`, `isolation: worktree`, `--tmux`
 - [CC#28041 — `.claude/` not copied to worktree](https://github.com/anthropics/claude-code/issues/28041)
 - [CC#25979 — streaming hang](https://github.com/anthropics/claude-code/issues/25979)
 - [CC#49150 — `Task()` no timeout](https://github.com/anthropics/claude-code/issues/49150)
