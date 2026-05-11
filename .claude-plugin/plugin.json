@@ -8,6 +8,7 @@
     "./skills/engineering/fwd:skill-eval",
     "./skills/productivity/fwd:grill-me",
     "./skills/productivity/fwd:caveman",
-    "./skills/productivity/fwd:explain"
+    "./skills/productivity/fwd:explain",
+    "./skills/productivity/fwd:hello-world"
   ]
 }
