@@ -8,8 +8,10 @@ node_modules/
 .playwright-mcp/
 repo-structure.md
 
-# fwd:issue-fix runtime + local test install (skill is registered via .claude-plugin/plugin.json)
-.claude/skills/
-.claude/issue-loop/
+# fwd:issue-fix runtime + local test install (skill is registered via .claude-plugin/plugin.json).
+# No trailing slash on the .claude/* entries so they also match the symlinks
+# that setup-worktree.sh creates inside worktrees (CC#28041 workaround).
+.claude/skills
+.claude/issue-loop
 .trees/
 .worktrees/

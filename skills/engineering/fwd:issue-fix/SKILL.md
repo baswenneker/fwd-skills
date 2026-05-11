@@ -13,6 +13,14 @@ One open GitHub issue → one worktree → one commit. Driven by `/loop`. State 
 - **Nothing gets pushed** — branches stay local until you push them yourself after morning review.
 - **Commits look human-authored** — use a normal commit message (via `/fwd:git-commit`); do **not** add `Co-Authored-By: Claude` or "Generated with Claude Code" footers.
 
+**Autonomous-mode principle.** This skill runs unattended, often overnight. There is nobody at the keyboard to answer questions. Every branch must resolve deterministically.
+
+- **Never call `AskUserQuestion`.** Not for confirmations, not for clarifications, not "just to be safe". The user has explicitly forbidden it for this skill.
+- **Never call `ExitPlanMode`.** Plan mode prompts the user for approval. Plan internally instead, then act.
+- **Never use interactive shell flags** (`-i`, `--interactive`, `git rebase -i`, etc.).
+- **When you would normally ask, decide and log.** Pick the conservative option — "stop this tick cleanly" beats "modify the user's tree". Decisions taken on the user's behalf are recorded in `state.json` under `decisions[]` (preflight does this automatically; you do it via `${CLAUDE_SKILL_DIR}/scripts/log-decision.sh` in step 4 if needed).
+- **Ambiguity is not a question for the user.** If the issue is unclear or the right fix requires their input, call `finalize.sh blocked <N> "<reason>"` — the user reviews blocked issues in the morning.
+
 ## Quick start
 
 ```
@@ -35,9 +43,17 @@ Run the bundled scripts in this exact order. Stop the tick on the first non-zero
 bash "${CLAUDE_SKILL_DIR}/scripts/preflight.sh"
 ```
 
-Verifies `gh` auth, repo state, circuit breaker (3 consecutive failures = stop). Auto-recovers stale `in_progress` locks (>60 min old) by marking them `blocked`.
+Verifies `gh` auth, repo state, circuit breaker (3 consecutive failures = stop). Auto-recovers stale `in_progress` locks (>60 min old) by marking them `blocked`. On any non-ok exit, preflight also appends a `{situation, action: "skip-tick"}` entry to `state.json.decisions[]` so morning-review can see what happened.
 
-If output is `circuit-breaker-tripped` or `not-a-repo` etc. → stop the tick, report the line, exit.
+If the first line is `ok` (or `ok — recovered stale lock on issue #N`), continue to step 2. **For every other output, stop the tick cleanly** — report the line and exit. Do NOT prompt the user about how to recover (see "Autonomous-mode principle").
+
+| Preflight output | Action |
+|---|---|
+| `not-a-repo` | Stop tick. |
+| `missing-jq` | Stop tick. |
+| `gh-not-authenticated` | Stop tick. |
+| `main-checkout-dirty` | Stop tick. **Never** stash, commit, or reset on the user's behalf — they may have unfinished work. `/loop` retries next tick. |
+| `circuit-breaker-tripped` | Stop tick. Reset is a manual step (see REFERENCE.md). |
 
 ### 2. Pick next issue
 
@@ -66,9 +82,10 @@ Branch `<type>/<name>` off `main`, worktree `.trees/<type>/<name>`. Symlinks `.c
 
 - Read full issue context: `rtk gh issue view <N> --json title,body,labels,comments`.
 - `cd` into the worktree path from step 3.
-- Plan → implement → run tests. **Hard cap: 3 implementation attempts per tick.** If still failing after 3 attempts, go to step 5b.
+- Plan internally (no `ExitPlanMode`) → implement → run tests. **Hard cap: 3 implementation attempts per tick.** If still failing after 3 attempts, go to step 5b.
 - Commit using `/fwd:git-commit` (or plain `rtk git commit`). Include `Refs #<N>` in the message body so reviewers can trace it back. Do **not** add `Co-Authored-By: Claude` or other AI-attribution footers — see "Stealth principle" above.
 - **Never** `rtk git push`. **Never** mutate GitHub (no `gh issue edit/comment/close`, no `gh pr create`).
+- **Never prompt the user.** Re-read the Autonomous-mode principle. If the issue is ambiguous, the repro impossible, or you'd need to ask for a clarification — go to 5b with reason `"needs-human-input: <one-line summary>"`. If a non-blocking design decision arises mid-fix (e.g. choosing between two equally valid approaches), pick the more conservative one, log it with `bash "${CLAUDE_SKILL_DIR}/scripts/log-decision.sh" <N> "<situation>" "<action-taken>"`, and continue.
 
 ### 5a. Success → finalize
 
