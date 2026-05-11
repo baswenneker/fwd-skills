@@ -49,11 +49,21 @@ Location: `<repo>/.claude/issue-loop/state.json`. Atomic writes only (scripts us
       "error": "tests in tests/parser_test.py kept failing after 3 attempts: KeyError 'foo'"
     }
   },
-  "circuit_breaker": { "consecutive_failures": 0 }
+  "circuit_breaker": { "consecutive_failures": 0 },
+  "decisions": [
+    { "timestamp": "2026-05-10T02:14:00Z", "action": "skip-tick", "reason": "main-checkout-dirty" },
+    { "timestamp": "2026-05-10T03:02:11Z", "issue": 44, "situation": "two equally valid encodings for the input fixture", "action": "picked utf-8 (more conservative than utf-16)" }
+  ]
 }
 ```
 
 Statuses: `in_progress` | `done` | `blocked`.
+
+The `decisions[]` array logs choices the skill made on the user's behalf instead of prompting — preflight writes `skip-tick` entries automatically; in-tick decisions are recorded via `scripts/log-decision.sh`. Review it in the morning with:
+
+```bash
+jq -r '.decisions[]|"\(.timestamp) [\(.action)] \(.reason // .situation // "")"' .claude/issue-loop/state.json
+```
 
 ## Configuration
 
