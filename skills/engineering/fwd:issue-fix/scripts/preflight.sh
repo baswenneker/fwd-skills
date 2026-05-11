@@ -27,7 +27,7 @@ if ! timeout 10s gh auth status >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ -n "$(rtk git status --porcelain)" ]]; then
+if [[ -n "$(rtk git status --porcelain | grep -vx 'ok' || true)" ]]; then
   echo "main-checkout-dirty — stash or commit changes in the main checkout first"
   exit 1
 fi

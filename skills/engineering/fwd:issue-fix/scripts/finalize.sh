@@ -29,7 +29,7 @@ case "$OUTCOME" in
     fi
     cd "$WT_PATH"
 
-    if [[ -n "$(rtk git status --porcelain)" ]]; then
+    if [[ -n "$(rtk git status --porcelain | grep -vx 'ok' || true)" ]]; then
       echo "worktree has unstaged/untracked changes — refusing to mark done" >&2
       cd "$REPO_ROOT"
       exit 1
