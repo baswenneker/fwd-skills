@@ -1,6 +1,6 @@
 ---
 name: fwd:setup
-description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, and gitignore entries for fwd runtime artefacts), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
+description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, gitignore entries for fwd runtime artefacts, and Claude Code's clear-context prompt on plan accept), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
 disable-model-invocation: true
 ---
 
@@ -100,7 +100,34 @@ The installer's exit code tells you what happened:
 
 If **No**, skip silently.
 
-### 5. Summary
+### 5. Clear-context prompt on plan accept
+
+Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+
+Content to convey:
+
+- **Why** — when you accept a plan with `ExitPlanMode`, the conversation that produced the plan is no longer load-bearing. Carrying it forward pollutes the implementation session's context. Enabling this surfaces a "Clear context?" prompt right at plan-accept so the implementation starts from the plan, not the deliberation that led to it.
+- **How** — sets a single boolean in the Claude Code settings file: `showClearContextOnPlanAccept: true`.
+- **What** — merges `{"showClearContextOnPlanAccept": true}` into `~/.claude/settings.json` (user) or `.claude/settings.local.json` (project). Idempotent — re-runs skip when already true. If you've explicitly set it to `false`, the installer refuses to overwrite that choice (exit 2).
+- **No trade-off** — accepting a plan leaves the full deliberation context in the conversation; you can `/clear` it yourself if you want.
+
+Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
+
+If the user picks **Yes**, run:
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/clear-context-on-plan/install.sh" --scope <scope>
+```
+
+The installer's exit code tells you what happened:
+
+- **0** — installed (fresh) or already true (skipped silently with a confirmation line).
+- **2** — collision: the user has explicitly set `showClearContextOnPlanAccept: false`. The installer printed a remediation hint to stderr; relay it and ask the user to remove the line themselves, then re-run `/fwd:setup`.
+- **other non-zero** — argument or I/O error; surface the stderr.
+
+If **No**, skip silently.
+
+### 6. Summary
 
 After all selected installers have run, print a short summary:
 
