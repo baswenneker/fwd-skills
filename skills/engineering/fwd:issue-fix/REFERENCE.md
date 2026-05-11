@@ -31,8 +31,8 @@ Location: `<repo>/.claude/issue-loop/state.json`. Atomic writes only (scripts us
   "issues": {
     "42": {
       "status": "done",
-      "branch": "claude/issue-42",
-      "worktree": "/abs/path/.worktrees/issue-42",
+      "branch": "feat/import-csv-from-clipboard",
+      "worktree": "/abs/path/.trees/feat/import-csv-from-clipboard",
       "started_at": "2026-05-09T22:01:00Z",
       "started_at_epoch": 1715212860,
       "completed_at": "2026-05-09T22:14:30Z",
@@ -41,8 +41,8 @@ Location: `<repo>/.claude/issue-loop/state.json`. Atomic writes only (scripts us
     },
     "43": {
       "status": "blocked",
-      "branch": "claude/issue-43",
-      "worktree": "/abs/path/.worktrees/issue-43",
+      "branch": "fix/parser-keyerror-on-missing-key",
+      "worktree": "/abs/path/.trees/fix/parser-keyerror-on-missing-key",
       "started_at": "2026-05-09T22:15:00Z",
       "started_at_epoch": 1715213700,
       "completed_at": "2026-05-09T22:23:11Z",
@@ -60,12 +60,12 @@ Statuses: `in_progress` | `done` | `blocked`.
 | Env var | Default | Notes |
 |---|---|---|
 | `FWD_ISSUE_FIX_BASE_BRANCH` | `main` | Branch worktrees are based on |
-| `FWD_ISSUE_FIX_WORKTREE_DIR` | `<repo>/.worktrees` | Where worktrees live |
+| `FWD_ISSUE_FIX_WORKTREE_DIR` | `<repo>/.trees` | Root for worktrees (each lands at `<dir>/<type>/<name>/`) |
 
 Add to `.gitignore`:
 
 ```
-.worktrees/
+.trees/
 .claude/issue-loop/
 ```
 
@@ -91,23 +91,25 @@ jq -r '.issues
   | "\(.value.completed_at // "—") \(.value.status) #\(.key) \(.value.branch // "")"
 ' .claude/issue-loop/state.json
 
-# Inspect a fix
-cd .worktrees/issue-42
+# Inspect a fix (worktree path comes from .value.worktree in state.json)
+cd .trees/feat/import-csv-from-clipboard
 rtk git log --oneline main..HEAD
 rtk git diff main..HEAD
 
 # Push when satisfied
-rtk git push -u origin claude/issue-42
+rtk git push -u origin feat/import-csv-from-clipboard
 gh pr create --fill --base main
 ```
 
 ## Resetting
 
 ```bash
-# Wipe state + worktrees + claude branches; start fresh
-rm -rf .claude/issue-loop .worktrees
+# Wipe state + worktrees + the branches the skill created; start fresh.
+# Drop branches *before* wiping state.json — that's where their names live.
+jq -r '.issues|to_entries[]|.value.branch // empty' .claude/issue-loop/state.json 2>/dev/null \
+  | xargs -r rtk git branch -D 2>/dev/null
+rm -rf .claude/issue-loop .trees
 rtk git worktree prune
-rtk git branch | awk '/^  claude\/issue-/{print $1}' | xargs -r rtk git branch -D
 ```
 
 ## Re-attempting a blocked issue

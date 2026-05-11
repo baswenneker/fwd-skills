@@ -49,11 +49,18 @@ Outputs JSON `{"number":N,"title":"...","body":"..."}` for the oldest open issue
 
 ### 3. Setup worktree
 
+First derive two values from the pick-issue output (title + body):
+
+- **`<type>`** — one of `fix`, `feat`, `chore`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `style`. Judge it the way `fwd:git-commit` does: bug → `fix`; new capability → `feat`; tooling/repo housekeeping → `chore`; docs-only edit → `docs`; etc. Strip any leading `Type:` from the issue title before judging.
+- **`<name>`** — kebab-case slug derived from what's left of the title. Drop articles and the conventional-prefix verb (add/update/fix/etc); keep ≤50 chars. Example: `Fix: dropdown stays open after Esc on Safari` → `dropdown-stays-open-after-esc-safari`.
+
+Then:
+
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <N>
+bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <N> <type> <name>
 ```
 
-Branch `claude/issue-<N>` off `main`, worktree `.worktrees/issue-<N>`. Symlinks `.claude/` into the worktree (CC#28041 workaround). Locks state to `in_progress`. Prints absolute worktree path on stdout.
+Branch `<type>/<name>` off `main`, worktree `.trees/<type>/<name>`. Symlinks `.claude/` into the worktree (CC#28041 workaround). Locks state to `in_progress`. Prints absolute worktree path on stdout.
 
 ### 4. Fix the issue (your job, Claude)
 
@@ -98,7 +105,7 @@ Removes the worktree, drops the branch, marks `blocked`, increments the circuit 
 
 ```
 jq -r '.issues|to_entries[]|"\(.key) \(.value.status) \(.value.branch // "")"' .claude/issue-loop/state.json
-cd .worktrees/issue-42 && rtk git log --oneline main..HEAD
+cd .trees/<type>/<name> && rtk git log --oneline main..HEAD
 ```
 
 See [REFERENCE.md](REFERENCE.md) for state-file shape, configuration env vars, reset procedure, and design rationale.

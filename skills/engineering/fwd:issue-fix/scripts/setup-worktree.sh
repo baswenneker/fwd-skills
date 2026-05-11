@@ -1,21 +1,32 @@
 #!/usr/bin/env bash
 # Set up a worktree + branch for an issue, lock state, symlink .claude/.
-# Args: <issue-number>
+# Args: <issue-number> <type> <name-slug>
+#   type      — one of: fix|feat|chore|docs|refactor|perf|test|build|ci|style
+#   name-slug — kebab-case, [a-z0-9]+(-[a-z0-9]+)*, ≤60 chars
 # Stdout: absolute path of the worktree.
 set -euo pipefail
 
 ISSUE="${1:?issue number required}"
+TYPE="${2:?type required (fix|feat|chore|docs|refactor|perf|test|build|ci|style)}"
+NAME="${3:?name slug required (kebab-case)}"
+
 [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "issue number must be numeric (got: $ISSUE)" >&2; exit 1; }
+case "$TYPE" in
+  fix|feat|chore|docs|refactor|perf|test|build|ci|style) ;;
+  *) echo "type must be one of fix|feat|chore|docs|refactor|perf|test|build|ci|style (got: $TYPE)" >&2; exit 1 ;;
+esac
+[[ "$NAME" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "name slug must be kebab-case [a-z0-9]+(-[a-z0-9]+)* (got: $NAME)" >&2; exit 1; }
+[[ ${#NAME} -le 60 ]] || { echo "name slug too long (${#NAME} chars, max 60)" >&2; exit 1; }
 
 REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
 STATE_FILE="$REPO_ROOT/.claude/issue-loop/state.json"
 
-WT_DIR="${FWD_ISSUE_FIX_WORKTREE_DIR:-$REPO_ROOT/.worktrees}"
+WT_DIR="${FWD_ISSUE_FIX_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 BASE_BRANCH="${FWD_ISSUE_FIX_BASE_BRANCH:-main}"
-WT_PATH="$WT_DIR/issue-$ISSUE"
-BRANCH="claude/issue-$ISSUE"
+WT_PATH="$WT_DIR/$TYPE/$NAME"
+BRANCH="$TYPE/$NAME"
 
-mkdir -p "$WT_DIR"
+mkdir -p "$WT_DIR/$TYPE"
 
 # Clean up any leftover worktree/branch from an earlier crashed tick.
 if [[ -d "$WT_PATH" ]]; then
