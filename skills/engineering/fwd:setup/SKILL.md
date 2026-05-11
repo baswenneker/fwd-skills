@@ -1,6 +1,6 @@
 ---
 name: fwd:setup
-description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook and a lessons memory file), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
+description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, and gitignore entries for fwd runtime artefacts), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
 disable-model-invocation: true
 ---
 
@@ -73,7 +73,34 @@ The installer's exit code tells you what happened:
 
 If **No**, skip silently.
 
-### 4. Summary
+### 4. Gitignore entries for fwd runtime artefacts
+
+Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+
+Content to convey:
+
+- **Why** — without this, `fwd:issue-fix`'s `preflight.sh` writes `.claude/issue-loop/state.json` and then immediately rejects the tick on `main-checkout-dirty` (the state file it just created is untracked). Every overnight tick becomes a no-op until the user gitignores those paths by hand.
+- **How** — appends a marker-bracketed block to `.gitignore` (project) or `~/.config/git/ignore` (user). Idempotent — re-runs replace the block in place between `# fwd:setup:gitignore:start` … `# fwd:setup:gitignore:end`.
+- **What** — adds three patterns: `.trees/` (issue-fix worktrees), `.claude/issue-loop/` (issue-fix state ledger), `.claude/scheduled_tasks.lock` (Claude Code `/loop` scheduling state).
+- **No trade-off** — `/loop /fwd:issue-fix` will keep skipping every tick with `main-checkout-dirty` until you ignore those paths yourself.
+
+Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
+
+If the user picks **Yes**, run:
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/gitignore/install.sh" --scope <scope>
+```
+
+The installer's exit code tells you what happened:
+
+- **0** — installed (fresh) or refreshed (markers found, body between them replaced with the current entries).
+- **2** — corrupt markers: the start marker is present without an end marker, or markers are out of order. The installer printed a repair instruction to stderr; relay it and ask the user to repair, then re-run `/fwd:setup`.
+- **other non-zero** — argument or I/O error; surface the stderr.
+
+If **No**, skip silently.
+
+### 5. Summary
 
 After all selected installers have run, print a short summary:
 
