@@ -32,7 +32,7 @@ Run the bundled scripts in this exact order. Stop the tick on the first non-zero
 ### 1. Preflight
 
 ```
-!`bash "${CLAUDE_SKILL_DIR}/scripts/preflight.sh"`
+bash "${CLAUDE_SKILL_DIR}/scripts/preflight.sh"
 ```
 
 Verifies `gh` auth, repo state, circuit breaker (3 consecutive failures = stop). Auto-recovers stale `in_progress` locks (>60 min old) by marking them `blocked`.
@@ -42,7 +42,7 @@ If output is `circuit-breaker-tripped` or `not-a-repo` etc. → stop the tick, r
 ### 2. Pick next issue
 
 ```
-!`bash "${CLAUDE_SKILL_DIR}/scripts/pick-issue.sh"`
+bash "${CLAUDE_SKILL_DIR}/scripts/pick-issue.sh"
 ```
 
 Outputs JSON `{"number":N,"title":"...","body":"..."}` for the oldest open issue assigned to `@me` that is not already `done`/`blocked`/`in_progress` in state. Empty output = no work; report `no-work` and stop the tick (do NOT call setup-worktree).
@@ -50,7 +50,7 @@ Outputs JSON `{"number":N,"title":"...","body":"..."}` for the oldest open issue
 ### 3. Setup worktree
 
 ```
-!`bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh <N>"`
+bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <N>
 ```
 
 Branch `claude/issue-<N>` off `main`, worktree `.worktrees/issue-<N>`. Symlinks `.claude/` into the worktree (CC#28041 workaround). Locks state to `in_progress`. Prints absolute worktree path on stdout.
@@ -66,7 +66,7 @@ Branch `claude/issue-<N>` off `main`, worktree `.worktrees/issue-<N>`. Symlinks 
 ### 5a. Success → finalize
 
 ```
-!`bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh ok <N>"`
+bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" ok <N>
 ```
 
 Verifies tests pass, ≥1 commit on the branch, working tree clean. Marks `done`, resets circuit breaker, leaves the worktree intact for review.
@@ -74,7 +74,7 @@ Verifies tests pass, ≥1 commit on the branch, working tree clean. Marks `done`
 ### 5b. Failure → block and continue
 
 ```
-!`bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh blocked <N> "<short reason>"`
+bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" blocked <N> "<short reason>"
 ```
 
 Removes the worktree, drops the branch, marks `blocked`, increments the circuit breaker. Tick exits cleanly so `/loop` can fire the next one.

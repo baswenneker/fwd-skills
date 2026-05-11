@@ -7,3 +7,8 @@ node_modules/
 # Tool/agent artefacts (not part of the repo)
 .playwright-mcp/
 repo-structure.md
+
+# fwd:issue-fix runtime + local test install (skill is registered via .claude-plugin/plugin.json)
+.claude/skills/
+.claude/issue-loop/
+.worktrees/
