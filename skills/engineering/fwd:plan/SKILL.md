@@ -1,6 +1,6 @@
 ---
 name: fwd:plan
-description: Plan een implementatie — verzamel codebase-context, stel 1-5 verdiepende vragen (DoD altijd inline, keuzes via AskUserQuestion), en presenteer 1 of 3 plannen in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit altijd af met (Recommended)-tag op het beste plan en een verdict-block met onderbouwing. Use when user wants to plan a feature, refactor, or change met meerdere opties op tafel, of invokes /fwd:plan.
+description: Plan een implementatie — verzamel codebase-context, presenteer eerst een DoD-voorstel in een box (akkoord of corrigeer), stel daarna 0-3 verdiepende keuzes via AskUserQuestion, en presenteer 1 of 3 plannen in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit altijd af met (Recommended)-tag op het beste plan en een verdict-block met onderbouwing. Use when user wants to plan a feature, refactor, or change met meerdere opties op tafel, of invokes /fwd:plan.
 argument-hint: <wat te plannen, of leeg om te vragen>
 allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Agent
 ---
@@ -11,7 +11,7 @@ Vier stappen: investigate → clarify → present → verdict (op commando).
 
 **Hard constraints:**
 
-- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen. Q1 (Definition of Done) blijft inline open-tekst — geen voorgekauwde opties voor acceptance criteria.
+- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen. De DoD is **geen vraag** maar een **voorstel in een box** vóór de vragen — gebruiker bevestigt of corrigeert (geen voorgekauwde opties, geen hedging).
 - **Subagents alleen als de gebruiker er expliciet om vraagt.** Default: blijf in main turn — subagents kunnen geen vervolgvragen stellen en verstoppen context. Bij "use subagents" / "spawn agents to research X" of vergelijkbaar mag `Agent`. Anders zelf doen.
 - **Geen code-wijzigingen.** Skill eindigt met aanbeveling; implementatie is een aparte stap.
 
@@ -30,18 +30,31 @@ Houd het licht — genoeg om te plannen, niet om te implementeren.
 
 ## Step 2 — Vragen
 
-**Doel:** scherp krijgen wat onhelder is, niet padding. 1-5 vragen totaal, gedreven door échte ambiguïteit uit Step 1.
+**Doel:** scherp krijgen wat onhelder is, niet padding. Eerst de DoD vastpinnen (2a, voorstel in een box), dan 0-3 inhoudelijke keuzes + continue-check (2b/2c). Gedreven door échte ambiguïteit uit Step 1.
 
-### 2a — Q1: Definition of Done (altijd, inline)
+### 2a — Definition of Done (propose & pin, vóór de vragen)
 
-Stel altijd als eerste, in platte markdown (geen `AskUserQuestion`):
+Render eerst — vóór elke `AskUserQuestion` — een **confident voorstel** voor de DoD, gebouwd uit échte vondsten in Step 1 (issue-tekst, bestaande tests, contracten). Geen open vraag, geen hedging ("ik vermoed", "denk ik").
 
-> **Voordat ik plan: wat betekent "klaar" voor deze wijziging?**
-> *(Acceptance criteria: welk gedrag is observeerbaar, welke tests slagen, welke edge cases zijn afgedekt.)*
+Format — box-drawing voor visuele consistentie met de plan-blokken:
 
-Wacht op antwoord. Als de DoD vaag blijft (< 1 zin, geen concrete criteria), vraag éénmaal scherper door. Daarna accepteer wat de gebruiker geeft — Q1 is geen poortwachter, alleen een anker.
+```
+╭─ Definition of Done ──────────────────────────────────╮
+│ - <observeerbaar gedrag, test of contract #1>          │
+│ - <criterium #2>                                       │
+│ - <criterium #3>                                       │
+╰────────────────────────────────────────────────────────╯
+Akkoord? Reageer met aanpassingen of "ok".
+```
 
-### 2b — Q2-Qn: Numbered-choice vragen (via één `AskUserQuestion` bundle)
+Regels:
+
+- 2-5 criteria. Concreet en observeerbaar (gedrag, tests, contracten). Geen vage doelen.
+- Bouw uit échte Step 1-vondsten. Verzin geen criteria.
+- Wacht op bevestiging of correctie. Bij correctie: render de aangepaste DoD opnieuw in dezelfde box, dan door naar 2b.
+- Als Step 1 te dun was om iets te voorstellen: zeg dat expliciet ("ik mis context X om de DoD scherp te krijgen — kun je Y wijzen?") en wacht. Niet bluffen.
+
+### 2b — Numbered-choice vragen (via één `AskUserQuestion` bundle)
 
 Alleen voor échte ambiguïteit. Skip vragen waarvan het antwoord het plan niet zou veranderen.
 

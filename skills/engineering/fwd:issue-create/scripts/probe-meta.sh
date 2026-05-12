@@ -6,8 +6,15 @@
 
 set -euo pipefail
 
+command -v jq >/dev/null 2>&1 || { echo "probe-meta: jq is required" >&2; exit 1; }
+
 if ! rtk git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "probe-meta: not a git repo" >&2
+  exit 1
+fi
+
+if ! rtk git remote -v | grep -q .; then
+  echo "probe-meta: no git remote configured (add one with: git remote add origin <url>)" >&2
   exit 1
 fi
 
