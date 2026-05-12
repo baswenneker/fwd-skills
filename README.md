@@ -56,7 +56,7 @@ Before any feature is installed, the wizard asks where it should land:
 | productivity | [fwd:grill-me](skills/productivity/fwd:grill-me/SKILL.md) | Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. |
 | productivity | [fwd:caveman](skills/productivity/fwd:caveman/SKILL.md) | Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. |
 | productivity | [fwd:explain](skills/productivity/fwd:explain/SKILL.md) | Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Mental model first (problem framed + best-fit form: diagram, analogy, before/after, or causal narrative), then one chunk at a time on demand. |
-| productivity | [fwd:hello-world](skills/productivity/fwd:hello-world/SKILL.md) | Minimal demo skill — prints "Hello world" and nothing else. Smallest viable example to crib from when authoring your own skill. |
+| productivity | [fwd:handoff](skills/productivity/fwd:handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. |
 
 ## Adding a skill
 
