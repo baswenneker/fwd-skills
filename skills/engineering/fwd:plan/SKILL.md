@@ -1,6 +1,6 @@
 ---
 name: fwd:plan
-description: Plan een implementatie — verzamel codebase-context, presenteer eerst een DoD-voorstel in een box (akkoord of corrigeer), stel daarna 0-3 verdiepende keuzes via AskUserQuestion, en presenteer 1 of 3 plannen in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit altijd af met (Recommended)-tag op het beste plan en een verdict-block met onderbouwing. Use when user wants to plan a feature, refactor, or change met meerdere opties op tafel, of invokes /fwd:plan.
+description: Plan een implementatie — verzamel codebase-context, presenteer eerst een DoD-voorstel met numbered bullets (akkoord of corrigeer in plain text, géén AskUserQuestion), stel daarna 0-3 verdiepende keuzes via AskUserQuestion, en presenteer 1 of 3 plannen in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit altijd af met (Recommended)-tag op het beste plan en een verdict-block met onderbouwing. Use when user wants to plan a feature, refactor, or change met meerdere opties op tafel, of invokes /fwd:plan.
 argument-hint: <wat te plannen, of leeg om te vragen>
 allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Agent
 ---
@@ -11,7 +11,7 @@ Vier stappen: investigate → clarify → present → verdict (op commando).
 
 **Hard constraints:**
 
-- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen. De DoD is **geen vraag** maar een **voorstel in een box** vóór de vragen — gebruiker bevestigt of corrigeert (geen voorgekauwde opties, geen hedging).
+- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen in 2b/2c. De DoD in 2a is **géén `AskUserQuestion`** maar een plain-text voorstel met numbered bullets — gebruiker bevestigt met "ok" of geeft aanpassingen aan. Render de DoD-bullets en stop de turn; vuur de `AskUserQuestion`-bundle van 2b/2c pas af **nadat** de gebruiker akkoord heeft gegeven.
 - **Subagents alleen als de gebruiker er expliciet om vraagt.** Default: blijf in main turn — subagents kunnen geen vervolgvragen stellen en verstoppen context. Bij "use subagents" / "spawn agents to research X" of vergelijkbaar mag `Agent`. Anders zelf doen.
 - **Geen code-wijzigingen.** Skill eindigt met aanbeveling; implementatie is een aparte stap.
 
@@ -36,22 +36,25 @@ Houd het licht — genoeg om te plannen, niet om te implementeren.
 
 Render eerst — vóór elke `AskUserQuestion` — een **confident voorstel** voor de DoD, gebouwd uit échte vondsten in Step 1 (issue-tekst, bestaande tests, contracten). Geen open vraag, geen hedging ("ik vermoed", "denk ik").
 
-Format — box-drawing voor visuele consistentie met de plan-blokken:
+Format — numbered bullets, géén box-drawing, géén `AskUserQuestion`:
 
 ```
-╭─ Definition of Done ──────────────────────────────────╮
-│ - <observeerbaar gedrag, test of contract #1>          │
-│ - <criterium #2>                                       │
-│ - <criterium #3>                                       │
-╰────────────────────────────────────────────────────────╯
-Akkoord? Reageer met aanpassingen of "ok".
+DoD — voorstel:
+
+1. <observeerbaar gedrag, test of contract #1>
+2. <criterium #2>
+3. <criterium #3>
+
+Ok of geef aan wat je aan wil passen.
 ```
+
+**Stop de turn na het renderen van de bullets.** Wacht op de plain-text reactie van de gebruiker (ok / correctie) vóórdat je de `AskUserQuestion`-bundle van 2b/2c aanroept. Bundel DoD en `AskUserQuestion` niet in dezelfde turn — dat blokkeert de gebruiker (DoD-akkoord botst met openstaande radio-buttons).
 
 Regels:
 
 - 2-5 criteria. Concreet en observeerbaar (gedrag, tests, contracten). Geen vage doelen.
 - Bouw uit échte Step 1-vondsten. Verzin geen criteria.
-- Wacht op bevestiging of correctie. Bij correctie: render de aangepaste DoD opnieuw in dezelfde box, dan door naar 2b.
+- Bij correctie: render de aangepaste DoD opnieuw als numbered bullets, dán door naar 2b.
 - Als Step 1 te dun was om iets te voorstellen: zeg dat expliciet ("ik mis context X om de DoD scherp te krijgen — kun je Y wijzen?") en wacht. Niet bluffen.
 
 ### 2b — Numbered-choice vragen (via één `AskUserQuestion` bundle)
