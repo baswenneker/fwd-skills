@@ -31,4 +31,3 @@ Notes:
 - Use this layout only when the question has discrete, comparable options worth weighing. Skip for naming, free-form copy, or trivial yes/no follow-ups — those stay short.
 - The "Current state" section is optional; include it when the existing implementation is load-bearing on the decision.
 - Mark exactly one option with `(recommended)`, matching the heading's `(recommendation: option N)` note.
-- The user replies with `y` (accept), an option number, or a free-form override.
