@@ -1,6 +1,6 @@
 ---
 name: fwd:setup
-description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, gitignore entries for fwd runtime artefacts, and Claude Code's clear-context prompt on plan accept), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
+description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, gitignore entries for fwd runtime artefacts, Claude Code's clear-context prompt on plan accept, and disabling Claude Code's default commit/PR attribution), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
 disable-model-invocation: true
 ---
 
@@ -127,7 +127,34 @@ The installer's exit code tells you what happened:
 
 If **No**, skip silently.
 
-### 6. Summary
+### 6. Disable commit & PR attribution
+
+Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+
+Content to convey:
+
+- **Why** — keep the default `🤖 Generated with [Claude Code]` byline and the `Co-Authored-By: Claude …` git trailer out of commits and pull request descriptions. Useful when the team treats commit authorship as a clean audit trail and doesn't want bot bylines accumulating in the history.
+- **How** — sets two strings to `""` in the Claude Code settings file: `attribution.commit` and `attribution.pr`. Claude Code reads those at commit/PR time and skips its default attribution when either is empty.
+- **What** — merges `{"attribution": {"commit": "", "pr": ""}}` into `~/.claude/settings.json` (user) or `.claude/settings.local.json` (project). Idempotent — re-runs skip when both fields are already empty. If either field holds a non-empty custom string, the installer refuses to overwrite it (exit 2). The `attribution` block supersedes the deprecated `includeCoAuthoredBy` flag; we don't touch `includeCoAuthoredBy` if it's present — `attribution` takes precedence.
+- **No trade-off** — commits and PRs keep showing Claude Code's default attribution byline.
+
+Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
+
+If the user picks **Yes**, run:
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/no-attribution/install.sh" --scope <scope>
+```
+
+The installer's exit code tells you what happened:
+
+- **0** — installed (fresh) or already empty (skipped silently with a confirmation line).
+- **2** — collision: `attribution.commit` or `attribution.pr` is a non-empty custom string. The installer printed the current values and a remediation hint to stderr; relay it and ask the user to clear those fields themselves, then re-run `/fwd:setup`.
+- **other non-zero** — argument or I/O error; surface the stderr.
+
+If **No**, skip silently.
+
+### 7. Summary
 
 After all selected installers have run, print a short summary:
 
