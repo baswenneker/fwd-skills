@@ -1,175 +1,92 @@
 ---
 name: fwd:setup
-description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user which features to install (currently smartlint Stop-hook, a lessons memory file, gitignore entries for fwd runtime artefacts, Claude Code's clear-context prompt on plan accept, and disabling Claude Code's default commit/PR attribution), copies bundled payload files into .claude/hooks/ or .claude/lessons/, and merges the matching JSON snippet into ~/.claude/settings.json or .claude/settings.local.json — or for the lessons feature, injects an instructions section into the matching CLAUDE.md, or for the gitignore feature, appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
+description: Setup wizard for HeadingFWD's optional Claude Code conventions. Asks the user in a single multiselect dialog which features to install (currently smartlint Stop-hook, a lessons memory file, gitignore entries for fwd runtime artefacts, Claude Code's clear-context prompt on plan accept, and disabling Claude Code's default commit/PR attribution), then runs the matching installers in batch — copying bundled payload files into .claude/hooks/ or .claude/lessons/, merging JSON snippets into ~/.claude/settings.json or .claude/settings.local.json, injecting an instructions section into CLAUDE.md (lessons), or appending a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Use only when the user invokes /fwd:setup explicitly.
 disable-model-invocation: true
 ---
 
 # fwd:setup
 
-Walk the user through installing HeadingFWD's optional conventions. Each feature is independent: the wizard asks per feature and runs its installer with the chosen scope. What gets merged where depends on the feature — JSON snippets land in settings files, markdown sections land in CLAUDE.md, payload files copy to feature-specific subfolders. Re-running the skill is safe — installers are idempotent and detect existing entries.
+Walk the user through installing HeadingFWD's optional conventions in a single dialog. The wizard asks once — scope + which features — then runs every selected installer in batch and shows a single summary. Each feature is independent: its installer lives in `scripts/<feature>/`, accepts `--scope user|project`, and is idempotent. Re-running the skill is safe.
 
 ## Process
 
-### 1. Pick the install scope
+### 1. Pre-flight — pick the scope default
 
-Ask the user via `AskUserQuestion`:
+Run `rtk git rev-parse --is-inside-work-tree` (exit 0 = inside a git work tree). The result decides which scope option to list first in the dialog:
 
-- **Project-local** — feature payload lands under `<cwd>/.claude/<feature-dir>/`, settings/instructions land in the project's settings/CLAUDE.md. Default this option when the cwd is inside a git repository (check with `git rev-parse --is-inside-work-tree` first).
-- **User-global** — feature payload lands under `~/.claude/<feature-dir>/`, settings/instructions land in `~/.claude/`. Pick this when the user wants the convention to apply everywhere they run Claude Code.
+- **Inside a repo** → `Project-local` first (more likely the user wants per-repo config).
+- **Outside a repo** → `User-global` first.
 
-Pass the chosen scope as `--scope user` or `--scope project` to each feature installer.
+Do not install anything yet — this only changes option ordering in step 2.
 
-### 2. Smartlint Stop-hook
+### 2. Ask once — scope and features
 
-Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+Call `AskUserQuestion` with **two questions in one call**:
 
-Content to convey:
+**Question 1 — scope** (single-select, no preview):
+- **Project-local** — payload lands under `<cwd>/.claude/<feature-dir>/`; settings/instructions land in the project's settings file or CLAUDE.md.
+- **User-global** — payload lands under `~/.claude/<feature-dir>/`; settings/instructions land under `~/.claude/`. Pick this when the user wants the convention to apply everywhere they run Claude Code.
 
-- **Why** — consistent code quality: automatic lint after every Claude response
-- **How** — a Stop-hook fires after each response and runs `smart-lint.sh`
-- **What** — detects project type (TS / Go / Python / Rust / …) and runs the matching linters; merges an entry into `settings.local.json` + copies scripts to `.claude/hooks/`
-- **No trade-off** — no automatic lint checks after Claude actions
+**Question 2 — features** (`multiSelect: true`, no preview, 5 options). Each option's `description` is one short sentence — the WHY. Match the conversation language (Dutch if the session is in Dutch).
 
-Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
+- **Smartlint Stop-hook** — automatic lint after every Claude response, so code quality stays consistent without you remembering to run linters.
+- **Lessons memory file** — Claude remembers corrections, conventions and patterns across sessions instead of starting each conversation blank.
+- **Gitignore entries for fwd runtime artefacts** — without this, `/loop /fwd:issue-fix` writes `.claude/issue-loop/state.json` and then skips every overnight tick on `main-checkout-dirty`.
+- **Clear-context prompt on plan accept** — surfaces a "Clear context?" prompt right after `ExitPlanMode` so the implementation session doesn't carry the deliberation that produced the plan.
+- **Disable commit & PR attribution** — keeps the default `🤖 Generated with [Claude Code]` byline and `Co-Authored-By: Claude …` trailer out of commits and pull requests.
 
-If the user picks **Yes**, run:
+If the user selects **zero features**, skip step 3 and go straight to the summary in step 4.
 
-```
-bash "${CLAUDE_SKILL_DIR}/scripts/smartlint/install.sh" --scope <scope>
-```
+### 3. Apply selected installers in batch
 
-The installer's exit code tells you what happened:
-
-- **0** — installed (fresh) or refreshed (exact match already in settings; payload re-copied to pick up bundled updates).
-- **2** — collision: an existing smart-lint Stop-hook with a different command was found. The installer printed the conflicting entry to stderr and refused to merge. Do **not** retry automatically — relay the warning verbatim to the user with the suggested fix (remove the existing entry, re-run `/fwd:setup`).
-- **other non-zero** — argument or I/O error; surface the stderr.
-
-If **No**, skip silently.
-
-### 3. Lessons memory file
-
-Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
-
-Content to convey:
-
-- **Why** — self-learning codebase: Claude remembers corrections, conventions and patterns across sessions instead of starting each conversation blank
-- **How** — an instruction section in CLAUDE.md tells Claude when to read `LESSONS.md` and when to append proactively (after corrections, surprises, missing rules)
-- **What** — injects a marker-bracketed section (`<!-- fwd:lessons:start -->` … `<!-- fwd:lessons:end -->`) into CLAUDE.md + scaffolds an empty `LESSONS.md` at `$HOME/.claude/lessons/LESSONS.md` (user) or `.claude/lessons/LESSONS.md` (project)
-- **No trade-off** — no cross-session memory; Claude starts each conversation blank
-
-Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
-
-If the user picks **Yes**, run:
+For each selected feature, in this fixed order, run its installer with `--scope <chosen>` and capture the exit code and stderr. **Do not abort on a non-zero exit** — keep going so one feature's collision doesn't block the rest.
 
 ```
-bash "${CLAUDE_SKILL_DIR}/scripts/lessons/install.sh" --scope <scope>
+1. smartlint            → bash "${CLAUDE_SKILL_DIR}/scripts/smartlint/install.sh" --scope <scope>
+2. lessons              → bash "${CLAUDE_SKILL_DIR}/scripts/lessons/install.sh" --scope <scope>
+3. gitignore            → bash "${CLAUDE_SKILL_DIR}/scripts/gitignore/install.sh" --scope <scope>
+4. clear-context-on-plan → bash "${CLAUDE_SKILL_DIR}/scripts/clear-context-on-plan/install.sh" --scope <scope>
+5. no-attribution       → bash "${CLAUDE_SKILL_DIR}/scripts/no-attribution/install.sh" --scope <scope>
 ```
 
-The installer's exit code tells you what happened:
+Per-feature exit code semantics (uniform across all installers):
 
-- **0** — installed (fresh) or refreshed (markers found, content between them replaced with current template). The scaffold `LESSONS.md` is only copied when missing — existing entries are never overwritten.
-- **2** — corrupt markers: the start marker is present without an end marker, or markers are out of order. The installer printed a repair instruction to stderr and refused to modify CLAUDE.md. Do **not** retry automatically — relay the warning verbatim and ask the user to repair the marker region, then re-run `/fwd:setup`.
-- **other non-zero** — argument or I/O error; surface the stderr.
+- **0** — installed (fresh) or already present / refreshed in place. Idempotent.
+- **2** — collision: the installer found a conflicting existing value and refused to overwrite. The installer printed the conflicting entry + remediation hint to stderr. Capture that stderr verbatim for the summary; do **not** retry.
+- **other non-zero** — argument or I/O error. Capture stderr for the summary.
 
-If **No**, skip silently.
+Feature-specific collision causes (for context when relaying stderr):
 
-### 4. Gitignore entries for fwd runtime artefacts
+- **smartlint** — existing Stop-hook with a different command.
+- **lessons** — corrupt sentinel markers in CLAUDE.md (start without end, or out of order).
+- **gitignore** — corrupt sentinel markers in `.gitignore` / `~/.config/git/ignore`.
+- **clear-context-on-plan** — `showClearContextOnPlanAccept` explicitly set to `false`.
+- **no-attribution** — `attribution.commit` or `attribution.pr` holds a non-empty custom string.
 
-Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
+### 4. Summary
 
-Content to convey:
+Print one consolidated summary covering the whole run:
 
-- **Why** — without this, `fwd:issue-fix`'s `preflight.sh` writes `.claude/issue-loop/state.json` and then immediately rejects the tick on `main-checkout-dirty` (the state file it just created is untracked). Every overnight tick becomes a no-op until the user gitignores those paths by hand.
-- **How** — appends a marker-bracketed block to `.gitignore` (project) or `~/.config/git/ignore` (user). Idempotent — re-runs replace the block in place between `# fwd:setup:gitignore:start` … `# fwd:setup:gitignore:end`.
-- **What** — adds three patterns: `.trees/` (issue-fix worktrees), `.claude/issue-loop/` (issue-fix state ledger), `.claude/scheduled_tasks.lock` (Claude Code `/loop` scheduling state).
-- **No trade-off** — `/loop /fwd:issue-fix` will keep skipping every tick with `main-checkout-dirty` until you ignore those paths yourself.
+- **Scope** — `Project-local` or `User-global`, and the resolved paths (the settings file and CLAUDE.md that were touched, or would have been).
+- **Per feature**:
+  - ✓ installed / refreshed (exit 0)
+  - ⚠ collision (exit 2) — relay the installer's stderr verbatim with the suggested fix and the re-run instruction (`re-run /fwd:setup`)
+  - ✗ I/O error (other non-zero) — relay stderr
+  - skipped (not selected)
+- **Idempotency note** — re-running `/fwd:setup` is safe.
 
-Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
-
-If the user picks **Yes**, run:
-
-```
-bash "${CLAUDE_SKILL_DIR}/scripts/gitignore/install.sh" --scope <scope>
-```
-
-The installer's exit code tells you what happened:
-
-- **0** — installed (fresh) or refreshed (markers found, body between them replaced with the current entries).
-- **2** — corrupt markers: the start marker is present without an end marker, or markers are out of order. The installer printed a repair instruction to stderr; relay it and ask the user to repair, then re-run `/fwd:setup`.
-- **other non-zero** — argument or I/O error; surface the stderr.
-
-If **No**, skip silently.
-
-### 5. Clear-context prompt on plan accept
-
-Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
-
-Content to convey:
-
-- **Why** — when you accept a plan with `ExitPlanMode`, the conversation that produced the plan is no longer load-bearing. Carrying it forward pollutes the implementation session's context. Enabling this surfaces a "Clear context?" prompt right at plan-accept so the implementation starts from the plan, not the deliberation that led to it.
-- **How** — sets a single boolean in the Claude Code settings file: `showClearContextOnPlanAccept: true`.
-- **What** — merges `{"showClearContextOnPlanAccept": true}` into `~/.claude/settings.json` (user) or `.claude/settings.local.json` (project). Idempotent — re-runs skip when already true. If you've explicitly set it to `false`, the installer refuses to overwrite that choice (exit 2).
-- **No trade-off** — accepting a plan leaves the full deliberation context in the conversation; you can `/clear` it yourself if you want.
-
-Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
-
-If the user picks **Yes**, run:
-
-```
-bash "${CLAUDE_SKILL_DIR}/scripts/clear-context-on-plan/install.sh" --scope <scope>
-```
-
-The installer's exit code tells you what happened:
-
-- **0** — installed (fresh) or already true (skipped silently with a confirmation line).
-- **2** — collision: the user has explicitly set `showClearContextOnPlanAccept: false`. The installer printed a remediation hint to stderr; relay it and ask the user to remove the line themselves, then re-run `/fwd:setup`.
-- **other non-zero** — argument or I/O error; surface the stderr.
-
-If **No**, skip silently.
-
-### 6. Disable commit & PR attribution
-
-Ask via `AskUserQuestion` with a **Yes/No** — no preview pane, but pack the question text and option `description` fields with **why / how / what** context so the user knows what they're enabling.
-
-Content to convey:
-
-- **Why** — keep the default `🤖 Generated with [Claude Code]` byline and the `Co-Authored-By: Claude …` git trailer out of commits and pull request descriptions. Useful when the team treats commit authorship as a clean audit trail and doesn't want bot bylines accumulating in the history.
-- **How** — sets two strings to `""` in the Claude Code settings file: `attribution.commit` and `attribution.pr`. Claude Code reads those at commit/PR time and skips its default attribution when either is empty.
-- **What** — merges `{"attribution": {"commit": "", "pr": ""}}` into `~/.claude/settings.json` (user) or `.claude/settings.local.json` (project). Idempotent — re-runs skip when both fields are already empty. If either field holds a non-empty custom string, the installer refuses to overwrite it (exit 2). The `attribution` block supersedes the deprecated `includeCoAuthoredBy` flag; we don't touch `includeCoAuthoredBy` if it's present — `attribution` takes precedence.
-- **No trade-off** — commits and PRs keep showing Claude Code's default attribution byline.
-
-Distribute these naturally: *why* in the question text, *how* + *what* in the **Yes** description, the trade-off in the **No** description. Match the conversation language (Dutch if the session is in Dutch).
-
-If the user picks **Yes**, run:
-
-```
-bash "${CLAUDE_SKILL_DIR}/scripts/no-attribution/install.sh" --scope <scope>
-```
-
-The installer's exit code tells you what happened:
-
-- **0** — installed (fresh) or already empty (skipped silently with a confirmation line).
-- **2** — collision: `attribution.commit` or `attribution.pr` is a non-empty custom string. The installer printed the current values and a remediation hint to stderr; relay it and ask the user to clear those fields themselves, then re-run `/fwd:setup`.
-- **other non-zero** — argument or I/O error; surface the stderr.
-
-If **No**, skip silently.
-
-### 7. Summary
-
-After all selected installers have run, print a short summary:
-
-- Which features were installed
-- Which settings file or CLAUDE.md was updated
-- Where the payload files live
-- Note that re-running `/fwd:setup` is safe (idempotent)
+If the user selected zero features, the summary is just: scope shown (informational), no features installed, no files touched.
 
 ## Invariants
 
 - Skill is invoked explicitly only — `disable-model-invocation: true` keeps the wizard out of automatic-trigger flows.
+- The wizard asks at most **one** `AskUserQuestion` call per run — scope + features in a single dialog. No per-feature follow-up prompts.
 - Each feature installer lives at `scripts/<feature>/install.sh`, accepts `--scope user|project`, and is idempotent. Re-runs detect existing installs and either refresh in place or exit 2 on a corrupt/conflicting state.
-- **JSON merging** (smartlint): the shared `scripts/lib/merge-json.sh` deep-merges objects, concatenates arrays, and lets new scalars win on conflict. Each installer dedupe-checks its own hook before calling the merger so re-runs do not double the array. `jq` is required; when missing the merger backs up the target to `<file>.bak` and replaces it with the new snippet.
+- **JSON merging** (smartlint, clear-context-on-plan, no-attribution): the shared `scripts/lib/merge-json.sh` deep-merges objects, concatenates arrays, and lets new scalars win on conflict. Each installer dedupe-checks its own entries before calling the merger so re-runs do not double the array. `jq` is required; when missing the merger backs up the target to `<file>.bak` and replaces it with the new snippet.
 - **Markdown injection** (lessons): the lessons installer brackets its section with sentinel HTML comments (`<!-- fwd:lessons:start -->` / `<!-- fwd:lessons:end -->`) and uses inline `head` / `tail` to replace the region between them on refresh. No shared lib yet — extract to `scripts/lib/merge-markdown.sh` if a second feature also needs it.
+- **Gitignore injection**: marker-bracketed block (`# fwd:setup:gitignore:start` / `# fwd:setup:gitignore:end`) in `.gitignore` (project) or `~/.config/git/ignore` (user).
 - Hook commands use literal `$HOME` (user) or `$CLAUDE_PROJECT_DIR` (project) — Claude Code's shell expands them at hook runtime. Lessons-file paths in the injected CLAUDE.md section follow the same convention (`$HOME/...` or repo-relative).
+- One feature's collision (exit 2) never aborts the batch — the remaining installers still run.
 
 ## Adding a new feature later
 
@@ -179,4 +96,6 @@ After all selected installers have run, print a short summary:
    - JSON settings → call `../lib/merge-json.sh`
    - Markdown / CLAUDE.md section → use sentinel markers + inline `head`/`tail` (see `scripts/lessons/install.sh`)
    - Plain file copy → just `cp` into `<scope>/.claude/<feature-dir>/`
-4. Add an `AskUserQuestion` block in this SKILL.md that gates the installer with a simple Yes/No — no preview pane, but pack the question and `description` fields with **why / how / what** context (see sections 2 and 3 for the pattern). Then add the feature to the summary.
+4. Wire the feature into the single multiselect dialog in section 2 — add one option with a one-sentence WHY in its `description`. No preview, no per-feature follow-up question.
+5. Wire the feature into the apply-loop in section 3 — add it to the fixed order with the path to its `install.sh`.
+6. Add the feature-specific collision cause to the bullet list in section 3.
