@@ -93,7 +93,30 @@ echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/scripts/record-feature.sh" <sl
 - `attempts < FWD_MISSION_MAX_ATTEMPTS` (default 3) → re-spawn the coder (2.3) with the failure context appended.
 - attempts exhausted → `record-feature.sh <slug> <feature-id> blocked "<reason>"` (increments the breaker), then go to 2.7.
 
-**2.5 — Milestone validation** (only if `closes_milestone` is set). *Added by M3 (Scrutiny) and M4 (User-Testing).* In short: run `run-gates.sh`, spawn `fwd-skills:fwd-mission-reviewer` for the `scrutiny-review` VC-IDs, and — only if gates pass and scrutiny passes — spawn `fwd-skills:fwd-mission-user-tester` for the `user-testing` VC-IDs (else record those `null`). Record verdicts with `record-validation.sh`. A failed milestone gets one bounded remediation pass (respecting the attempt cap), else the milestone is blocked.
+**2.5 — Milestone validation** (only if `closes_milestone` is set).
+
+*Gates (Layer A):*
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/run-gates.sh" <slug> <milestone-id>
+```
+
+Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed. Capture it as `<gate-results>`.
+
+*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
+
+*User-Testing (Layer B — `user-testing` VC-IDs):* *added by M4.* For now record those VC-IDs as `passed: null` (evidence: "user-testing not yet implemented").
+
+*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; all gates + scrutiny passed but user-testing pending → `gates_passed`; everything that ran passed → `passed`.
+
+*Record + commit:*
+
+```
+echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>]}' \
+  | bash "${CLAUDE_SKILL_DIR}/scripts/record-validation.sh" <slug> <milestone-id> <status>
+```
+
+*On `failed`:* give the milestone ONE bounded remediation pass — re-spawn the coder on the failing feature(s) with the verdicts as context (respect the attempt cap) — then re-validate. Still failing or cap hit → the milestone is blocked (`record-validation.sh` already incremented the breaker); log it and continue.
 
 **2.6 — Learn** (*added by M5*). After a milestone, distil a lesson from `issues_discovered` + any VC failures via `append-lesson.sh`.
 

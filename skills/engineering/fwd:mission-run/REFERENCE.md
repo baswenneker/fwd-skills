@@ -188,6 +188,8 @@ Agents are shipped at the plugin root in `agents/` and auto-discovered. They are
 
 Plugin agents do **not** support `hooks`, `mcpServers`, or `permissionMode` (stripped on load) — the mission agents need none of these. They do support `tools` / `disallowedTools` (used to make the validators write-incapable), `model`, and `isolation`.
 
+**Validators run in the mission worktree, not an isolated one.** The reviewer and user-tester are pointed at the mission worktree (the orchestrator passes the path) and read the diff / boot the app there. They deliberately do **not** use `isolation: worktree`: the orchestrator's main session is not checked out on the mission branch (it lives in the `.trees/` worktree), so an isolated worktree would branch off the wrong ref and contain none of the mission's committed code. Their write-incapability comes from the `tools` allowlist (no `Write`/`Edit`); their adversarial independence comes from being a fresh context briefed only on the diff/app + the contract — never the coder's reasoning.
+
 ## App boot (User-Testing)
 
 The User-Testing validator needs to launch the app. The boot recipe is **captured during planning, never guessed at run time**: `fwd:mission-plan` discovers candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, a `Makefile` `run` target) and confirms the `boot_command` + `ready_probe` + `smoke_commands` with the user. If `boot_command` is absent at run time, user-testing VC-IDs are recorded `null` ("no boot command captured") — the agent never improvises (autonomous-conservative rule). The `ready_probe` (HTTP poll or log-line match) is essential, or the tester races the server.
