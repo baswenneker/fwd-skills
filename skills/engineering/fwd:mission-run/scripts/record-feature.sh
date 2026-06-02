@@ -35,8 +35,8 @@ cd "$WT_PATH"
 
 case "$OUTCOME" in
   done)
-    # Clean worktree, ignoring the copied .env* (expected, untracked).
-    DIRTY="$(rtk git status --porcelain | grep -vx 'ok' | grep -vE '\.env(\.[^/]+)?$' || true)"
+    # Clean worktree, ignoring the copied .env* and boot artifacts (expected, untracked).
+    DIRTY="$(rtk git status --porcelain | grep -vx 'ok' | grep -vE '(\.env(\.[^/]+)?|\.mission-boot\.(pid|log))$' || true)"
     if [[ -n "$DIRTY" ]]; then
       echo "worktree has uncommitted changes — coder must commit before record:" >&2
       echo "$DIRTY" >&2

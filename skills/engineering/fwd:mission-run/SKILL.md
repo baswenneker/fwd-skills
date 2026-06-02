@@ -105,9 +105,23 @@ Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed
 
 *Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
 
-*User-Testing (Layer B — `user-testing` VC-IDs):* *added by M4.* For now record those VC-IDs as `passed: null` (evidence: "user-testing not yet implemented").
+*User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND scrutiny passed (else record these VC-IDs `null`, evidence "skipped: upstream failed"). Boot the app:
 
-*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; all gates + scrutiny passed but user-testing pending → `gates_passed`; everything that ran passed → `passed`.
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/boot-app.sh" <slug>
+```
+
+- `no-boot` (exit 2) → record user-testing VCs `null` ("no boot command captured").
+- `boot-timeout` / `boot-crashed` (exit 1) → record `null` ("app did not boot").
+- `ready url=<url>` (exit 0) → spawn `fwd-skills:fwd-mission-user-tester` (Agent), pinning the worktree, the URL, the `smoke_commands`, the `playwright_present` flag, and the `user-testing` assertions verbatim. It returns `{narrative, verdicts}` — write its narrative to `handoffs/<milestone-id>-usertest.md`.
+
+Always tear down afterwards (whatever the boot outcome):
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
+```
+
+*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; gates + scrutiny passed but user-testing couldn't run (no boot / boot failed) → `gates_passed`; everything that ran (gates + scrutiny + user-testing) passed → `passed`.
 
 *Record + commit:*
 
