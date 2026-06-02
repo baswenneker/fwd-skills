@@ -10,6 +10,7 @@ Repo-level instructions for agents working in `fwd-skills`.
 
 ```
 .claude-plugin/plugin.json                # Plugin manifest (skill paths)
+agents/<name>.md                          # Plugin subagents (auto-discovered; see "Agents")
 skills/<category>/fwd:<field>-<name>/     # One folder per skill
   SKILL.md                                # Required: YAML frontmatter + markdown body
   scripts/                                # Optional: bash helpers (no Node tooling)
@@ -42,6 +43,14 @@ When adding a new category, add a one-line description here too.
 
 3. Add the skill's folder path to the `skills` array in `.claude-plugin/plugin.json`.
 4. Update the skills table in `README.md`.
+
+## Agents
+
+Skills may delegate to **plugin subagents** — markdown files at the plugin root in `agents/<name>.md` (subfolders allowed). They are **auto-discovered** (NOT listed in `plugin.json`) and referenced via the Agent tool's `subagent_type` as `fwd-skills:<name>` (a subfolder becomes part of the id: `agents/x/y.md` → `fwd-skills:x:y`).
+
+Frontmatter: `name`, `description`, optional `tools` / `disallowedTools` (a `tools` allowlist is the strongest way to scope a read-only agent — what isn't granted can't be used), `model`, `isolation`, `color`. **Plugin agents ignore `hooks`, `mcpServers`, and `permissionMode`** (stripped on load for security); if an agent truly needs those, the consumer copies it into their own `.claude/agents/`.
+
+The `fwd:mission-*` skills are the first users: `fwd-mission-coder` (write-capable), `fwd-mission-reviewer` and `fwd-mission-user-tester` (write-incapable validators — Bash for inspection, no `Write`/`Edit`). A mission's orchestration state + artifacts live on a `mission/<slug>` branch and are **committed there** (so the mission resumes from any worktree/clone) — deliberately not gitignored; only the per-worktree `.env` copy under `.trees/` stays ignored.
 
 ## Syncing from `fwd-claude-code`
 
