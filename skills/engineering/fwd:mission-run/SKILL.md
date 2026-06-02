@@ -1,7 +1,7 @@
 ---
 name: fwd:mission-run
 description: Execute a planned mission — the resident orchestrator of the fwd:mission-* layer (a Claude Code take on Factory.ai Missions). Reads the mission's state.json, drives features one at a time by spawning a fresh coder subagent each, runs adversarial validators (Scrutiny + User-Testing) at milestone boundaries, and commits a checkpoint after every unit so the mission resumes from any worktree or clone. Runs autonomously — never prompts. Use when the user runs /fwd:mission-run <slug>, says "run/execute/resume mission <slug>", or wraps it in /loop for a long multi-day run. Pass `status` as a second argument for a read-only progress report.
-argument-hint: <slug> [status]
+argument-hint: "[<slug>] [status] — no args lists all missions"
 allowed-tools: Read, Glob, Grep, Bash, Agent
 ---
 
@@ -27,16 +27,25 @@ You (the main session) ARE the orchestrator. You spawn the coder and validator s
 ## Quick start
 
 ```
+/fwd:mission-run                   # list all missions in this repo + their status
 /fwd:mission-run <slug>            # run to completion (resumes if interrupted)
 /loop /fwd:mission-run <slug>      # long/overnight: one unit per fresh-context tick
-/fwd:mission-run <slug> status     # read-only progress report, writes nothing
+/fwd:mission-run <slug> status     # read-only progress report for one mission
 ```
+
+Don't remember the slug? Run `/fwd:mission-run` with no arguments — it lists every mission (the slug is also the `mission/<slug>` branch name). `fwd:mission-plan` prints the slug + the exact run command when it finishes planning.
 
 ## Flow
 
-If the second argument is `status`, run `status.sh <slug>` and stop — it prints progress and writes nothing.
+**No `<slug>` (or first argument `list`)** — discovery mode. Run `list-missions.sh`, report the table, and stop. Don't start anything; the user picks a slug to run. (If exactly one mission is `in_progress`, you may point them at it, but still don't auto-run.)
 
-Otherwise run the scripts below in order. Stop the tick on the first blocking exit.
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/list-missions.sh"
+```
+
+**`<slug> status`** — run `status.sh <slug>` and stop; it prints one mission's progress and writes nothing.
+
+**`<slug>`** — run the scripts below in order. Stop the tick on the first blocking exit.
 
 ### 0. Preflight
 
