@@ -64,7 +64,15 @@ Reuses the worktree at `.trees/mission/<slug>/` (recreates it from the branch on
 
 ### 2. Per-unit loop
 
-Repeat until `pick-next-unit.sh` reports no work.
+Once per invoke, before the loop, reconcile any crash from the previous tick:
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/reconcile.sh" <slug>
+```
+
+`adopted <fid>` → a feature was committed last tick but never recorded; it's now `done`. `cleaned` → partial crash leftovers were discarded. `clean` → nothing to do.
+
+Then repeat until `pick-next-unit.sh` reports no work.
 
 **2.1 — Pick the next unit.**
 
@@ -156,7 +164,7 @@ Marks the mission `done` (all milestones passed) or `blocked`, removes the copie
 
 - Attempts per feature: `FWD_MISSION_MAX_ATTEMPTS` (default 3).
 - Circuit breaker: 3 consecutive blocked features/milestones → preflight refuses.
-- Stale-lock recovery: `in_progress` feature older than `FWD_MISSION_STALE_SEC` (default 3600) → recovered.
+- Crash recovery: `reconcile.sh` (loop start) adopts an orphan commit or discards partial leftovers — commit-based, not time-based.
 - One active mission per repo (serial; single-writer state).
 
 ## Boundaries

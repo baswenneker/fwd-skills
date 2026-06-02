@@ -170,8 +170,8 @@ On (re-)invoke — including a fresh `git worktree add` on another machine, or a
 1. Read `state.json` at HEAD.
 2. If `status` is `done` / `blocked` → nothing to do.
 3. Resume point = first feature with `status != "done"`.
-4. **Crash-window guard:** if that feature is `in_progress` and its expected commit already exists on the branch (`git log`), adopt it (record SHA, mark `done`) rather than re-spawn the coder.
-5. **Stale-lock recovery:** a feature stuck `in_progress` past the threshold (default 60 min, `FWD_MISSION_STALE_SEC`) is auto-handled like issue-fix.
+4. **Crash-window guard (`reconcile.sh`, run at loop start):** if real (non-metadata) code was committed since the last recorded feature SHA but never recorded — a tick that died between the coder's commit and `record-feature.sh` — adopt the first not-done feature as `done` at HEAD. Otherwise discard any uncommitted tracked leftovers (`git reset --hard`) so the next coder starts clean. A healthy resume is a no-op.
+5. **No time-based stale lock.** Missions don't mark features `in_progress`; commit-based reconciliation is the resume signal (robust across fresh worktrees/clones, which a timer is not). Repeated failure is bounded by the per-feature attempt cap + the circuit breaker.
 
 ### Guardrails
 
@@ -179,7 +179,7 @@ On (re-)invoke — including a fresh `git worktree add` on another machine, or a
 |---|---|---|
 | Attempts per feature | 3 | Beyond this a feature needs human input. Fail fast. |
 | Circuit breaker | 3 consecutive blocked features/milestones | Systemic problem (broken env, bad base) — stop, don't chew the queue. |
-| Stale-lock recovery | 60 min | A killed/sleeping tick recovers next invoke. |
+| Crash reconciliation | loop start | `reconcile.sh` adopts orphan commits / discards leftovers (commit-based). |
 | One active mission per repo | — | Serial by design; `state.json` is single-writer. |
 
 ## Subagent naming
@@ -200,7 +200,7 @@ The User-Testing validator needs to launch the app. The boot recipe is **capture
 |---|---|---|
 | `FWD_MISSION_BASE_BRANCH` | current branch (HEAD) | Branch the mission is based on |
 | `FWD_MISSION_WORKTREE_DIR` | `<repo>/.trees` | Worktree root (`<dir>/mission/<slug>/`) |
-| `FWD_MISSION_STALE_SEC` | `3600` | Stale `in_progress` recovery threshold |
+| `FWD_MISSION_GATE_TIMEOUT` | `600` | Per-gate timeout (seconds) |
 | `FWD_MISSION_MAX_ATTEMPTS` | `3` | Coder attempts per feature |
 
 ## Sources

@@ -2,7 +2,7 @@
 # Preflight for fwd:mission-run. Read-only checks; single status word on stdout.
 # Any line other than "ok" means: stop the tick cleanly and report it.
 # Reads state from the worktree if present, else from the branch (fresh clone).
-# (Stale-lock recovery is added in M6.)
+# Resume safety is handled by reconcile.sh at loop start (commit-based), not a timer.
 set -uo pipefail
 
 SLUG="${1:?usage: preflight.sh <slug>}"
