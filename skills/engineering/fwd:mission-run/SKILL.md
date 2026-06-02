@@ -132,7 +132,13 @@ echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-tes
 
 *On `failed`:* give the milestone ONE bounded remediation pass — re-spawn the coder on the failing feature(s) with the verdicts as context (respect the attempt cap) — then re-validate. Still failing or cap hit → the milestone is blocked (`record-validation.sh` already incremented the breaker); log it and continue.
 
-**2.6 — Learn** (*added by M5*). After a milestone, distil a lesson from `issues_discovered` + any VC failures via `append-lesson.sh`.
+**2.6 — Learn.** After a milestone, if the handoffs' `issues_discovered` or any VC failure taught something reusable, distil ONE lesson and append it:
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/append-lesson.sh" <type> <scope> "<context>" "<observation>" "<lesson>"
+```
+
+`type` ∈ `insight` (a gotcha worth remembering) | `deviation` (a gate/constraint forced a workaround) | `rule-gap` (a missing convention) | `correction`. `scope` is the area (the mission slug or a subsystem). One line per field. **Skip it if nothing reusable came up — don't log noise.** Lessons land in the main repo's `.claude/lessons/LESSONS.md`, not the mission branch.
 
 **2.7 — Checkpoint.** State is already committed by `record-feature.sh` / `record-validation.sh`. If the breaker reached 3, stop the tick (report; `/loop` will idle). Otherwise loop to 2.1.
 
