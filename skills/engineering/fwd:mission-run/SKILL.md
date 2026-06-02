@@ -1,0 +1,136 @@
+---
+name: fwd:mission-run
+description: Execute a planned mission — the resident orchestrator of the fwd:mission-* layer (a Claude Code take on Factory.ai Missions). Reads the mission's state.json, drives features one at a time by spawning a fresh coder subagent each, runs adversarial validators (Scrutiny + User-Testing) at milestone boundaries, and commits a checkpoint after every unit so the mission resumes from any worktree or clone. Runs autonomously — never prompts. Use when the user runs /fwd:mission-run <slug>, says "run/execute/resume mission <slug>", or wraps it in /loop for a long multi-day run. Pass `status` as a second argument for a read-only progress report.
+argument-hint: <slug> [status]
+allowed-tools: Read, Glob, Grep, Bash, Agent
+---
+
+# fwd:mission-run
+
+The resident orchestrator. One mission → serial features → adversarial validators at milestone boundaries → a committed checkpoint after every unit. Plan a mission first with `/fwd:mission-plan`; this skill executes it.
+
+You (the main session) ARE the orchestrator. You spawn the coder and validator subagents — they cannot spawn each other, which is why the orchestrator is a main-session skill, not an agent. The canonical `state.json` schema, handoff shape, and resume semantics are in [REFERENCE.md](REFERENCE.md) — read it if anything below is ambiguous.
+
+**Autonomous-mode principle.** This skill runs unattended, often under `/loop` for days. There is nobody at the keyboard.
+
+- **Never call `AskUserQuestion` or `ExitPlanMode`.** Plan internally; act.
+- **Never use interactive shell flags** (`-i`, `git rebase -i`, …).
+- **When you would normally ask, decide and log.** Pick the conservative option and record it via `${CLAUDE_SKILL_DIR}/scripts/log-decision.sh`. Repeated ambiguity on a feature → block it (the human reviews blocked missions).
+- **Never push, never open PRs, never mutate GitHub.** This skill commits locally on the mission branch; the human reviews and pushes.
+
+**The bash / Claude / subagent split** (blurring this is where loops hang):
+
+- **Bash scripts** — deterministic state, git, gates, exit codes. Run them; trust their exit codes.
+- **You (main session)** — judgement: map criteria to VC-IDs, judge whether a handoff satisfies a feature, decide retry-vs-block, distil lessons. **You never write product code.**
+- **Subagents** — `fwd-skills:fwd-mission-coder` writes + commits; `fwd-skills:fwd-mission-reviewer` and `fwd-skills:fwd-mission-user-tester` judge. Each is a fresh context; the validators have never seen the code being written.
+
+## Quick start
+
+```
+/fwd:mission-run <slug>            # run to completion (resumes if interrupted)
+/loop /fwd:mission-run <slug>      # long/overnight: one unit per fresh-context tick
+/fwd:mission-run <slug> status     # read-only progress report, writes nothing
+```
+
+## Flow
+
+If the second argument is `status`, run `status.sh <slug>` and stop — it prints progress and writes nothing.
+
+Otherwise run the scripts below in order. Stop the tick on the first blocking exit.
+
+### 0. Preflight
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/preflight.sh" <slug>
+```
+
+Checks `jq`, the repo, that the `mission/<slug>` branch exists, reads `state.json` from the branch, and validates: status ∈ {`planned`, `in_progress`}, circuit breaker < 3, and recovers a stale `in_progress` feature lock. First line `ok` → continue. Anything else → stop the tick cleanly and report the line:
+
+| Output | Meaning |
+|---|---|
+| `ok` | proceed |
+| `mission-done` / `mission-blocked` | nothing to do — report and stop |
+| `no-mission` | no `mission/<slug>` branch — did you run `/fwd:mission-plan`? |
+| `circuit-breaker-tripped` | 3 consecutive failures — stop; reset is manual (see REFERENCE) |
+| `not-a-repo` / `missing-jq` | stop |
+
+### 1. Set up the worktree
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <slug>
+```
+
+Reuses the worktree at `.trees/mission/<slug>/` (recreates it from the branch on a fresh clone), copies `.env*` into the worktree root (so the User-Testing validator can boot the app), and transitions `planned → in_progress` (committed). Prints the absolute worktree path — use it as `<WT>` below. **`cd "<WT>"`** before the loop; everything happens in the worktree.
+
+### 2. Per-unit loop
+
+Repeat until `pick-next-unit.sh` reports no work.
+
+**2.1 — Pick the next unit.**
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/pick-next-unit.sh" <slug>
+```
+
+Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first feature with `status != done`. Empty output → all features done → go to step 3. `closes_milestone` is the milestone id if completing this feature finishes its milestone (triggers validation in 2.5).
+
+**2.2 — Brief yourself.** From the worktree's `.claude/missions/<slug>/`, read the feature's acceptance criteria: its `vc_ids` mapped to the assertions in `validation-contract.md`, plus the relevant `mission.md` context. The previous feature's code is already present (inherited via git).
+
+**2.3 — Spawn the coder.** Use the Agent tool with `subagent_type: fwd-skills:fwd-mission-coder`. The prompt MUST pin:
+- the worktree path `<WT>` (the coder works there, `cd`'d in),
+- the ONE feature (id, title) and its acceptance criteria (the VC-IDs verbatim),
+- "implement only this feature; add/adjust tests; stage your files; run `risky-scan.sh`; commit with a conventional message; do NOT push; return the handoff as JSON".
+
+The coder returns a structured handoff (the five fields — see REFERENCE).
+
+**2.4 — Verify and record.** Write the coder's prose narrative to `<WT>/.claude/missions/<slug>/handoffs/<feature-id>.md`. Then:
+
+```
+echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/scripts/record-feature.sh" <slug> <feature-id> done
+```
+
+`record-feature.sh` verifies the worktree is clean and a new commit exists, records `commit_sha` + the handoff + `attempts`, resets the breaker, and commits the checkpoint on the branch. If the coder made no commit or didn't satisfy the feature:
+- `attempts < FWD_MISSION_MAX_ATTEMPTS` (default 3) → re-spawn the coder (2.3) with the failure context appended.
+- attempts exhausted → `record-feature.sh <slug> <feature-id> blocked "<reason>"` (increments the breaker), then go to 2.7.
+
+**2.5 — Milestone validation** (only if `closes_milestone` is set). *Added by M3 (Scrutiny) and M4 (User-Testing).* In short: run `run-gates.sh`, spawn `fwd-skills:fwd-mission-reviewer` for the `scrutiny-review` VC-IDs, and — only if gates pass and scrutiny passes — spawn `fwd-skills:fwd-mission-user-tester` for the `user-testing` VC-IDs (else record those `null`). Record verdicts with `record-validation.sh`. A failed milestone gets one bounded remediation pass (respecting the attempt cap), else the milestone is blocked.
+
+**2.6 — Learn** (*added by M5*). After a milestone, distil a lesson from `issues_discovered` + any VC failures via `append-lesson.sh`.
+
+**2.7 — Checkpoint.** State is already committed by `record-feature.sh` / `record-validation.sh`. If the breaker reached 3, stop the tick (report; `/loop` will idle). Otherwise loop to 2.1.
+
+### 3. Finalize
+
+When no features remain (*finalize added by M6*):
+
+```
+bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" <slug>
+```
+
+Marks the mission `done` (all milestones passed) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review. Report the outcome and stop.
+
+## Hard limits — do not override
+
+- Attempts per feature: `FWD_MISSION_MAX_ATTEMPTS` (default 3).
+- Circuit breaker: 3 consecutive blocked features/milestones → preflight refuses.
+- Stale-lock recovery: `in_progress` feature older than `FWD_MISSION_STALE_SEC` (default 3600) → recovered.
+- One active mission per repo (serial; single-writer state).
+
+## Boundaries
+
+- **Never push, never open PRs, never mutate GitHub.** Commit locally on the mission branch only.
+- **You never write product code** in the main session — that's the coder's job. You orchestrate.
+- **Validators never see the coder's reasoning** — they get a fresh context, the diff/app, and the contract. Don't paste implementation details into validator prompts.
+- **Never re-run a `done` feature.** Resume reads `commit_sha`; committed work is final.
+
+## Reviewing / resuming
+
+```
+/fwd:mission-run <slug> status                    # progress
+cd .trees/mission/<slug> && rtk git log --oneline # the commits
+# resume on another machine:
+rtk git fetch && rtk git worktree add .trees/mission/<slug> mission/<slug>
+/fwd:mission-run <slug>
+```
+
+See [REFERENCE.md](REFERENCE.md) for the schema, resume/idempotency rules, agent naming, and configuration.
