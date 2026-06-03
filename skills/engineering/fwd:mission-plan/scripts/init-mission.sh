@@ -32,6 +32,13 @@ if rtk git show-ref --verify --quiet "refs/heads/$BRANCH"; then
 fi
 [[ -e "$WT_PATH" ]] && { echo "worktree path already exists: $WT_PATH" >&2; exit 1; }
 
+# Ensure the worktree root is gitignored so it never dirties the main checkout.
+GI="$REPO_ROOT/.gitignore"
+if ! { [[ -f "$GI" ]] && grep -qxF '.trees/' "$GI"; }; then
+  printf '%s\n' '.trees/' >> "$GI"
+  echo "added .trees/ to .gitignore" >&2
+fi
+
 mkdir -p "$WT_DIR/mission"
 
 # Worktree off the base branch. The mission's .claude/missions/<slug>/ lives INSIDE it

@@ -4,8 +4,9 @@
 set -uo pipefail
 
 SLUG="${1:?usage: teardown-app.sh <slug>}"
-REPO_ROOT="$(rtk git rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -z "$REPO_ROOT" ]] && { echo "not-a-repo" >&2; exit 0; }
+GCD="$(rtk git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+[[ -z "$GCD" ]] && { echo "not-a-repo" >&2; exit 0; }
+REPO_ROOT="$(dirname "$GCD")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 WT_PATH="$WT_DIR/mission/$SLUG"
 PIDFILE="$WT_PATH/.mission-boot.pid"

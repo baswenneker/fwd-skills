@@ -10,8 +10,9 @@ set -uo pipefail
 
 SLUG="${1:?usage: boot-app.sh <slug>}"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq" >&2; exit 2; }
-REPO_ROOT="$(rtk git rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -z "$REPO_ROOT" ]] && { echo "not-a-repo" >&2; exit 2; }
+GCD="$(rtk git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+[[ -z "$GCD" ]] && { echo "not-a-repo" >&2; exit 2; }
+REPO_ROOT="$(dirname "$GCD")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 WT_PATH="$WT_DIR/mission/$SLUG"
 STATE="$WT_PATH/.claude/missions/$SLUG/state.json"

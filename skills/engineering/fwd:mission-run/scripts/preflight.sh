@@ -8,8 +8,9 @@ set -uo pipefail
 SLUG="${1:?usage: preflight.sh <slug>}"
 
 command -v jq >/dev/null 2>&1 || { echo "missing-jq"; exit 1; }
-REPO_ROOT="$(rtk git rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -z "$REPO_ROOT" ]] && { echo "not-a-repo"; exit 1; }
+GCD="$(rtk git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+[[ -z "$GCD" ]] && { echo "not-a-repo"; exit 1; }
+REPO_ROOT="$(dirname "$GCD")"
 
 BRANCH="mission/$SLUG"
 rtk git show-ref --verify --quiet "refs/heads/$BRANCH" || { echo "no-mission"; exit 1; }

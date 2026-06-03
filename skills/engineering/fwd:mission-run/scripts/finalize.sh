@@ -7,23 +7,27 @@ set -euo pipefail
 
 SLUG="${1:?usage: finalize.sh <slug>}"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq" >&2; exit 1; }
-REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
+REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 WT_PATH="$WT_DIR/mission/$SLUG"
 STATE="$WT_PATH/.claude/missions/$SLUG/state.json"
 [[ -f "$STATE" ]] || { echo "state.json missing: $STATE" >&2; exit 1; }
 
-BLOCKED_F="$(jq '[.features[]   | select(.status == "blocked")]            | length' "$STATE")"
-NOTDONE_F="$(jq '[.features[]   | select(.status != "done")]              | length' "$STATE")"
-FAILED_M="$(jq  '[.milestones[] | select(.validation_status == "failed")] | length' "$STATE")"
+BLOCKED_F="$(jq    '[.features[]   | select(.status == "blocked")] | length' "$STATE")"
+PENDING_FEAT="$(jq '[.features[]   | select(.status != "done" and .status != "blocked")] | length' "$STATE")"
+FAILED_M="$(jq     '[.milestones[] | select(.validation_status == "failed")]  | length' "$STATE")"
+PENDING_M="$(jq    '[.milestones[] | select(.validation_status == "pending")] | length' "$STATE")"
 
 if (( BLOCKED_F > 0 || FAILED_M > 0 )); then
   OUT=blocked
-elif (( NOTDONE_F == 0 )); then
-  OUT=done
-else
-  echo "mission not complete: $NOTDONE_F feature(s) not done and none blocked — keep running" >&2
+elif (( PENDING_FEAT > 0 )); then
+  echo "mission not complete: $PENDING_FEAT feature(s) still to do — keep running" >&2
   exit 1
+elif (( PENDING_M > 0 )); then
+  echo "all features done but $PENDING_M milestone(s) never validated — marking blocked for review" >&2
+  OUT=blocked
+else
+  OUT=done
 fi
 
 TMP="$STATE.tmp.$$"

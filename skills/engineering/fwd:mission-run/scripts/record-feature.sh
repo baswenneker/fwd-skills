@@ -13,7 +13,7 @@ OUTCOME="${3:?outcome required (done|blocked)}"
 REASON="${4:-}"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq" >&2; exit 1; }
 
-REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
+REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 WT_PATH="$WT_DIR/mission/$SLUG"
 STATE="$WT_PATH/.claude/missions/$SLUG/state.json"
@@ -45,9 +45,12 @@ case "$OUTCOME" in
     BASE="$(jq -r '.base_branch' "$STATE")"
     PREV="$(jq -r '[.features[].commit_sha | select(. != null)] | last // empty' "$STATE")"
     [[ -z "$PREV" ]] && PREV="$BASE"
-    NEW="$(rtk git rev-list --count "$PREV..HEAD" 2>/dev/null || echo 0)"
-    if [[ "$NEW" -lt 1 ]]; then
-      echo "no new commit since $PREV — coder did not commit" >&2
+    # Require a real CODE commit since PREV — exclude the mission metadata dir, so the
+    # previous feature's metadata-only "checkpoint" commit can't be mistaken for the
+    # coder's work (which would false-pass a coder that committed nothing).
+    CODE="$(rtk git diff --name-only "$PREV..HEAD" -- . ":(exclude).claude/missions/$SLUG" 2>/dev/null || true)"
+    if [[ -z "$CODE" ]]; then
+      echo "no new code commit since $PREV — coder did not implement the feature" >&2
       exit 1
     fi
     SHA="$(rtk git rev-parse HEAD)"

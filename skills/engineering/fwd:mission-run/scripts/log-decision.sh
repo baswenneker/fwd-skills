@@ -10,7 +10,7 @@ SIT="${3:?situation}"
 ACT="${4:?action}"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq" >&2; exit 1; }
 
-REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
+REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 STATE="$WT_DIR/mission/$SLUG/.claude/missions/$SLUG/state.json"
 [[ -f "$STATE" ]] || { echo "state.json missing: $STATE" >&2; exit 1; }

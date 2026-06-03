@@ -10,7 +10,7 @@ set -euo pipefail
 
 SLUG="${1:?usage: reconcile.sh <slug>}"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq" >&2; exit 1; }
-REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
+REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 WT_DIR="${FWD_MISSION_WORKTREE_DIR:-$REPO_ROOT/.trees}"
 WT_PATH="$WT_DIR/mission/$SLUG"
 STATE="$WT_PATH/.claude/missions/$SLUG/state.json"

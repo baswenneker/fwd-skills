@@ -69,7 +69,7 @@ Checks `jq`, the repo, that the `mission/<slug>` branch exists, reads `state.jso
 bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <slug>
 ```
 
-Reuses the worktree at `.trees/mission/<slug>/` (recreates it from the branch on a fresh clone), copies `.env*` into the worktree root (so the User-Testing validator can boot the app), and transitions `planned → in_progress` (committed). Prints the absolute worktree path — use it as `<WT>` below. **`cd "<WT>"`** before the loop; everything happens in the worktree.
+Reuses the worktree at `.trees/mission/<slug>/` (recreates it from the branch on a fresh clone), copies `.env*` into the worktree root (so the User-Testing validator can boot the app), and transitions `planned → in_progress` (committed). Prints the absolute worktree path — use it as `<WT>` below: pass it into the coder/validator subagent prompts so they work there. The scripts resolve the worktree themselves (they don't depend on your cwd), so **don't** `cd` into it — stay in the main checkout.
 
 ### 2. Per-unit loop
 

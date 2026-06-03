@@ -4,8 +4,9 @@
 set -uo pipefail
 
 command -v jq >/dev/null 2>&1 || { echo "missing-jq"; exit 1; }
-REPO_ROOT="$(rtk git rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -z "$REPO_ROOT" ]] && { echo "not-a-repo"; exit 1; }
+GCD="$(rtk git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+[[ -z "$GCD" ]] && { echo "not-a-repo"; exit 1; }
+REPO_ROOT="$(dirname "$GCD")"
 
 mapfile -t BR < <(rtk git for-each-ref --format='%(refname:short)' 'refs/heads/mission/*' 2>/dev/null)
 if [[ ${#BR[@]} -eq 0 ]]; then
