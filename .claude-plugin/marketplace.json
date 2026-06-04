@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "headingfwd",
+  "description": "HeadingFWD's Claude Code plugin marketplace",
+  "owner": {
+    "name": "Bas Wenneker",
+    "email": "bas@headingfwd.com"
+  },
+  "plugins": [
+    {
+      "name": "fwd-skills",
+      "source": "./",
+      "description": "HeadingFWD's skills plus the fwd:mission-* multi-agent orchestration layer (orchestrator + coder + adversarial validators). Install as a plugin (not via npx skills add) to get the bundled mission agents."
+    }
+  ]
+}

@@ -8,9 +8,22 @@ A lightweight, plain-markdown skill registry, structured after [mattpocock/skill
 
 > Only tested with [Claude Code](https://claude.ai/code).
 
+**Option A — as a Claude Code plugin** (recommended; the only option that includes the `fwd:mission-*` agents):
+
+```bash
+claude plugin marketplace add baswenneker/fwd-skills
+claude plugin install fwd-skills@headingfwd
+```
+
+Installs the skills **and** the bundled subagents (`fwd-mission-coder`, `fwd-mission-reviewer`, `fwd-mission-user-tester`) that the `fwd:mission-run` orchestrator spawns as `fwd-skills:*`. Restart Claude Code after installing so the agents register.
+
+**Option B — skills only, via the skills CLI:**
+
 ```bash
 npx skills@latest add baswenneker/fwd-skills
 ```
+
+The skills CLI syncs `skills/` only — it does **not** install the `agents/` directory. The interaction/communication skills work fine, but `/fwd:mission-run` will fail to spawn its coder/validator subagents (`Agent type 'fwd-skills:fwd-mission-coder' not found`). Use Option A if you want Missions.
 
 ## Setup
 
