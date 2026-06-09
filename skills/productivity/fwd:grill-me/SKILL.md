@@ -9,7 +9,7 @@ Ask one question at a time.
 
 Don't assume the user remembers the broader context of what's being grilled. Make each question self-contained: name the part of the plan or design it touches, why this decision matters, and what each option actually means in plain terms. Avoid jargon or shorthand the user hasn't already used.
 
-Before the first question, estimate the total number of questions and prefix each question as `Question N/~total:`. The tilde signals the total is an estimate — revise it if scope shifts.
+Don't fix or estimate a number of questions up front, and don't number them. Keep asking, one at a time, until every branch of the design tree is resolved and nothing material is left ambiguous — then stop. Let the plan's complexity set the length: a simple plan may need only a few questions, a complex one many more. Don't pad with marginal questions to feel thorough, and don't stop while a real decision is still open.
 
 If a question can be answered by exploring the codebase, explore the codebase instead. If a question can be answered by consulting documentation, consult the documentation, or use websearch or context7 mcp instead.
 

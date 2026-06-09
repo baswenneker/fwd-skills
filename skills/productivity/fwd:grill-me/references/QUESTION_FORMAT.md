@@ -3,7 +3,7 @@
 For non-trivial discrete questions in `/fwd:grill-me`, structure your message to the user like this (literal markdown to emit):
 
 ```markdown
-Question 3/~12: <question>
+<question>
 
 <Short intro: why this question matters and the gist of the options.>
 
