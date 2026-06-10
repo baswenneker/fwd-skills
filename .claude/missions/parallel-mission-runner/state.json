@@ -1,0 +1,215 @@
+{
+  "version": 2,
+  "slug": "parallel-mission-runner",
+  "title": "Parallel Mission Runner — third skill fwd:mission-run-parallel + DAG-aware planning",
+  "status": "planned",
+  "branch": "mission/parallel-mission-runner",
+  "worktree": "/Users/bas/Development/HeadingFWD/fwd-skills/.trees/mission/parallel-mission-runner",
+  "base_branch": "main",
+  "created_at": "2026-06-10T06:32:03Z",
+  "started_at": null,
+  "started_at_epoch": null,
+  "completed_at": null,
+  "gates": [
+    {
+      "id": "G1",
+      "name": "syntax",
+      "command": "find skills/engineering -path '*fwd:mission*' -name '*.sh' -exec bash -n {} +",
+      "expected_exit": 0
+    },
+    {
+      "id": "G2",
+      "name": "plugin-json",
+      "command": "jq -e '.skills | type==\"array\"' .claude-plugin/plugin.json",
+      "expected_exit": 0
+    },
+    {
+      "id": "G3",
+      "name": "smoke-waves",
+      "command": "[ ! -f \"skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh\" ] || bash \"skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh\"",
+      "expected_exit": 0
+    }
+  ],
+  "user_testing": {
+    "boot_command": null,
+    "ready_probe": null,
+    "smoke_commands": [],
+    "playwright_present": false,
+    "teardown_command": null
+  },
+  "features": [
+    {
+      "id": "F1",
+      "title": "Document depends_on in the canonical schema (fwd:mission-run REFERENCE.md, docs only) + one referring sentence in its SKILL.md",
+      "milestone": "M1",
+      "vc_ids": ["VC-1"],
+      "depends_on": [],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F2",
+      "title": "fwd:mission-plan proposes the dependency DAG (SKILL.md step 3 + REFERENCE.md template) and prints DAG stats + both run commands at handoff",
+      "milestone": "M1",
+      "vc_ids": ["VC-2"],
+      "depends_on": ["F1"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F3",
+      "title": "validate-artifacts.sh: DAG validation (refs exist, no cycles, no forward-milestone deps; absent depends_on stays valid)",
+      "milestone": "M1",
+      "vc_ids": ["VC-3"],
+      "depends_on": ["F1"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F4",
+      "title": "Scaffold fwd:mission-run-parallel (SKILL.md with wave flow, risk profile, autonomous rules, interop section) + register in plugin.json and README",
+      "milestone": "M2",
+      "vc_ids": ["VC-4", "VC-12"],
+      "depends_on": ["F1"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F5",
+      "title": "pick-wave.sh (ready-set scheduler: deps done, current milestone, cap, serial_only solo, v1 refusal, chain warning) + setup-slot.sh (slot worktree provision/reset + .env copy)",
+      "milestone": "M2",
+      "vc_ids": ["VC-5", "VC-6"],
+      "depends_on": ["F4"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F6",
+      "title": "integrate-feature.sh: cherry-pick slot commits in plan order through unchanged record-feature.sh; wave-gates after each; conflict → discard + serial_only pin + decision log, no attempt; 2 discards → blocked",
+      "milestone": "M2",
+      "vc_ids": ["VC-7"],
+      "depends_on": ["F4"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F7",
+      "title": "smoke-waves.sh hermetic test harness (fixture repo + stub coder; covers cap, order, conflict pin, wave-gate isolation, v1 refusal) — fulfils gate G3",
+      "milestone": "M2",
+      "vc_ids": ["VC-8"],
+      "depends_on": ["F5", "F6"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F8",
+      "title": "reconcile-waves.sh: remove leftover slot worktrees/branches of pending features, keep integrated work, then delegate to serial reconcile.sh; harness coverage",
+      "milestone": "M3",
+      "vc_ids": ["VC-9", "VC-12"],
+      "depends_on": ["F5"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F9",
+      "title": "Slot teardown in the finalize flow: serial finalize.sh unchanged, then remove slots incl. .env scrub",
+      "milestone": "M3",
+      "vc_ids": ["VC-10", "VC-12"],
+      "depends_on": ["F5"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    },
+    {
+      "id": "F10",
+      "title": "Docs coherence: CLAUDE.md cross-skill script convention + third mission skill; coder agent mentions both orchestrators; no doc claims only fwd:mission-run spawns the coder",
+      "milestone": "M3",
+      "vc_ids": ["VC-11"],
+      "depends_on": ["F4"],
+      "status": "pending",
+      "attempts": 0,
+      "commit_sha": null,
+      "started_at": null,
+      "completed_at": null,
+      "error": null,
+      "handoff": null
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Plans emit dependency DAGs",
+      "feature_ids": ["F1", "F2", "F3"],
+      "validation_status": "pending",
+      "validated_at": null,
+      "gate_results": [],
+      "vc_results": []
+    },
+    {
+      "id": "M2",
+      "title": "Wave engine, harness-proven",
+      "feature_ids": ["F4", "F5", "F6", "F7"],
+      "validation_status": "pending",
+      "validated_at": null,
+      "gate_results": [],
+      "vc_results": []
+    },
+    {
+      "id": "M3",
+      "title": "Crash-safe + interop documented",
+      "feature_ids": ["F8", "F9", "F10"],
+      "validation_status": "pending",
+      "validated_at": null,
+      "gate_results": [],
+      "vc_results": []
+    }
+  ],
+  "circuit_breaker": {
+    "consecutive_failures": 0
+  },
+  "decisions": []
+}
