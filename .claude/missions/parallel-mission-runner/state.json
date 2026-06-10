@@ -304,5 +304,12 @@
   "circuit_breaker": {
     "consecutive_failures": 0
   },
-  "decisions": []
+  "decisions": [
+    {
+      "timestamp": "2026-06-10T07:02:39Z",
+      "situation": "record-feature.sh clean-tree check rejects the untracked handoffs/ dir the orchestrator writes per SKILL.md step 2.4 (first feature of a mission, dir not yet tracked)",
+      "action": "committed the handoff narrative as its own chore(mission) commit before running record-feature.sh; no script modified mid-run",
+      "feature": "F1"
+    }
+  ]
 }
