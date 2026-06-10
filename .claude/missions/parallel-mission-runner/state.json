@@ -584,9 +584,28 @@
         "F6",
         "F7"
       ],
-      "validation_status": "pending",
-      "validated_at": null,
-      "gate_results": [],
+      "validation_status": "passed",
+      "validated_at": "2026-06-10T08:31:32Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills/engineering -path *fwd:mission* -name *.sh -exec bash -n {} +",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G2",
+          "command": "jq -e .skills|type==array .claude-plugin/plugin.json",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G3",
+          "command": "smoke-waves.sh (live harness, 43 assertions)",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
       "vc_results": []
     },
     {
