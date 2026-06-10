@@ -299,13 +299,62 @@
       "depends_on": [
         "F4"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "5067dadb9ebbd7220ad4ea343ba9270f3c5b2f93",
+      "started_at": "2026-06-10T07:57:58Z",
+      "completed_at": "2026-06-10T07:57:58Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "pick-wave.sh — ready-set scheduler: v1 refusal (exit 2 + /fwd:mission-run pointer), chain-DAG warning, effective-deps chain semantics for absent depends_on, current-milestone boundary, FWD_MISSION_MAX_PARALLEL cap (default 3), serial_only solo waves, closes_milestone flag",
+          "setup-slot.sh — slot worktree provision/reuse at wave base on branch mission/<slug>--f<n>, detach-before-branch-force, tracked-dirty reset + untracked preserve, .env* copy, check-ignore safety guard",
+          "both chmod +x"
+        ],
+        "left_undone": [
+          "integrate-feature.sh (F6), smoke-waves.sh (F7), reconcile-waves.sh (F8) — later features",
+          "SKILL.md sync edits — not needed; documented contract already matches"
+        ],
+        "commands": [
+          {
+            "command": "bash -n both scripts + all mission scripts (G1)",
+            "exit_code": 0
+          },
+          {
+            "command": "jq plugin.json (G2)",
+            "exit_code": 0
+          },
+          {
+            "command": "12 fixture self-checks in /tmp (cap, solo, v1 refusal exit 2, chain warn, mixed chain-semantics, closes_milestone, slot create/reuse/reset/env/check-ignore/rebase)",
+            "exit_code": 0
+          },
+          {
+            "command": "pick-wave.sh parallel-mission-runner (real mission, read-only)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit feat(fwd:mission-run-parallel)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "macOS worktree-list path normalization (/private/tmp vs /tmp) avoided by detaching the slot directly in the reuse path",
+          "git branch -f fails for a branch checked out in the slot being reused — detach HEAD first",
+          "chain heuristic: roots(≤1) + single-dep links == total features → pure chain"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(fwd:mission-run-parallel):",
+          "staged only the two new scripts",
+          "no push",
+          "all self-checks pass"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F5.md"
+      }
     },
     {
       "id": "F6",
