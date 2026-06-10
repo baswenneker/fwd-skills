@@ -366,13 +366,56 @@
       "depends_on": [
         "F4"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "aea8b8a1b5ddc8f66e0ea0061401bf6cedc68051",
+      "started_at": "2026-06-10T08:14:05Z",
+      "completed_at": "2026-06-10T08:14:05Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "integrate-feature.sh (chmod +x): cherry-pick range in plan order via --empty=drop, wave-gates (FWD_MISSION_WAVE_GATES default 1), conflict path (abort+reset+pin serial_only+discards+1+decision, committed, no attempt, exit 3), gate-fail path (reset out pre-X + pin + attempt, exit 4), empty range (exit 5), second discard → record-feature blocked (exit 6), happy path → unchanged record-feature.sh records integrated SHA (exit 0)",
+          "run-parallel SKILL.md: exit-code table + call signature synced to the concrete contract"
+        ],
+        "left_undone": [
+          "smoke-waves.sh harness (F7) and reconcile-waves.sh (F8) — later features"
+        ],
+        "commands": [
+          {
+            "command": "bash -n integrate-feature.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "G1 find bash -n over all mission scripts",
+            "exit_code": 0
+          },
+          {
+            "command": "7 scratch-repo scenario tests (happy, conflict, gate-fail, second-discard, empty range, empty pick, gates-disabled)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit feat(fwd:mission-run-parallel)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "rtk git status --porcelain prints ok for a clean tree — dirty checks need grep -vx ok",
+          "branch-referencing git ops need -C $MISSION_WT or they hit the ambient repo",
+          "bash (( var++ )) exits 1 when old value is 0 under set -e — use VAR=$((VAR+1))"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(fwd:mission-run-parallel):",
+          "staged only integrate-feature.sh + SKILL.md",
+          "serial scripts untouched",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F6.md"
+      }
     },
     {
       "id": "F7",
