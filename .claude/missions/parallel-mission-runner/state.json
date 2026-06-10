@@ -605,13 +605,55 @@
       "depends_on": [
         "F4"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "f1909916c1a9c18308de5496bb475524a76fa752",
+      "started_at": "2026-06-10T08:45:41Z",
+      "completed_at": "2026-06-10T08:45:41Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "CLAUDE.md: cross-skill script-reference convention bullet (Conventions) + mission family as three skills (Agents paragraph)",
+          "agents/fwd-mission-coder.md: frontmatter description + opening sentence name both orchestrators",
+          "fwd:mission-run/REFERENCE.md: exclusivity claim reworded — each orchestrator sole spawner within its own run; both spawn the coder"
+        ],
+        "left_undone": [
+          "validator agent files still say spawned by fwd:mission-run — deliberately untouched per PRD"
+        ],
+        "commands": [
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "G1 bash -n all scripts",
+            "exit_code": 0
+          },
+          {
+            "command": "G2 jq plugin.json",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit docs:",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "README.md line 18 and fwd:mission-run/SKILL.md frontmatter mention the serial orchestrator spawning subagents as accurate self/context descriptions, not exclusivity claims — left untouched"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit docs:",
+          "staged only the changed files",
+          "grep sweep documented per hit",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F10.md"
+      }
     }
   ],
   "milestones": [
