@@ -32,3 +32,13 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: fwd:grill-me almost always asked 11–12 questions regardless of how complex the grilled plan was. The skill instructed the model to "estimate the total number of questions" upfront and prefix each as `Question N/~total:`, and the QUESTION_FORMAT.md template hardcoded the example `Question 3/~12:`.
 **Observation**: A hardcoded example number in a skill template acts as an anchor — the model reproduced ~12 every time it consulted the template — and the "estimate the total upfront" instruction turned that estimate into a self-fulfilling contract the model padded to reach. Together they converted an open-ended interview into a "fill the quota" exercise.
 **Lesson**: Keep illustrative templates count-free, and don't make a skill commit to a quantity before it knows the work. For open-ended/iterative skills, state termination as a goal ("until every branch is resolved / nothing material is ambiguous"), not a number, and add explicit "few … many more" range cues to break any residual anchor. Applies to any skill in this repo that embeds example counts.
+
+### 2026-06-10 | insight | fwd:mission-run
+**Context**: First live mission run (parallel-mission-runner), recording features per SKILL.md step 2.4
+**Observation**: record-feature.sh's clean-tree check rejects exactly what the documented flow produces: the untracked handoffs/<fid>.md the orchestrator writes before recording, and the state.json left dirty on purpose by log-decision.sh — even though the script itself stages .claude/missions/<slug> right after the check
+**Lesson**: Either exclude .claude/missions/<slug>/ from the clean check in record-feature.sh, or document that the orchestrator must commit handoff + decision writes as a chore(mission) commit before calling record-feature.sh (current workaround)
+
+### 2026-06-10 | insight | fwd-skills/scripts
+**Context**: Writing the parallel-runner scripts and harness (mission parallel-mission-runner, M2)
+**Observation**: Two recurring traps: rtk git emits literal ok lines on quiet/clean operations so any porcelain/output parser must filter them (grep -vx ok), and bare rtk git resolves the repo from cwd so scripts invoked from outside a git tree silently hit the wrong repo
+**Lesson**: In fwd-skills bash helpers, always filter rtk ok lines when parsing git output and pass -C <path> (or cd in a subshell) for every git op that must target a specific worktree
