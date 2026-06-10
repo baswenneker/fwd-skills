@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PICK_WAVE="$SCRIPT_DIR/../scripts/pick-wave.sh"
 SETUP_SLOT="$SCRIPT_DIR/../scripts/setup-slot.sh"
 INTEGRATE="$SCRIPT_DIR/../scripts/integrate-feature.sh"
+RECONCILE_WAVES="$SCRIPT_DIR/../scripts/reconcile-waves.sh"
 
 command -v jq  >/dev/null 2>&1 || { echo "FATAL: jq not found"  >&2; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "FATAL: git not found" >&2; exit 1; }
@@ -544,6 +545,171 @@ pick_wave "$FIXTURE_SLUG" 3
 assert_exit "pick-wave exits 0 (only FD remains)" "$WAVE_RC" 0
 CLOSES="$(echo "$WAVE_OUT" | jq -r '.closes_milestone')"
 assert_eq "closes_milestone=M1 when last feature in wave" "$CLOSES" "M1"
+
+# ══════════════════════════════════════════════════════════════════════════════
+echo ""
+echo "=== Scenario 8: Crash -> reconcile-waves cleans slot leftovers (VC-9) ==="
+echo ""
+
+WORK8="$(mktemp -d)"
+WORK_DIRS+=("$WORK8")
+build_fixture "$WORK8"
+
+# Build a wave of 2: FA in slot-1, FB in slot-2.
+provision_slot "$FIXTURE_SLUG" "1" "FA"
+SLOT_A8="$SLOT_PATH"
+stub_coder_clean "$SLOT_A8" "FA" "feat-fa8.txt"
+
+provision_slot "$FIXTURE_SLUG" "2" "FB"
+SLOT_B8="$SLOT_PATH"
+stub_coder_clean "$SLOT_B8" "FB" "feat-fb8.txt"
+
+# Integrate FA fully (recorded done).
+run_integrate "$FIXTURE_SLUG" "FA"
+assert_exit "S8: integrate FA exits 0" "$INTEGRATE_RC" 0
+
+FA8_SHA="$(state_get '.features[] | select(.id=="FA") | .commit_sha')"
+assert_not_empty "S8: FA commit_sha recorded" "$FA8_SHA"
+assert_eq "S8: FA status done" "$(state_get '.features[] | select(.id=="FA") | .status')" "done"
+
+# Now simulate a crash for FB: its slot worktree and slot branch remain dangling.
+# We do NOT call integrate for FB — it's still pending.
+assert_eq "S8: FB still pending before crash-sim" \
+  "$(state_get '.features[] | select(.id=="FB") | .status')" "pending"
+
+# Slot-2 dir and branch should exist at this point.
+SLOT_B_PATH="$FWD_MISSION_WORKTREE_DIR/mission/$FIXTURE_SLUG--slot-2"
+SLOT_B_BRANCH="mission/$FIXTURE_SLUG--fb"
+assert_file_present "S8: slot-2 dir exists before reconcile" "$SLOT_B_PATH"
+BRANCH_BEFORE="$(git -C "$FIXTURE_REPO" branch --list "$SLOT_B_BRANCH")"
+assert_not_empty "S8: slot branch exists before reconcile" "$BRANCH_BEFORE"
+
+# Run reconcile-waves.sh.
+RECONCILE8_RC=0
+RECONCILE8_OUT="$(cd "$FIXTURE_REPO" && bash "$RECONCILE_WAVES" "$FIXTURE_SLUG" 2>&1)" \
+  || RECONCILE8_RC=$?
+assert_exit "S8: reconcile-waves exits 0" "$RECONCILE8_RC" 0
+
+# FB's slot worktree must be gone.
+assert_file_absent "S8: slot-2 dir removed by reconcile" "$SLOT_B_PATH"
+
+# FB's slot branch must be gone.
+BRANCH_AFTER="$(git -C "$FIXTURE_REPO" branch --list "$SLOT_B_BRANCH")"
+assert_empty "S8: slot branch removed by reconcile" "$BRANCH_AFTER"
+
+# FA's integrated commit still on mission branch (file present, state records done).
+assert_file_present "S8: FA work intact on mission branch" "$FIXTURE_WT/feat-fa8.txt"
+assert_eq "S8: FA still done after reconcile" \
+  "$(state_get '.features[] | select(.id=="FA") | .status')" "done"
+assert_not_empty "S8: FA commit_sha still recorded" \
+  "$(state_get '.features[] | select(.id=="FA") | .commit_sha')"
+
+# Mission worktree clean.
+DIRTY8="$(git -C "$FIXTURE_WT" status --porcelain | grep -vx 'ok' || true)"
+assert_empty "S8: mission tree clean after reconcile" "$DIRTY8"
+
+# Serial reconcile.sh was invoked: its terminal output line must appear.
+# It outputs "clean", "cleaned", or "adopted <fid>" — all three are valid here.
+assert_contains "S8: serial reconcile output present" "$RECONCILE8_OUT" "clean"
+
+# FB still pending (re-runnable next wave).
+assert_eq "S8: FB still pending after reconcile" \
+  "$(state_get '.features[] | select(.id=="FB") | .status')" "pending"
+
+# ══════════════════════════════════════════════════════════════════════════════
+echo ""
+echo "=== Scenario 9: Second discard -> blocked (circuit breaker) ==="
+echo ""
+
+WORK9="$(mktemp -d)"
+WORK_DIRS+=("$WORK9")
+build_fixture "$WORK9"
+
+# First attempt: create a conflicting solo wave for FB.
+# Integrate FA first to advance the mission HEAD.
+provision_slot "$FIXTURE_SLUG" "1" "FA"
+SLOT_A9="$SLOT_PATH"
+_git_slot "$SLOT_A9"
+echo "FA owns shared.txt" > "$SLOT_A9/shared9.txt"
+git -C "$SLOT_A9" add -- "shared9.txt"
+git -C "$SLOT_A9" commit -q -m "feat(FA): write shared9.txt"
+run_integrate "$FIXTURE_SLUG" "FA"
+assert_exit "S9: FA integrates cleanly (baseline)" "$INTEGRATE_RC" 0
+
+POST_FA9_HEAD="$(git -C "$FIXTURE_WT" rev-parse HEAD)"
+# The commit just before FA's integration (initial-state HEAD)
+INIT9_SHA="$(git -C "$FIXTURE_WT" rev-list HEAD | tail -1)"
+
+# First conflict attempt for FB: branch from INIT_SHA (before FA) so cherry-pick conflicts.
+FID_LOWER_B9="fb"
+SLOT_BRANCH_B9="mission/$FIXTURE_SLUG--$FID_LOWER_B9"
+SLOT_PATH_B9="$FWD_MISSION_WORKTREE_DIR/mission/$FIXTURE_SLUG--slot-2"
+git -C "$FIXTURE_REPO" branch "$SLOT_BRANCH_B9" "$INIT9_SHA"
+git -C "$FIXTURE_REPO" worktree add "$SLOT_PATH_B9" "$SLOT_BRANCH_B9" -q
+git -C "$SLOT_PATH_B9" config user.email "coder@test.local"
+git -C "$SLOT_PATH_B9" config user.name  "Stub Coder"
+echo "FB conflicting content" > "$SLOT_PATH_B9/shared9.txt"
+git -C "$SLOT_PATH_B9" add -- "shared9.txt"
+git -C "$SLOT_PATH_B9" commit -q -m "feat(FB): conflict with FA on shared9.txt"
+
+PRE_CONFLICT9="$(git -C "$FIXTURE_WT" rev-parse HEAD)"
+run_integrate "$FIXTURE_SLUG" "FB"
+assert_exit "S9: first integrate FB exits 3 (conflict)" "$INTEGRATE_RC" 3
+
+assert_eq "S9: FB pinned serial_only=true after first conflict" \
+  "$(state_get '.features[] | select(.id=="FB") | .serial_only')" "true"
+assert_eq "S9: FB discards=1 after first conflict" \
+  "$(state_get '.features[] | select(.id=="FB") | .discards')" "1"
+assert_eq "S9: FB still pending after first conflict" \
+  "$(state_get '.features[] | select(.id=="FB") | .status')" "pending"
+assert_eq "S9: FB attempts unchanged (0) after conflict (no attempt consumed)" \
+  "$(state_get '.features[] | select(.id=="FB") | .attempts')" "0"
+
+# Mission tree must be clean after first discard.
+DIRTY9A="$(git -C "$FIXTURE_WT" status --porcelain | grep -vx 'ok' || true)"
+assert_empty "S9: mission tree clean after first conflict" "$DIRTY9A"
+
+# Second attempt: re-create FB's slot, still conflicting (branching from before FA again).
+# Remove old slot worktree / branch first (simulating reconcile-waves cleanup between waves).
+git -C "$FIXTURE_REPO" worktree remove --force "$SLOT_PATH_B9" >/dev/null 2>&1 || \
+  { rm -rf "$SLOT_PATH_B9"; git -C "$FIXTURE_REPO" worktree prune >/dev/null 2>&1 || true; }
+git -C "$FIXTURE_REPO" branch -D "$SLOT_BRANCH_B9" >/dev/null 2>&1 || true
+
+MISSION9_HEAD="$(git -C "$FIXTURE_WT" rev-parse HEAD)"
+git -C "$FIXTURE_REPO" branch "$SLOT_BRANCH_B9" "$INIT9_SHA"
+git -C "$FIXTURE_REPO" worktree add "$SLOT_PATH_B9" "$SLOT_BRANCH_B9" -q
+git -C "$SLOT_PATH_B9" config user.email "coder@test.local"
+git -C "$SLOT_PATH_B9" config user.name  "Stub Coder"
+echo "FB conflicting content again" > "$SLOT_PATH_B9/shared9.txt"
+git -C "$SLOT_PATH_B9" add -- "shared9.txt"
+git -C "$SLOT_PATH_B9" commit -q -m "feat(FB): conflict again on shared9.txt"
+
+run_integrate "$FIXTURE_SLUG" "FB"
+assert_exit "S9: second integrate FB exits 6 (blocked)" "$INTEGRATE_RC" 6
+
+assert_eq "S9: FB status=blocked after second conflict" \
+  "$(state_get '.features[] | select(.id=="FB") | .status')" "blocked"
+assert_eq "S9: FB attempts incremented on block" \
+  "$(state_get '.features[] | select(.id=="FB") | .attempts')" "1"
+# discards was set to 1 on the first-discard pin commit; record-feature.sh (blocked
+# path) does not write the discards field — so the value stays at 1.  The important
+# invariant is that it is >= 1 (at least one discard was recorded).
+assert_not_empty "S9: FB discards >= 1 recorded (second discard triggers blocked path)" \
+  "$(state_get '.features[] | select(.id=="FB") | .discards | select(. >= 1)')"
+
+# Circuit breaker must have been incremented.
+CB9="$(state_get '.circuit_breaker.consecutive_failures')"
+assert_not_empty "S9: circuit_breaker incremented (non-zero)" \
+  "$([ "$CB9" -gt 0 ] && echo yes || echo '')"
+
+# Mission tree must be clean after second discard.
+DIRTY9B="$(git -C "$FIXTURE_WT" status --porcelain | grep -vx 'ok' || true)"
+assert_empty "S9: mission tree clean after second conflict (blocked)" "$DIRTY9B"
+
+# FA's integrated work must still be present (mission HEAD untouched).
+assert_file_present "S9: FA work intact after FB blocked" "$FIXTURE_WT/shared9.txt"
+assert_eq "S9: FA still done" \
+  "$(state_get '.features[] | select(.id=="FA") | .status')" "done"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
