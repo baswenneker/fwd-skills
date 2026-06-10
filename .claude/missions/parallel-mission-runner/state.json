@@ -153,13 +153,79 @@
       "depends_on": [
         "F1"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "d56120cf4d11d4a953f5073ca736ac25c5b102d3",
+      "started_at": "2026-06-10T07:38:22Z",
+      "completed_at": "2026-06-10T07:38:22Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "refs-exist check: every depends_on id must name a real feature; exits non-zero naming the offender",
+          "self-cycle detection with clear message",
+          "Kahn-style iterative peeling for general cycle detection, naming a feature on the cycle",
+          "forward-milestone dep guard naming the violating edge",
+          "backward compatible: no depends_on key, depends_on: [], or v1 state.json all pass"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "bash -n validate-artifacts.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture t1 v1-no-depends_on",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture t2 valid DAG",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture t3 missing ref",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture t4 self-cycle",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture t5 two-cycle",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture t6 forward-milestone dep",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture t7 backward-milestone dep (valid)",
+            "exit_code": 0
+          },
+          {
+            "command": "validate-artifacts.sh against this mission state",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit feat(fwd:mission-plan)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "missing-ref also surfaces a secondary cycle error from Kahn peeling (unpeelable node); root-cause ref error is listed first, both name the offender",
+          "attempt 1 of this feature died on a network error pre-commit; attempt 2 adopted and verified its uncommitted work"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(fwd:mission-plan):",
+          "staged only the single modified file",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F3.md"
+      }
     },
     {
       "id": "F4",
