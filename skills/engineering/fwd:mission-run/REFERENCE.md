@@ -81,6 +81,13 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       "started_at": "2026-06-02T10:05:10Z",
       "completed_at": "2026-06-02T10:18:00Z",
       "error": null,
+      // depends_on (OPTIONAL, schema v2): array of feature ids this feature must not
+      // start until all listed features are done. Written by fwd:mission-plan when the
+      // user supplies a dependency DAG. Consumed by fwd:mission-run-parallel to group
+      // independent features into waves. Ignored entirely by fwd:mission-run (serial
+      // runner) — v1 plans without this field remain valid everywhere. Absent = chain
+      // semantics: each feature implicitly depends on its predecessor.
+      "depends_on": [],                 // e.g. ["F1","F2"]; absent or [] = chain order
       "handoff": {                      // structured summary; prose in handoffs/F1.md
         "implemented": ["POST /api/import route", "clipboard parser util"],
         "left_undone": ["multi-file upload — out of scope for this feature"],
@@ -121,6 +128,7 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 ### Field notes
 
 - **`features[]` is ordered**, not keyed (unlike issue-fix's `issues{}`): features have a deterministic sequence and inherit each other via git. Resume = the first feature with `status != "done"`.
+- **`depends_on` is optional and additive (schema v2).** When present, it is an array of feature ids (e.g. `["F1","F2"]`) that must be `done` before this feature starts — the dependency DAG. Written by `fwd:mission-plan`; consumed by `fwd:mission-run-parallel` to schedule waves of independent features; **ignored entirely by `fwd:mission-run`** (the serial runner), which always executes in array order regardless. A feature with no `depends_on` field (or an empty array) in a parallel plan follows chain semantics: it implicitly depends on its predecessor. V1 plans without the field are valid everywhere.
 - **`commit_sha` is the checkpoint.** Resume re-derives position from `status` + `commit_sha`; committed work is never replayed. If a feature is `in_progress` but its commit already exists on the branch (crash between commit and record), adopt it — mark `done`, don't re-spawn.
 - **`vc_results[].passed` is tri-state:** `true` / `false` / `null`. `null` = not-run or skipped (e.g. user-testing skipped because gates failed). A re-run never mistakes a skip for a pass.
 - **`gates` vs `gate_results`:** `gates` is the definition (from planning); `milestones[].gate_results` is the per-boundary outcome. Same split for `user_testing` (definition) vs `vc_results` (outcome).
