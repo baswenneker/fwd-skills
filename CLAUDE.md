@@ -50,7 +50,7 @@ Skills may delegate to **plugin subagents** — markdown files at the plugin roo
 
 Frontmatter: `name`, `description`, optional `tools` / `disallowedTools` (a `tools` allowlist is the strongest way to scope a read-only agent — what isn't granted can't be used), `model`, `isolation`, `color`. **Plugin agents ignore `hooks`, `mcpServers`, and `permissionMode`** (stripped on load for security); if an agent truly needs those, the consumer copies it into their own `.claude/agents/`.
 
-The `fwd:mission-*` skills are the first users: `fwd-mission-coder` (write-capable), `fwd-mission-reviewer` and `fwd-mission-user-tester` (write-incapable validators — Bash for inspection, no `Write`/`Edit`). A mission's orchestration state + artifacts live on a `mission/<slug>` branch and are **committed there** (so the mission resumes from any worktree/clone) — deliberately not gitignored; only the per-worktree `.env` copy under `.trees/` stays ignored.
+The `fwd:mission-*` skills are the first users: `fwd-mission-coder` (write-capable), `fwd-mission-reviewer` and `fwd-mission-user-tester` (write-incapable validators — Bash for inspection, no `Write`/`Edit`). The family is three skills: `fwd:mission-plan` (interactive planning), `fwd:mission-run` (serial execution), and `fwd:mission-run-parallel` (opt-in wave-parallel sibling that shares the serial runner's scripts and state format). A mission's orchestration state + artifacts live on a `mission/<slug>` branch and are **committed there** (so the mission resumes from any worktree/clone) — deliberately not gitignored; only the per-worktree `.env` copy under `.trees/` stays ignored.
 
 ## Syncing from `fwd-claude-code`
 
@@ -69,6 +69,7 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 - The slash command is the same string with a leading `/` (e.g. `/fwd:git-commit`).
 - Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
 - All git commands route through `rtk git ...` (no conditional fallback to plain `git`).
+- **Cross-skill script references:** a skill may invoke a sibling skill's scripts via `${CLAUDE_SKILL_DIR}/../<sibling-skill>/scripts/<name>.sh`. `fwd:mission-run-parallel` → `fwd:mission-run` is the first instance in this repo. Consequence: renaming a referenced skill folder breaks its referrers — check for cross-skill dependents before renaming a skill folder.
 - **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch — `fwd:plan` is the current example).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.
 

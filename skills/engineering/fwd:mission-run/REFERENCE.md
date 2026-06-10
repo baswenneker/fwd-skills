@@ -161,7 +161,7 @@ Validators judge against specific VC-IDs (not vibes); per-ID pass/fail flows int
 
 ## Execution & resume semantics
 
-`fwd:mission-run` is a **main-session skill** (the orchestrator), because subagents can't spawn subagents. It is the *only* thing that spawns the coder / reviewer / user-tester subagents. The bash/Claude/subagent split:
+`fwd:mission-run` is a **main-session skill** (the orchestrator), because subagents can't spawn subagents. Each mission orchestrator (`fwd:mission-run` and `fwd:mission-run-parallel`) is the sole spawner within its own run — both spawn the coder; the validators are spawned at milestone boundaries by whichever orchestrator is running. The bash/Claude/subagent split:
 
 - **Bash** (deterministic, fast-exit): preflight, worktree setup + `.env` copy, pick-next-unit, gate execution + exit-code capture, all state writes, lesson append, decision log, finalize, status.
 - **Claude (main session)**: which feature's criteria map to which VC-IDs; judging whether a handoff satisfies the feature; retry-vs-block decisions; distilling a lesson; deciding to skip user-testing when gates fail. **No code-writing in the main session.**
