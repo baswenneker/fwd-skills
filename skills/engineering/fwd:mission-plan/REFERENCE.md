@@ -87,6 +87,29 @@ Each assertion: given / when / then, a stable ID, an owner, and the milestone it
 - **Owned.** `scrutiny-review` for anything checkable from the diff/tests; `user-testing` for anything that needs the running app. If there's no bootable app, everything is `scrutiny-review`.
 - **Mapped.** Every VC-ID lists the feature(s) that satisfy it; every feature's `vc_ids` in `state.json` lists the VC-IDs it targets. The two must agree.
 
+## Feature `depends_on` — the dependency DAG
+
+Each feature in `state.json` may carry an optional `depends_on` array of feature ids (schema v2, defined in [`../fwd:mission-run/REFERENCE.md`](../fwd:mission-run/REFERENCE.md)). Write this during Step 3 of planning.
+
+**Rules:**
+- Only reference ids that already exist (same or earlier milestone). No forward-milestone refs, no cycles.
+- Absent or empty (`[]`) means chain semantics: the feature implicitly depends on its predecessor in the array.
+- The serial runner (`fwd:mission-run`) ignores `depends_on` entirely — it always executes in array order. A plan with no `depends_on` fields runs correctly on both runners.
+- The parallel runner (`fwd:mission-run-parallel`) uses these edges to group independent features into concurrent waves.
+
+**Conservative default: unsure → add the edge.** A false dependency only costs parallelism; a missing dependency causes a conflict round-trip at run time.
+
+**Small DAG example** (three features, M1; F2 and F3 both depend on F1, so they can run in parallel in wave 2):
+
+```jsonc
+{ "id": "F1", "title": "scaffold DB schema",      "depends_on": []          },
+{ "id": "F2", "title": "add read endpoint",        "depends_on": ["F1"]      },
+{ "id": "F3", "title": "add write endpoint",       "depends_on": ["F1"]      },
+{ "id": "F4", "title": "integration tests",        "depends_on": ["F2","F3"] }
+```
+
+Wave breakdown: W1 = [F1], W2 = [F2, F3], W3 = [F4]. DAG width = 2; critical-path length = 3.
+
 ## Worked example (minimal)
 
 Goal: *"add a /health endpoint"* → slug `health-endpoint`.
@@ -94,7 +117,7 @@ Goal: *"add a /health endpoint"* → slug `health-endpoint`.
 - **PRD**: problem = no liveness probe for the deploy platform; metric = probe returns 200 < 100ms.
 - **Gates**: G1 `npm test`, G2 `npx tsc --noEmit`.
 - **Assertions**: VC-1 (scrutiny-review) route returns 200 + `{status:"ok"}`; VC-2 (user-testing) `GET /health` on the booted app returns 200.
-- **Features**: F1 "add route + test" → M1. **Milestone**: M1 "health live" → [F1], gates [G1,G2], VCs [VC-1, VC-2].
+- **Features**: F1 "add route + test" → M1, `depends_on: []`. **Milestone**: M1 "health live" → [F1], gates [G1,G2], VCs [VC-1, VC-2].
 - **Boot**: `npm run dev`, ready-probe `GET /health → 200`.
 
 That's a complete, runnable mission.

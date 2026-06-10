@@ -7,7 +7,7 @@ allowed-tools: Read, Glob, Grep, Bash, Agent
 
 # fwd:mission-run
 
-The resident orchestrator. One mission → serial features → adversarial validators at milestone boundaries → a committed checkpoint after every unit. Plan a mission first with `/fwd:mission-plan`; this skill executes it.
+The resident orchestrator. One mission → serial features → adversarial validators at milestone boundaries → a committed checkpoint after every unit. Plan a mission first with `/fwd:mission-plan`; this skill executes it. Missions whose plan records a dependency DAG (`depends_on` fields) can alternatively be executed in parallel waves by `fwd:mission-run-parallel`; this serial runner ignores `depends_on` entirely and remains the safe default.
 
 You (the main session) ARE the orchestrator. You spawn the coder and validator subagents — they cannot spawn each other, which is why the orchestrator is a main-session skill, not an agent. The canonical `state.json` schema, handoff shape, and resume semantics are in [REFERENCE.md](REFERENCE.md) — read it if anything below is ambiguous.
 
