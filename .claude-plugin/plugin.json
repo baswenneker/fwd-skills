@@ -6,6 +6,7 @@
     "./skills/engineering/fwd:issue-fix",
     "./skills/engineering/fwd:mission-plan",
     "./skills/engineering/fwd:mission-run",
+    "./skills/engineering/fwd:mission-run-parallel",
     "./skills/engineering/fwd:plan",
     "./skills/engineering/fwd:setup",
     "./skills/engineering/fwd:skill-eval",
