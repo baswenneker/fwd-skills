@@ -46,13 +46,50 @@
         "VC-1"
       ],
       "depends_on": [],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "dd6cddfaced72f92b1a8a1d4c859c9655d870121",
+      "started_at": "2026-06-10T07:02:26Z",
+      "completed_at": "2026-06-10T07:02:26Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "REFERENCE.md: inline JSONC depends_on field comment in features[] example (optional, schema v2, array of feature ids)",
+          "REFERENCE.md: Field notes bullet documenting: written by fwd:mission-plan, consumed by fwd:mission-run-parallel, ignored by serial runner, absent = chain semantics, v1 backward compatibility",
+          "SKILL.md: one referring sentence near the intro pointing at fwd:mission-run-parallel for DAG-based parallel execution"
+        ],
+        "left_undone": [
+          "fwd:mission-run-parallel skill itself — not part of this feature; created by a later feature in the mission"
+        ],
+        "commands": [
+          {
+            "command": "find skills/engineering/fwd:mission-run/scripts -name *.sh -exec bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "jq . .claude-plugin/plugin.json",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit -m docs(fwd:mission-run)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "risky-scan.sh lives in skills/engineering/fwd:mission-run/scripts/, not fwd:git-commit/scripts/ as the spawn prompt suggested"
+        ],
+        "procedures_followed": [
+          "risky-scan clean (exit 0)",
+          "conventional commit docs(fwd:mission-run):",
+          "staged only the two modified doc files",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F1.md"
+      }
     },
     {
       "id": "F2",
