@@ -551,13 +551,49 @@
       "depends_on": [
         "F5"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "b9665f2ca691d2d5ffd8b461b716c44c8fe7ecaa",
+      "started_at": "2026-06-10T08:42:11Z",
+      "completed_at": "2026-06-10T08:42:11Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "SKILL.md Section 4: two explicit finalize steps — 4.1 reconcile-waves.sh (slot teardown + .env* scrub via directory removal) then 4.2 serial finalize.sh unchanged",
+          "SKILL.md step 3.3 usage corrected to setup-slot.sh <slug> <slot-n> <feature-id>",
+          "SKILL.md Interop section: leftover-slot cleanup explicitly owned by finalize step 4.1 incl. .env* scrub (VC-12 clause)"
+        ],
+        "left_undone": [
+          "setup-slot.sh header — already correct, no change",
+          "reconcile-waves.sh — no .env survival gap, no change"
+        ],
+        "commands": [
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "bash -n over parallel + serial scripts",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "M2 reviewer nit half-right: only SKILL.md 3.3 had wrong arg order; setup-slot.sh header was already correct",
+          "reconcile-waves.sh removal paths delete the slot dir wholesale — .env cannot survive"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit docs(fwd:mission-run-parallel):",
+          "staged only SKILL.md",
+          "serial finalize.sh byte-identical",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F9.md"
+      }
     },
     {
       "id": "F10",
