@@ -496,13 +496,49 @@
       "depends_on": [
         "F5"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "440cd5cf5a655c654a2345bb6999361013b64d19",
+      "started_at": "2026-06-10T08:38:22Z",
+      "completed_at": "2026-06-10T08:38:22Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "scripts/reconcile-waves.sh — removes slot worktrees (worktree remove --force, rm -rf + prune fallback) and slot branches (for-each-ref glob, mission branch safe), deterministic summary, delegates to serial reconcile.sh via exec",
+          "smoke-waves.sh Scenario 8 — crash recovery: dangling slot removed, integrated work + state intact, serial reconcile invoked, pending feature re-runnable",
+          "smoke-waves.sh Scenario 9 — second discard → blocked: exit 3 serial_only discards=1, then exit 6 blocked attempts++ breaker++, tree clean"
+        ],
+        "left_undone": [
+          "SKILL.md sync — existing wording already accurate, no edits needed"
+        ],
+        "commands": [
+          {
+            "command": "smoke-waves.sh 5 runs from 3 cwds (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit feat(fwd:mission-run-parallel)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "for-each-ref needs trailing glob --f* (bare prefix matches only exact ref) — caught by Scenario 8",
+          "record-feature.sh blocked path does not write discards (stays at pin value 1) — by design, serial code untouchable",
+          "mapfile + empty ref list needs ${ARR[@]:-} guard under set -u"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(fwd:mission-run-parallel):",
+          "staged only the two feature files",
+          "serial reconcile.sh untouched",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F8.md"
+      }
     },
     {
       "id": "F9",
