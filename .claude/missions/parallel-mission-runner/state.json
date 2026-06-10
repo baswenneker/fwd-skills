@@ -238,13 +238,55 @@
       "depends_on": [
         "F1"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "c737e2f1962938d3271c7b7c288e1ee4a79c882c",
+      "started_at": "2026-06-10T07:48:12Z",
+      "completed_at": "2026-06-10T07:48:12Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "skills/engineering/fwd:mission-run-parallel/SKILL.md — wave-orchestrator skill doc: frontmatter, risk statement, autonomous-mode rules, flow (preflight through finalize), conflict policy, interop/runner-switching section (VC-12), hard limits, script-references table, configuration table",
+          ".claude-plugin/plugin.json — registered skills/engineering/fwd:mission-run-parallel",
+          "README.md — fwd:mission-run-parallel row mirroring the frontmatter description"
+        ],
+        "left_undone": [
+          "pick-wave.sh, setup-slot.sh, integrate-feature.sh, reconcile-waves.sh — referenced in SKILL.md, land in F5/F6/F8",
+          "tests/smoke-waves.sh — lands in F7",
+          "runner-switching script behaviour — SKILL.md documents semantics; enforcing scripts land later"
+        ],
+        "commands": [
+          {
+            "command": "jq -e .skills|type==array .claude-plugin/plugin.json",
+            "exit_code": 0
+          },
+          {
+            "command": "bash -n mission scripts",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit feat(fwd:mission-run-parallel)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "cross-skill script coupling: renaming fwd:mission-run folder breaks ../fwd:mission-run/scripts/ references — documented in SKILL.md",
+          "invoking the skill before F8 lands hits missing reconcile-waves.sh — acceptable mid-mission"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(fwd:mission-run-parallel):",
+          "staged only the three specified files",
+          "no scripts/ or tests/ folders created (scope discipline)",
+          "shared references exclusively via CLAUDE_SKILL_DIR/../fwd:mission-run/scripts/",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F4.md"
+      }
     },
     {
       "id": "F5",
