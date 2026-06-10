@@ -132,7 +132,7 @@ Each coder returns a structured handoff (see REFERENCE).
 **3.5 — Integrate features (sequential, in plan order).** For each feature in the wave, in the order they appear in `state.json["features"]` (plan order, not wave order):
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/integrate-feature.sh" <slug> <feature-id> <slot-n>
+echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/scripts/integrate-feature.sh" <slug> <feature-id>
 ```
 
 `integrate-feature.sh` cherry-picks the slot branch commits onto the mission branch in the existing mission worktree `<WT>`, then (with wave-gates on) runs Layer-A gates:
@@ -145,19 +145,17 @@ Exit codes from `integrate-feature.sh`:
 
 | Exit | Meaning |
 |---|---|
-| `0` | Integration + gates clean — proceed to next feature |
-| `1 conflict` | Cherry-pick conflict (see Conflict policy) |
-| `2 gate-fail <fid>` | Integration clean but gates failed — `<fid>` is the culprit |
+| `0` | Integration + gates clean — feature recorded done |
+| `3` | Cherry-pick conflict — feature pinned `serial_only`, no attempt consumed (see Conflict policy) |
+| `4` | Gates failed after clean integration — feature pinned `serial_only`, attempt consumed |
+| `5` | No slot commits (empty range) — orchestrator should treat as coder failure |
+| `6` | Second discard — feature recorded `blocked` |
 
-On clean integration (`exit 0`): write the coder's prose narrative to `<WT>/.claude/missions/<slug>/handoffs/<feature-id>.md`, then record the feature:
-
-```bash
-echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/record-feature.sh" <slug> <feature-id> done
-```
+`integrate-feature.sh` pipes the handoff JSON through to `record-feature.sh` on exit 0 and exit 6 internally — the orchestrator passes handoff JSON on stdin. On exit 0, write the coder's prose narrative to `<WT>/.claude/missions/<slug>/handoffs/<feature-id>.md` from the handoff.
 
 `record-feature.sh` is **unchanged** — it verifies a new commit exists, records `commit_sha` + handoff, resets the breaker, and commits the checkpoint. The recorded `commit_sha` is the cherry-picked SHA on the mission branch (not the slot SHA).
 
-On `conflict` or `gate-fail`: see Conflict policy below.
+On exit 3 or 4 (conflict / gate-fail): see Conflict policy below.
 
 **Wave-gates toggle:** `FWD_MISSION_WAVE_GATES=0` disables the per-feature gate run inside `integrate-feature.sh`. Gates still run at milestone boundaries. Disable for slow suites only.
 
