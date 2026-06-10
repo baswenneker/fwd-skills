@@ -101,13 +101,47 @@
       "depends_on": [
         "F1"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "ffe001a6beb9ad18fd726edd85bf97ca22ca5a96",
+      "started_at": "2026-06-10T07:05:31Z",
+      "completed_at": "2026-06-10T07:05:31Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "SKILL.md Step 3: depends_on proposal instructions with conservative default (unsure → add the edge), constraints (no cycles, no forward-milestone refs), and annotated tree presentation format",
+          "SKILL.md Step 7: DAG stats block (DAG width + critical-path length) and dual run commands (/fwd:mission-run serial + /fwd:mission-run-parallel parallel) in the handoff output",
+          "REFERENCE.md: new Feature depends_on section with rules, unsure→edge default, four-feature jsonc example, wave breakdown annotation, and link to canonical schema"
+        ],
+        "left_undone": [
+          "DAG validation in validate-artifacts.sh — that is F3, explicitly out of scope for this feature"
+        ],
+        "commands": [
+          {
+            "command": "risky-scan.sh SKILL.md REFERENCE.md",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git add (two target files)",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit -m docs(fwd:mission-plan)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "fwd:mission-plan REFERENCE.md had no depends_on section before — now cross-references the canonical schema in fwd:mission-run/REFERENCE.md rather than duplicating it",
+          "worked example lacked depends_on; added depends_on: [] for consistency"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "staged only the two target files",
+          "conventional commit docs(fwd:mission-plan):",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F2.md"
+      }
     },
     {
       "id": "F3",
