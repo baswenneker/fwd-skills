@@ -428,13 +428,62 @@
         "F5",
         "F6"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "4f73662ba925fb73ff6dac9fe9e0163e84f23022",
+      "started_at": "2026-06-10T08:24:32Z",
+      "completed_at": "2026-06-10T08:24:32Z",
       "error": null,
-      "handoff": null
+      "handoff": {
+        "implemented": [
+          "tests/smoke-waves.sh (chmod +x, ~557 lines): hermetic fixture-repo harness, stub coder helpers, 7 scenarios / 43 assertions: cap enforcement, integration order, conflict→pin, wave-gate culprit isolation, v1 refusal, serial_only solo wave, closes_milestone flag",
+          "fulfils gate G3 (guarded command in state.gates goes live with this file)"
+        ],
+        "left_undone": [
+          "crash→reconcile scenario — F8 (helpers are function-based for additive extension)",
+          "second-discard→blocked scenario — cheap F8 extension"
+        ],
+        "commands": [
+          {
+            "command": "bash -n smoke-waves.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh from /tmp, worktree root, /Users/bas (3 consecutive runs)",
+            "exit_code": 0
+          },
+          {
+            "command": "exact G3 gate command from mission worktree root",
+            "exit_code": 0
+          },
+          {
+            "command": "G1 find bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit test(fwd:mission-run-parallel)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "setup-slot.sh / pick-wave.sh use bare rtk git without -C — callers outside a git tree must cd into the repo first",
+          "record-feature.sh records commit_sha one commit behind final mission HEAD (its own checkpoint commit follows) — ancestry assertions, not equality",
+          "macOS /private symlink path duality is harmless when comparing like-with-like"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit test(fwd:mission-run-parallel):",
+          "staged only the harness file",
+          "determinism: 3 consecutive clean passes from different cwds",
+          "scripts under test + serial scripts untouched",
+          "no push"
+        ],
+        "report_path": ".claude/missions/parallel-mission-runner/handoffs/F7.md"
+      }
     },
     {
       "id": "F8",
