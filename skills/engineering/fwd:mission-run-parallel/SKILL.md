@@ -115,7 +115,7 @@ Outputs JSON `{"wave": [{"id":"F2","title":"...","slot":1}, ...], "closes_milest
 For each feature in the wave:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/setup-slot.sh" <slug> <feature-id> <slot-n>
+bash "${CLAUDE_SKILL_DIR}/scripts/setup-slot.sh" <slug> <slot-n> <feature-id>
 ```
 
 Creates or resets `.trees/mission/<slug>--slot-<n>/` as a worktree on temp branch `mission/<slug>--f<id>` branched off the current mission-branch HEAD (the wave base). Copies `.env*` into the slot root. Reuses existing slot worktrees (reset + branch switch) so per-slot setup cost (e.g. `node_modules`) is paid once per slot across the whole mission.
@@ -210,11 +210,25 @@ Skip if nothing reusable. Do not log noise.
 
 ### 4. Finalize
 
+Two steps, in order:
+
+**4.1 — Slot teardown** (parallel-runner owned):
+
+```bash
+bash "${CLAUDE_SKILL_DIR}/scripts/reconcile-waves.sh" <slug>
+```
+
+Removes all remaining slot worktrees (`<WT_DIR>/mission/<slug>--slot-*`) and slot branches (`mission/<slug>--f*`). Because the slot directories are removed wholesale (via `git worktree remove --force` or `rm -rf` fallback), any `.env*` files that were copied into a slot are scrubbed as part of directory removal — no lingering slot secrets. Then delegates to serial `reconcile.sh` (harmless no-op at this point).
+
+**4.2 — Serial finalize** (unchanged):
+
 ```bash
 bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/finalize.sh" <slug>
 ```
 
-Tears down all remaining slot worktrees and temp branches, then runs the serial finalize: marks the mission `done` or `blocked`, removes copied `.env` files (main worktree and any lingering slots), keeps the worktree for review. Report the outcome and stop.
+Runs the serial `finalize.sh` byte-for-byte unchanged: marks the mission `done` or `blocked`, commits the final state, scrubs the mission worktree's own `.env*` copy, and keeps the worktree for review.
+
+Report the outcome (`done` or `blocked`) and stop.
 
 ## Conflict policy (standing decisions)
 
@@ -246,7 +260,7 @@ Both runners read and write the same `state.json` schema and the same checkpoint
 
 **The serial runner ignores slot worktrees/branches entirely.** `fwd:mission-run` never reads `.trees/mission/<slug>--slot-*` paths or `mission/<slug>--f*` refs. It resumes from `state.json` and the main mission worktree (`.trees/mission/<slug>/`) exactly as if the parallel runner had never run.
 
-**Leftover slots are cleaned by this skill only.** `reconcile-waves.sh` (step 2) and `finalize.sh` (step 4) are the sole owners of slot cleanup. The serial `reconcile.sh` and serial `finalize.sh` do not remove slot worktrees or temp branches — they are deliberately ignorant of them. If you switch from parallel to serial execution mid-mission, leftover slot worktrees remain until the next parallel tick's `reconcile-waves.sh` or the final `finalize.sh` cleans them. They are inert and harmless to the serial runner.
+**Leftover slots are cleaned by this skill only.** `reconcile-waves.sh` (step 2) and the parallel finalize (step 4.1, also `reconcile-waves.sh`) are the sole owners of slot cleanup — including `.env*` scrub via directory removal. The serial `reconcile.sh` and serial `finalize.sh` do not remove slot worktrees or temp branches — they are deliberately ignorant of them. If you switch from parallel to serial execution mid-mission, leftover slot worktrees remain until the next parallel tick's `reconcile-waves.sh` or the finalize step 4.1 cleans them. They are inert and harmless to the serial runner.
 
 **Circuit breaker and per-feature attempts live in shared `state.json`.** Both runners increment and respect the same `features[].attempts` counter and the same `circuit_breaker.consecutive_failures`. A feature blocked (attempts exhausted) by the parallel runner cannot be re-run by the serial runner without manual reset (same rule: committed work is final). A circuit-breaker trip set by the serial runner is seen by the parallel runner on the next tick (preflight refuses).
 
