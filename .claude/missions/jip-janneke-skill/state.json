@@ -141,8 +141,8 @@
         "F1",
         "F2"
       ],
-      "validation_status": "pending",
-      "validated_at": null,
+      "validation_status": "passed",
+      "validated_at": "2026-06-11T11:12:01Z",
       "gate_results": [],
       "vc_results": []
     }
@@ -156,6 +156,12 @@
       "situation": "record-feature.sh clean-check rejects both a pre-written handoff narrative and the state.json edit made by log-decision.sh (its exclusions do not cover .claude/missions/<slug>), while the script itself git-adds that dir at commit time",
       "action": "record with a clean tree first (commit_sha stays the coder's commit), then restore the narrative, re-log the decision, and amend the checkpoint commit so it carries state.json + handoff together",
       "feature": "F1"
+    },
+    {
+      "timestamp": "2026-06-11T11:11:23Z",
+      "situation": "Status rule is ambiguous for a mission whose contract defines NO user-testing layer (boot_command=null by design, zero user-testing VCs): literal reading of no-boot would give gates_passed, contract-aware reading gives passed",
+      "action": "chose validation_status=passed: the validation contract owns the definition of done, it assigns every assertion to scrutiny-review, and everything it defines ran and passed; gates_passed would falsely imply validation was cut short",
+      "feature": "M1"
     }
   ]
 }
