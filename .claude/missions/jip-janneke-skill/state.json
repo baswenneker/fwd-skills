@@ -88,15 +88,49 @@
         "VC-7",
         "VC-8"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "92da5d90ae7d9366e861707f7482779415ac23ed",
+      "started_at": "2026-06-11T11:08:04Z",
+      "completed_at": "2026-06-11T11:08:04Z",
       "error": null,
       "depends_on": [
         "F1"
-      ]
+      ],
+      "handoff": {
+        "implemented": [
+          "Added ./skills/productivity/fwd:jip-janneke to skills[] in .claude-plugin/plugin.json (after fwd:premortem, the last productivity skill)",
+          "Added productivity row for fwd:jip-janneke in README.md skills table, linking to SKILL.md, description mirroring the frontmatter first paragraph verbatim"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "jq . .claude-plugin/plugin.json",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git add .claude-plugin/plugin.json README.md",
+            "exit_code": 0
+          },
+          {
+            "command": "bash risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit -m \"feat(plugin): register fwd:jip-janneke in plugin.json and README\"",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "SKILL.md description is a YAML block scalar spanning multiple lines; README row mirrors the first paragraph (triggers verbatim) and trims the disambiguation lines, matching the trimming convention of sibling rows (fwd:explain also drops its Use-when tail)"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(plugin):",
+          "only two target files staged and committed"
+        ],
+        "report_path": ".claude/missions/jip-janneke-skill/handoffs/F2.md"
+      }
     }
   ],
   "milestones": [
