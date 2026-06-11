@@ -42,3 +42,13 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Writing the parallel-runner scripts and harness (mission parallel-mission-runner, M2)
 **Observation**: Two recurring traps: rtk git emits literal ok lines on quiet/clean operations so any porcelain/output parser must filter them (grep -vx ok), and bare rtk git resolves the repo from cwd so scripts invoked from outside a git tree silently hit the wrong repo
 **Lesson**: In fwd-skills bash helpers, always filter rtk ok lines when parsing git output and pass -C <path> (or cd in a subshell) for every git op that must target a specific worktree
+
+### 2026-06-11 | insight | rules-driven-missions
+**Context**: F9 coder self-verified VC-20 with a grep for CONTEXT.md mentions across the six audit files and reported 6/6 present; the adversarial reviewer failed the milestone because the reviewer agent's only CONTEXT.md mention pointed at the advisories vocabulary entry, not the required Schrijfstijl block
+**Observation**: A loose proxy grep (any CONTEXT.md mention) false-passed a compliance check that required a specific marker (a Schrijfstijl missions reference)
+**Lesson**: When self-verifying per-file compliance criteria, grep for the specific required marker verbatim (e.g. Schrijfstijl), never a broad proxy like the filename being referenced — and treat each clause of a multi-file VC as its own check per file
+
+### 2026-06-11 | rule-gap | fwd:mission-run
+**Context**: Orchestrating mission jip-janneke-skill per SKILL.md: write handoff narrative, log decisions, then record-feature.sh
+**Observation**: record-feature.sh's clean-worktree check rejects the pre-written handoff narrative AND the state.json edit made by log-decision.sh (its exclusions cover only .env*/boot artifacts, not .claude/missions/<slug>), yet the script itself git-adds that dir at commit time — the documented orchestrator order trips the recorder
+**Lesson**: Record first with a clean tree (commit_sha stays the coder's commit), then write the narrative / re-log decisions and amend the checkpoint commit; or fix the scripts to exclude .claude/missions/<slug> from the dirty check
