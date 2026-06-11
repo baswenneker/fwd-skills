@@ -17,6 +17,14 @@ This is the **interactive** half of the `fwd:mission-*` layer. Factory's insight
 
 See [REFERENCE.md](REFERENCE.md) for the PRD + contract templates and slug rules, and [`fwd:mission-run`'s reference](../fwd:mission-run/REFERENCE.md) for the canonical `state.json` schema.
 
+## Regelsinventaris (sessiestart)
+
+De beschikbare `.claude/rules/` worden bij het laden van de skill automatisch geïnjecteerd:
+
+!`bash "${CLAUDE_SKILL_DIR}/scripts/list-rules.sh"`
+
+Gebruik deze inventaris als startpunt: elke bewering in het validatiecontract moet de aanwezige regels respecteren.
+
 ## Quick start
 
 ```
@@ -29,6 +37,18 @@ See [REFERENCE.md](REFERENCE.md) for the PRD + contract templates and slug rules
 ## Flow
 
 ### 1. Scope the goal (gather context)
+
+**Stap 1.0 — Regelskeuze (verplicht, vóór alle scopingwerk).**
+
+Bekijk de regelsinventaris bovenaan (geïnjecteerd bij sessiestart). Als die meldt dat er **geen regels zijn gevonden**, stel dan via `AskUserQuestion` een bewuste keuze voor — stilzwijgend doorgaan is geen optie:
+
+> De inventaris toont geen `.claude/rules/`. Hoe wil je verder?
+>
+> (a) Stop en draai eerst `/fwd:rules-audit` om de projectconventies vast te leggen. (Aanbevolen — een contract zonder regels mist de feitelijke codeerstandaarden.)
+>
+> (b) Ga expliciet verder zónder regels. De planning loopt door, maar in `mission.md` wordt vastgelegd: "Bewust gestart zonder `.claude/rules/` — regels ontbreken."
+
+Op keuze (a): stop hier. Op keuze (b): ga door en leg de keuze vast in de `mission.md` (sectie *Aannames en afwijkingen*).
 
 Read enough to plan, not to implement. Restate the goal in your own words. Then:
 
@@ -90,7 +110,27 @@ It prints a JSON array of resolvable gate commands (test/typecheck/lint/build �
 - `scrutiny-review` — judged against the diff by the adversarial reviewer.
 - `user-testing` — judged against the running app by the user-tester.
 
+Elke VC bevat ook een één-regel-samenvatting in gewone taal (het `· *cursief*`-patroon — zie REFERENCE.md voor het template).
+
+**Compliance-VC-generatie (verplicht wanneer `.claude/rules/` niet leeg is).** Zet de file-by-file-tabel van de PRD om in contract-criteria als volgt:
+
+1. Neem per feature de paden uit de file-by-file-tabel.
+2. Vergelijk die paden met de `paths:`-globs in elk regelbestand (een regelbestand *zonder* `paths:`-frontmatter is repo-breed en matcht altijd).
+3. Per feature: schrijf de matchende regelbestanden als `rule_paths` in `features[]` van `state.json`.
+4. Genereer per match een compliance-assertion in Layer B, bijv.: "Feature X's aangepaste bestanden voldoen aan rule Y — beoordeeld door de reviewer."
+5. Bij materialisatie (het schrijven van `state.json` op de mission-branch): vul het top-level `rules_manifest` met `[{path, sha256}]` per regelbestand. Zie het schema in `../fwd:mission-run/REFERENCE.md` (schema v3) — documenteer het schema hier niet opnieuw.
+
 **App-boot config (for user-testing).** Discover boot candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, `Makefile` run target). Confirm with the user: the `boot_command`, a `ready_probe` (HTTP poll or log-line match — essential), and 1–3 `smoke_commands`. If the app can't be booted (e.g. a library), set no boot command and tag everything `scrutiny-review`.
+
+### 4.5. Simplicity grill (vóór de approval gate)
+
+Toets het plan op drie vragen vóórdat de gebruiker het goedkeurt. Presenteer bevindingen als plain text; verwerk ze in het plan als er actie op volgt.
+
+1. **Kunnen features samengevoegd?** Zijn er features die samen kleiner en begrijpelijker zijn dan apart? Elke onnodige feature-grens is extra orchestratie-overhead.
+2. **Welke component is speculatief?** Een component is speculatief als hij op aannames berust die nog niet door stap 1 (codebase-onderzoek) zijn bevestigd. Markeer speculatieve componenten expliciet.
+3. **Wat is het eenvoudigste ontwerp dat het contract haalt?** Controleer of het voorgestelde ontwerp de goedkoopste weg is naar alle VC-IDs — niet meer, niet minder.
+
+De uitkomst gaat terug naar de gebruiker. Is er aanleiding tot vereenvoudiging, pas dan de feature-lijst, het design budget of het contract aan vóór stap 5.
 
 ### 5. Approval gate
 
@@ -148,6 +188,7 @@ For long missions add `/loop` in front of either command.
 
 ## Boundaries
 
+- **Schrijfstijl** — all plan narratives, PRD sections, and walkthrough text follow the "Schrijfstijl missions" block in [CONTEXT.md](../../../CONTEXT.md).
 - **Plan only** — never implement features or write product code here.
 - **Real paths only** in the file-by-file breakdown; no invented files.
 - **The contract is written before code** — that's the entire point. Don't defer assertions to "we'll see during implementation".

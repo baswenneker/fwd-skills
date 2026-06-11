@@ -144,6 +144,46 @@ if [[ -f "$STATE" ]] && jq -e '.' "$STATE" >/dev/null 2>&1 \
 fi
 # ── end DAG validation ────────────────────────────────────────────────────────
 
+# ── Rules-manifest check (schema v3, additive) ───────────────────────────────
+# Only runs when state.json is present, valid JSON, AND .rules_manifest is a
+# non-empty array. Plans without the field (v1/v2) pass through unchanged.
+if [[ -f "$STATE" ]] && jq -e '.' "$STATE" >/dev/null 2>&1 \
+   && jq -e '(.rules_manifest | type) == "array" and (.rules_manifest | length) > 0' \
+      "$STATE" >/dev/null 2>&1; then
+
+  # Resolve repo root: scripts may be called from anywhere, so use the worktree.
+  MANIFEST_REPO_ROOT="$(rtk git -C "$WT_PATH" rev-parse --show-toplevel 2>/dev/null \
+    || rtk git -C "$WT_PATH" rev-parse --git-common-dir 2>/dev/null | xargs dirname \
+    || echo "$WT_PATH")"
+
+  # Choose hashing tool: shasum (macOS) with sha256sum as fallback.
+  if command -v shasum >/dev/null 2>&1; then
+    _sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
+  elif command -v sha256sum >/dev/null 2>&1; then
+    _sha256() { sha256sum "$1" | awk '{print $1}'; }
+  else
+    errs+=("rules_manifest: no sha256 tool found (need shasum or sha256sum)")
+    _sha256() { echo ""; }
+  fi
+
+  manifest_len="$(jq '.rules_manifest | length' "$STATE")"
+  for ((i=0; i<manifest_len; i++)); do
+    entry_path="$(jq -r ".rules_manifest[$i].path" "$STATE")"
+    entry_sha="$(jq  -r ".rules_manifest[$i].sha256" "$STATE")"
+    full_path="$MANIFEST_REPO_ROOT/$entry_path"
+
+    if [[ ! -f "$full_path" ]]; then
+      errs+=("rules_manifest: file missing: $entry_path")
+    else
+      actual_sha="$(_sha256 "$full_path")"
+      if [[ "$actual_sha" != "$entry_sha" ]]; then
+        errs+=("rules_manifest: hash mismatch for $entry_path (expected $entry_sha, got $actual_sha)")
+      fi
+    fi
+  done
+fi
+# ── end rules-manifest check ─────────────────────────────────────────────────
+
 if [[ ${#errs[@]} -gt 0 ]]; then
   echo "invalid mission artifacts for $SLUG:" >&2
   for e in "${errs[@]}"; do echo "  - $e" >&2; done

@@ -19,6 +19,10 @@ Factory's PRD shape. Keep it concrete and measurable; this is the contract's nar
 ```markdown
 # Mission: <Title>
 
+## In één oogopslag
+
+<Maximaal 5 zinnen die de kern samenvatten. Zie het "Schrijfstijl missions"-blok in CONTEXT.md voor de precieze regels. De lezer weet na dit blok wat er gebouwd wordt en waarom.>
+
 ## Problem Statement
 <Who is hurting, and the measurable cost. Numbers if you have them.>
 - <symptom / metric>
@@ -36,8 +40,21 @@ Factory's PRD shape. Keep it concrete and measurable; this is the contract's nar
 - <criterion>
 - <criterion>
 
-## Implementation Strategy
-<Approach + the existing patterns/files to follow (from Step 1). Note serial ordering.>
+## Strategy & Design Budget
+
+<Aanpak en de bestaande patronen/bestanden die gevolgd worden (uit stap 1). Beschrijf de seriële volgorde.>
+
+**Toegestane nieuwe dependencies (limitatief — niets buiten deze lijst is toegestaan):**
+- <dependency of "geen">
+
+**Toegestane nieuwe abstracties (limitatief — niets buiten deze lijst is toegestaan):**
+- <abstractie of "geen">
+
+**Geldende regelbestanden:**
+- <pad naar regelbestand, bijv. `.claude/rules/conventions.md`> — <scope: repo-breed of glob>
+- <of "Geen `.claude/rules/` aanwezig — bewust gestart zonder regels.">
+
+Het overschrijden van dit design budget laat een review zakken.
 
 ## File-by-file
 | File | Change | Reason |
@@ -67,12 +84,13 @@ Two layers. Written before any code, independent of how it's implemented.
 | G3 | lint | `npm run lint` |
 
 ## Layer B — Assertions (judged)
-Each assertion: given / when / then, a stable ID, an owner, and the milestone it gates.
+Each assertion: given / when / then, a stable ID, an owner, the milestone it gates, and
+**a one-line plain-language summary** (the `· *cursief*` pattern):
 
 ### M1 — <milestone title>
-- **VC-1** (scrutiny-review): *Given* a CSV on the clipboard, *when* `POST /api/import` is called, *then* it returns 201 and persists the rows. *(features: F1)*
-- **VC-2** (scrutiny-review): *Given* a malformed CSV, *when* imported, *then* the endpoint returns 400 with a field-level error — no partial write. *(features: F1)*
-- **VC-3** (user-testing): *Given* the app is running, *when* a user pastes CSV into the import box and clicks Import, *then* the rows appear in the table within 2s. *(features: F2)*
+- **VC-1** (scrutiny-review): *Given* a CSV on the clipboard, *when* `POST /api/import` is called, *then* it returns 201 and persists the rows. · *The import endpoint stores the data.* *(features: F1)*
+- **VC-2** (scrutiny-review): *Given* a malformed CSV, *when* imported, *then* the endpoint returns 400 with a field-level error — no partial write. · *Bad input is rejected cleanly.* *(features: F1)*
+- **VC-3** (user-testing): *Given* the app is running, *when* a user pastes CSV into the import box and clicks Import, *then* the rows appear in the table within 2s. · *The user sees the result fast.* *(features: F2)*
 
 ## App boot (user-testing)
 - boot: `npm run dev`

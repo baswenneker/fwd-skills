@@ -1,0 +1,751 @@
+{
+  "version": 1,
+  "slug": "rules-driven-missions",
+  "title": "Rules-gedreven missions",
+  "status": "done",
+  "branch": "mission/rules-driven-missions",
+  "worktree": "/Users/bas/Development/HeadingFWD/fwd-skills/.trees/mission/rules-driven-missions",
+  "base_branch": "main",
+  "created_at": "2026-06-11T08:36:34Z",
+  "started_at": "2026-06-11T10:03:09Z",
+  "started_at_epoch": 1781172189,
+  "completed_at": "2026-06-11T11:10:58Z",
+  "gates": [
+    {
+      "id": "G1",
+      "name": "bash-syntax",
+      "command": "find skills -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+      "expected_exit": 0
+    },
+    {
+      "id": "G2",
+      "name": "plugin-manifest",
+      "command": "jq -re '.skills[]' .claude-plugin/plugin.json | while IFS= read -r p; do test -f \"$p/SKILL.md\" || exit 1; done",
+      "expected_exit": 0
+    },
+    {
+      "id": "G3",
+      "name": "smoke-waves",
+      "command": "bash skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh",
+      "expected_exit": 0
+    }
+  ],
+  "user_testing": {
+    "boot_command": null,
+    "ready_probe": null,
+    "smoke_commands": [],
+    "playwright_present": false,
+    "teardown_command": null
+  },
+  "features": [
+    {
+      "id": "F1",
+      "title": "fwd:rules-audit skill + registratie (plugin.json, README-rij)",
+      "milestone": "M1",
+      "vc_ids": [
+        "VC-1",
+        "VC-2"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "fc361e8fde63e430d0b6d2de6c0868f4ce279169",
+      "started_at": "2026-06-11T10:10:02Z",
+      "completed_at": "2026-06-11T10:10:02Z",
+      "error": null,
+      "depends_on": [],
+      "handoff": {
+        "implemented": [
+          "skills/engineering/fwd:rules-audit/SKILL.md — nieuwe skill in het Nederlands met volledige interactieve flow (scan → voorstel met golden examples → AskUserQuestion akkoord → wegschrijven)",
+          ".claude-plugin/plugin.json — pad ./skills/engineering/fwd:rules-audit toegevoegd aan de skills array",
+          "README.md — rij toegevoegd in de skills-tabel; beschrijving is verbatim gelijk aan de frontmatter description"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh -print0 | xargs -0 -n1 bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "jq -re .skills[] .claude-plugin/plugin.json | while read p; do test -f $p/SKILL.md || exit 1; done",
+            "exit_code": 0
+          },
+          {
+            "command": "python3 description-match check (fm_desc == readme_desc)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git commit -m feat(rules-audit): add interactive .claude/rules bootstrap skill",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "plugin.json volgorde is niet strikt alfabetisch; nieuwe skill ingevoegd direct voor fwd:skill-eval als minst invasieve wijziging",
+          "fwd:plan staat in skills/engineering/ maar heeft productivity-karakter; bestaande categorisering gevolgd, fwd:rules-audit in engineering/ geplaatst (schrijft naar .claude/rules/)"
+        ],
+        "procedures_followed": [
+          "risky-scan clean (exit 0)",
+          "conventional commit feat(rules-audit):",
+          "geen scripts toegevoegd (skill gebruikt alleen agent tools)",
+          "README description verbatim gelijk aan frontmatter description",
+          "alle SKILL.md paden gevalideerd via jq + bash loop",
+          "geen git push uitgevoerd"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F1.md"
+      }
+    },
+    {
+      "id": "F2",
+      "title": "Schema v3: rules_manifest, rule_paths, walkthrough_path, rules_applied + validate-artifacts-check",
+      "milestone": "M1",
+      "vc_ids": [
+        "VC-3",
+        "VC-4",
+        "VC-5"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "0f8a6def5333d69f3fce9dcb5c3e1ffa921123d9",
+      "started_at": "2026-06-11T10:16:07Z",
+      "completed_at": "2026-06-11T10:16:07Z",
+      "error": null,
+      "depends_on": [],
+      "handoff": {
+        "implemented": [
+          "REFERENCE.md: schema v3 documented — rules_manifest ([{path,sha256}]), features[].rule_paths, milestones[].walkthrough_path all as optional additive fields; explicit statement that v1/v2 plans remain valid everywhere",
+          "REFERENCE.md: handoff table extended with rules_applied ([{rule,how}]) row, noting record-feature.sh stores handoff integrally so no script change needed",
+          "REFERENCE.md: milestone walkthrough template section added (In één oogopslag, Leesvolgorde, Per feature, Advisories structure)",
+          "validate-artifacts.sh: rules_manifest check — hashes each manifest entry against disk; fails with named error (missing / hash mismatch) when manifest is non-empty array; silent no-op when absent/null"
+        ],
+        "left_undone": [
+          "list-rules.sh — explicitly deferred to a later feature per design budget",
+          "record-feature.sh changes — none needed; handoff already stored integrally (verified, documented)"
+        ],
+        "commands": [
+          {
+            "command": "bash -n validate-artifacts.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73 assertions)",
+            "exit_code": 0
+          },
+          {
+            "command": "manual test A: no rules_manifest → exit 0",
+            "exit_code": 0
+          },
+          {
+            "command": "manual test B: manifest entry missing file → exit 1, names path",
+            "exit_code": 1
+          },
+          {
+            "command": "manual test C: wrong sha256 → exit 1, hash mismatch named",
+            "exit_code": 1
+          },
+          {
+            "command": "manual test D: correct sha256 → exit 0",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "|| true pattern masked exit codes in first test attempt — corrected by capturing exit code inline",
+          "MANIFEST_REPO_ROOT resolution chain: show-toplevel → git-common-dir → WT_PATH fallback",
+          "_sha256 helper: if no hash tool exists the no-tool error fires first and mismatch messages are secondary noise — acceptable under bash+jq-only constraint"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(mission):",
+          "smoke-waves regression green (73/73)",
+          "four manual manifest test cases",
+          "no new dependencies",
+          "only the two specified files modified"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F2.md"
+      }
+    },
+    {
+      "id": "F3",
+      "title": "Schrijfstijl-conventie en vocabulaire in CONTEXT.md",
+      "milestone": "M1",
+      "vc_ids": [
+        "VC-6"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "a7864f8aa7d9b4c13f6c94542894148b47998351",
+      "started_at": "2026-06-11T10:18:08Z",
+      "completed_at": "2026-06-11T10:18:08Z",
+      "error": null,
+      "depends_on": [],
+      "handoff": {
+        "implemented": [
+          "Schrijfstijl missions-blok in CONTEXT.md met vier stijlregels (korte zinnen, geen onverklaarde afkortingen, In één oogopslag-opening max 5 zinnen, taal van de gebruiker)",
+          "Vocabulaire-entry: advisory (niet-blokkerend, los van reviewvonnis)",
+          "Vocabulaire-entry: design budget (limitatieve lijst nieuwe afhankelijkheden/abstracties)",
+          "Vocabulaire-entry: golden example (pad naar exemplarisch bestand in repo)",
+          "Vocabulaire-entry: rule-kandidaat (patroon voorgesteld als mogelijke .claude/rules/-regel; mens beslist)",
+          "Vocabulaire-entry: walkthrough (leesbaar rapport per mijlpaal, begint met In één oogopslag)"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh -print0 | xargs -0 -n1 bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "jq -re .skills[] plugin.json paths check",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit docs(context): add mission writing-style block + vocabulary",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "CONTEXT.md was nearly empty (only a comment placeholder, no existing vocabulary entries); kept the existing header and added entries beneath it alphabetically rather than restructuring"
+        ],
+        "procedures_followed": [
+          "Read CONTEXT.md before editing",
+          "Touched only CONTEXT.md",
+          "Shell syntax check green",
+          "plugin.json presence check green",
+          "Staged only CONTEXT.md",
+          "risky-scan clean",
+          "Conventional commit docs(context):"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F3.md"
+      }
+    },
+    {
+      "id": "F4",
+      "title": "Rules-inventaris: list-rules.sh + !-statement + geen-regels-keuze",
+      "milestone": "M2",
+      "vc_ids": [
+        "VC-7",
+        "VC-8"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "dff910448e14d46e3b88233c284b166847230962",
+      "started_at": "2026-06-11T10:26:53Z",
+      "completed_at": "2026-06-11T10:26:53Z",
+      "error": null,
+      "depends_on": [
+        "F1",
+        "F3"
+      ],
+      "handoff": {
+        "implemented": [
+          "skills/engineering/fwd:mission-plan/scripts/list-rules.sh — nieuw script: compacte inventaris van .claude/rules/, exit 0 bij afwezige/lege map, ondersteunt zowel inline- als block-style paths: frontmatter",
+          "skills/engineering/fwd:mission-plan/SKILL.md — nieuw Regelsinventaris-blok met !-statement voor dynamische injectie bij sessiestart",
+          "skills/engineering/fwd:mission-plan/SKILL.md — nieuwe Stap 1.0 in de flow: verplichte AskUserQuestion-keuze wanneer geen regels gevonden, stilzwijgend doorgaan geblokkeerd"
+        ],
+        "left_undone": [
+          "Design-budget / simpliciteitsgrill / compliance-VC-generatie / sjabloonwijzigingen — scope van F5",
+          "REFERENCE.md, agents, runner skills, CONTEXT.md, CLAUDE.md, README bewust ongemoeid"
+        ],
+        "commands": [
+          {
+            "command": "bash -n list-rules.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "functional test (a): temp repo zonder .claude/rules/ → explicit no-rules line",
+            "exit_code": 0
+          },
+          {
+            "command": "functional test (b): git.md zonder paths, scripts.md inline paths, typescript.md block paths → één regel per bestand",
+            "exit_code": 0
+          },
+          {
+            "command": "functional test (c): run vanuit subdirectory → zelfde output",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Inline paths-waarden samengevoegd met komma zonder spatie — functioneel correct, leesbaarheid kan later beter",
+          "mapfile vereist bash 4.0+; patroon identiek aan bestaande scripts in dit project — geen reden om af te wijken"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(mission-plan):",
+          "alleen specifieke bestanden gestaged",
+          "smoke-waves groen",
+          "bash -n over alle scripts",
+          "drie functionele tests gepasseerd",
+          "geen push"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F4.md"
+      }
+    },
+    {
+      "id": "F5",
+      "title": "Design budget, simplicity grill, compliance-VC-generatie, templates",
+      "milestone": "M2",
+      "vc_ids": [
+        "VC-9",
+        "VC-10",
+        "VC-11",
+        "VC-12"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "9ac634d56928ec21574c59416bac51fda1677f51",
+      "started_at": "2026-06-11T10:30:47Z",
+      "completed_at": "2026-06-11T10:30:47Z",
+      "error": null,
+      "depends_on": [
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "handoff": {
+        "implemented": [
+          "REFERENCE.md: strategy section renamed to Strategy & Design Budget met limitatieve lijsten voor nieuwe dependencies en abstracties, plus verwijzingen naar regelbestanden",
+          "REFERENCE.md: mission.md template opent met In één oogopslag-blok (max 5 zinnen, verwijzing naar CONTEXT.md)",
+          "REFERENCE.md: contract template eist per VC een één-regel-samenvatting in gewone taal (· cursief patroon) — alle drie VC-voorbeelden bijgewerkt",
+          "SKILL.md stap 4: compliance-VC-generatie — file-by-file paden × rule-globs → rule_paths in state.json + compliance-assertions in Layer B + rules_manifest bij materialisatie",
+          "SKILL.md stap 4.5 (vóór approval gate): simplicity grill met drie expliciete vragen"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "git commit feat(mission-plan):",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Compliance-VC-generatie beschreven als proces-instructie in SKILL.md, niet als script — consistent met de rest van de flow; geen script nodig",
+          "Writing good assertions-sectie niet apart uitgebreid met · cursief-patroon: staat al in template-sectie en Layer B-introductie; dubbele documentatie vermeden"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(mission-plan):",
+          "alleen specifieke bestanden gestaged",
+          "geen push",
+          "VC-9 t/m VC-12 word-by-word gecontroleerd tegen diff"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F5.md"
+      }
+    },
+    {
+      "id": "F6",
+      "title": "Agents: coder (rules bindend, rules_applied) + reviewer (compliance, advisories)",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-13",
+        "VC-14"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "7b12eea7abcab80d2a59e098db92342d07e230e8",
+      "started_at": "2026-06-11T10:37:25Z",
+      "completed_at": "2026-06-11T10:37:25Z",
+      "error": null,
+      "depends_on": [
+        "F2",
+        "F3"
+      ],
+      "handoff": {
+        "implemented": [
+          "fwd-mission-coder.md: Rule paths (optional) item in spawn-prompt section, references Pinned rules section",
+          "fwd-mission-coder.md: new Pinned rules section — mandatory reading before code, treat violations as bugs, conflict guidance (criterium wint, melding in issues_discovered)",
+          "fwd-mission-coder.md: rules_applied field in handoff JSON example; REQUIRED paragraph met schema v3 referentie",
+          "fwd-mission-coder.md: Narrative style paragraaf met verwijzing naar CONTEXT.md Schrijfstijl missions-blok",
+          "fwd-mission-reviewer.md: compliance-VCs bullet in stap 2 (zelfde PASS/FAIL-strengheid)",
+          "fwd-mission-reviewer.md: nieuwe stap 3 — eenvoud-bevindingen als advisories, strikt gescheiden van verdicts",
+          "fwd-mission-reviewer.md: advisories[] in return-shape met location + suggestion; expliciet niet-blokkerend"
+        ],
+        "left_undone": [
+          "rules_applied-afdwinging in de runner — F7/F8",
+          "advisories verwerken in walkthrough — F7/F8"
+        ],
+        "commands": [
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Narrative-stijleis: verwijzing naar CONTEXT.md-blok als bron in plaats van de vier regels herhalen — korter, geen duplicatie",
+          "rules_applied toegevoegd aan het bestaande handoff-JSON-voorbeeld zodat alle velddocumentatie op één plek blijft"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(agents):",
+          "VC-13 4/4 clausules gecheckt",
+          "VC-14 2/2 clausules gecheckt",
+          "bash -n groen",
+          "smoke-waves 73/73",
+          "alleen de twee agent-bestanden gestaged"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F6.md"
+      }
+    },
+    {
+      "id": "F7",
+      "title": "Serial runner: leeslijst pinnen, rules_applied afdwingen, walkthrough, rule-kandidaten",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-15",
+        "VC-16",
+        "VC-17"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "17102011edc1727a2804b37901442e742e9d0c5a",
+      "started_at": "2026-06-11T10:41:10Z",
+      "completed_at": "2026-06-11T10:41:10Z",
+      "error": null,
+      "depends_on": [
+        "F2",
+        "F3",
+        "F6"
+      ],
+      "handoff": {
+        "implemented": [
+          "Step 2.3: coder spawn prompt pins design budget (from mission.md) and rule_paths as mandatory binding reading list; backward compatible when rule_paths absent/empty",
+          "Step 2.4: handoff without non-empty rules_applied when rule_paths non-empty counts as failed attempt under existing attempt/cap rules",
+          "Step 2.5: orchestrator compiles handoffs/<milestone-id>-walkthrough.md per REFERENCE.md template after every milestone validation; sets milestones[].walkthrough_path via atomic jq write; advisories never influence validation_status",
+          "Step 3: final report includes rule-kandidaten distilled from issues_discovered and lessons; runner never mutates .claude/rules/",
+          "Frontmatter allowed-tools: Write toegevoegd"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Walkthrough jq-snippet gebruikt placeholder-namen — bewust, operating manual-conventie",
+          "rules_applied-afdwinging als orchestrator-check in stap 2.4; record-feature.sh niet gewijzigd conform design budget"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(mission-run):",
+          "VC-15/16/17 word-by-word gecheckt",
+          "parallel runner + scripts onaangeraakt",
+          "smoke-waves 73/73"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F7.md"
+      }
+    },
+    {
+      "id": "F8",
+      "title": "Parallel runner: pinning en walkthrough gespiegeld (stap 3.4 + 3.7)",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-18"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "61218ea9f6ec80f5ac13616b07b01ac6876cc2bd",
+      "started_at": "2026-06-11T10:45:09Z",
+      "completed_at": "2026-06-11T10:45:09Z",
+      "error": null,
+      "depends_on": [
+        "F7"
+      ],
+      "handoff": {
+        "implemented": [
+          "Frontmatter: Write toegevoegd aan allowed-tools",
+          "Stap 3.4: design budget (verbatim uit mission.md) + rule_paths als verplichte leeslijst gepind per coder-slot; backward compatible bij absent/leeg rule_paths",
+          "Stap 3.5: rules_applied-afdwinging vóór de integrate-feature aanroep — ontbrekend veld bij non-lege rule_paths telt als mislukte poging of blocked (zelfde logica als serial 2.4)",
+          "Stap 3.7: walkthrough compilatie + atomische jq-write van walkthrough_path (zelfde snippet als serial 2.5); advisories never influence validation_status",
+          "Stap 4.2 (finalize): rule-kandidaten in final report; runner never mutates .claude/rules/",
+          "Interop-sectie: schema v3 optionele velden identiek afgehandeld door beide runners"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "rtk git add parallel SKILL.md + commit",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "rules_applied-afdwinging zit vóór de integrate-feature aanroep (3.5) — integrate-feature roept intern record-feature aan, dus enforcement moet ervoor",
+          "Finalize delegeert naar serial finalize.sh; rule-kandidaten in de Report-instructie van 4.2, consistent met serial aanpak",
+          "3.7 zei al Identical to the serial runner maar miste de concrete walkthrough/advisory-instructies — volledige semantiek expliciet gemaakt"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit feat(mission-run-parallel):",
+          "alleen parallel SKILL.md gestaged — geen shared scripts",
+          "smoke-waves 73/73 groen",
+          "VC-18 woord-voor-woord self-check"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F8.md"
+      }
+    },
+    {
+      "id": "F9",
+      "title": "Repo-documentatie: CLAUDE.md rules-conventie + README consistentie",
+      "milestone": "M4",
+      "vc_ids": [
+        "VC-19",
+        "VC-20"
+      ],
+      "status": "done",
+      "attempts": 2,
+      "commit_sha": "a196a4439d64762feb563cc6abf375329a1ae493",
+      "started_at": "2026-06-11T10:57:06Z",
+      "completed_at": "2026-06-11T11:05:36Z",
+      "error": null,
+      "depends_on": [
+        "F1",
+        "F5",
+        "F8"
+      ],
+      "handoff": {
+        "implemented": [
+          "CLAUDE.md: Rules-driven missions paragraaf onder de Agents-sectie",
+          "README.md: Rules-driven missions sectie + alle 15 tabelrijen verbatim gesynchroniseerd met frontmatter",
+          "Schrijfstijl-verwijzing toegevoegd aan fwd:rules-audit, fwd:mission-plan, fwd:mission-run, fwd:mission-run-parallel SKILL.md",
+          "Remediatie: Narrative style-paragraaf met Schrijfstijl missions-verwijzing toegevoegd aan agents/fwd-mission-reviewer.md (eerste review zakte op VC-20 omdat die ontbrak)"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills -name *.sh | bash -n each",
+            "exit_code": 0
+          },
+          {
+            "command": "plugin.json paths check",
+            "exit_code": 0
+          },
+          {
+            "command": "smoke-waves.sh (73/73)",
+            "exit_code": 0
+          },
+          {
+            "command": "python3 README-vs-frontmatter comparison (15/15 verbatim)",
+            "exit_code": 0
+          },
+          {
+            "command": "grep Schrijfstijl agents/fwd-mission-reviewer.md (na remediatie aanwezig)",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh (beide commits)",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "10 van de 15 README-rijen hadden al bestaande drift t.o.v. frontmatter — gecorrigeerd (repo-conventie eist verbatim-spiegeling)",
+          "F9-handoff claimde onterecht dat de reviewer-agent al een stijlverwijzing had — alleen de coder-agent had er een; gecorrigeerd in de remediatiepas",
+          "Relatieve CONTEXT.md-paden (../../../CONTEXT.md) breken bij verplaatsing van een skill"
+        ],
+        "procedures_followed": [
+          "risky-scan clean (beide commits)",
+          "conventional commits docs(repo): + fix(agents):",
+          "alleen specifieke bestanden gestaged",
+          "geen push",
+          "remediatie beperkt tot het ene falende bestand"
+        ],
+        "report_path": ".claude/missions/rules-driven-missions/handoffs/F9.md"
+      }
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Fundament",
+      "feature_ids": [
+        "F1",
+        "F2",
+        "F3"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-06-11T10:22:40Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G2",
+          "command": "jq -re '.skills[]' .claude-plugin/plugin.json | while IFS= read -r p; do test -f \"$p/SKILL.md\" || exit 1; done",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G3",
+          "command": "bash skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": []
+    },
+    {
+      "id": "M2",
+      "title": "Plan-kant",
+      "feature_ids": [
+        "F4",
+        "F5"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-06-11T10:33:48Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G2",
+          "command": "jq -re '.skills[]' .claude-plugin/plugin.json | while IFS= read -r p; do test -f \"$p/SKILL.md\" || exit 1; done",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G3",
+          "command": "bash skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": []
+    },
+    {
+      "id": "M3",
+      "title": "Run-kant",
+      "feature_ids": [
+        "F6",
+        "F7",
+        "F8"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-06-11T10:48:44Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G2",
+          "command": "jq -re '.skills[]' .claude-plugin/plugin.json | while IFS= read -r p; do test -f \"$p/SKILL.md\" || exit 1; done",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G3",
+          "command": "bash skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": []
+    },
+    {
+      "id": "M4",
+      "title": "Afronding",
+      "feature_ids": [
+        "F9"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-06-11T11:10:36Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G2",
+          "command": "jq -re '.skills[]' .claude-plugin/plugin.json | while IFS= read -r p; do test -f \"$p/SKILL.md\" || exit 1; done",
+          "exit_code": 0,
+          "passed": true
+        },
+        {
+          "id": "G3",
+          "command": "bash skills/engineering/fwd:mission-run-parallel/tests/smoke-waves.sh",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": []
+    }
+  ],
+  "circuit_breaker": {
+    "consecutive_failures": 0
+  },
+  "decisions": [
+    {
+      "timestamp": "2026-06-11T10:05:20Z",
+      "situation": "Language for the new fwd:rules-audit SKILL.md was unspecified in the contract",
+      "action": "Write it in Dutch — precedent fwd:plan/fwd:issue-create (interactive user-facing skills are Dutch), mission docs are Dutch, style rule prescribes the user's language",
+      "feature": "F1"
+    }
+  ]
+}

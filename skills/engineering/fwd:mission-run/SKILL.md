@@ -2,7 +2,7 @@
 name: fwd:mission-run
 description: Execute a planned mission — the resident orchestrator of the fwd:mission-* layer (a Claude Code take on Factory.ai Missions). Reads the mission's state.json, drives features one at a time by spawning a fresh coder subagent each, runs adversarial validators (Scrutiny + User-Testing) at milestone boundaries, and records a checkpoint after every unit so the mission resumes from any worktree or clone. Runs autonomously — never prompts. Use when the user runs /fwd:mission-run <slug>, says "run/execute/resume mission <slug>", or wraps it in /loop for a long multi-day run. Pass `status` as a second argument for a read-only progress report.
 argument-hint: "[<slug>] [status] — no args lists all missions"
-allowed-tools: Read, Glob, Grep, Bash, Agent
+allowed-tools: Read, Glob, Grep, Bash, Agent, Write
 ---
 
 # fwd:mission-run
@@ -96,6 +96,8 @@ Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first f
 **2.3 — Spawn the coder.** Use the Agent tool with `subagent_type: fwd-skills:fwd-mission-coder`. The prompt MUST pin:
 - the worktree path `<WT>` (the coder works there, `cd`'d in),
 - the ONE feature (id, title) and its acceptance criteria (the VC-IDs verbatim),
+- the mission's **design budget** (copy the "Strategy & Design Budget" section verbatim from `mission.md`) — the coder must stay within it,
+- the feature's `rule_paths` from `state.json` as a **mandatory reading list** — declare them binding ("these rules are binding; read each one before writing any code; report `rules_applied` for every rule in your handoff"). When `rule_paths` is absent or empty, omit this bullet entirely — backward compatible with v1/v2 plans.
 - "implement only this feature; add/adjust tests; stage your files; run `risky-scan.sh`; commit with a conventional message; do NOT push; return the handoff as JSON".
 
 The coder returns a structured handoff (the five fields — see REFERENCE).
@@ -106,7 +108,7 @@ The coder returns a structured handoff (the five fields — see REFERENCE).
 echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/scripts/record-feature.sh" <slug> <feature-id> done
 ```
 
-`record-feature.sh` verifies the worktree is clean and a new commit exists, records `commit_sha` + the handoff + `attempts`, resets the breaker, and commits the checkpoint on the branch. If the coder made no commit or didn't satisfy the feature:
+`record-feature.sh` verifies the worktree is clean and a new commit exists, records `commit_sha` + the handoff + `attempts`, resets the breaker, and commits the checkpoint on the branch. If the coder made no commit or didn't satisfy the feature — **including** when the feature's `rule_paths` is non-empty and the returned handoff lacks a non-empty `rules_applied` field (no verantwoording, no accepted handoff):
 - `attempts < FWD_MISSION_MAX_ATTEMPTS` (default 3) → re-spawn the coder (2.3) with the failure context appended.
 - attempts exhausted → `record-feature.sh <slug> <feature-id> blocked "<reason>"` (increments the breaker), then go to 2.7.
 
@@ -138,7 +140,7 @@ Always tear down afterwards (whatever the boot outcome):
 bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
 ```
 
-*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; gates + scrutiny passed but user-testing couldn't run (no boot / boot failed) → `gates_passed`; everything that ran (gates + scrutiny + user-testing) passed → `passed`.
+*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; gates + scrutiny passed but user-testing couldn't run (no boot / boot failed) → `gates_passed`; everything that ran (gates + scrutiny + user-testing) passed → `passed`. **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory").
 
 *Record + commit:*
 
@@ -146,6 +148,18 @@ bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
 echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>]}' \
   | bash "${CLAUDE_SKILL_DIR}/scripts/record-validation.sh" <slug> <milestone-id> <status>
 ```
+
+*Write the milestone walkthrough* (regardless of `validation_status` — every milestone ends with a readable walkthrough): compile `handoffs/<milestone-id>-walkthrough.md` following the template in REFERENCE.md ("In één oogopslag"; reading order; per-feature what/why + key files + self-verify commands; advisories section from the reviewer's `advisories[]`). Then set `milestones[].walkthrough_path` in `state.json` with an atomic write:
+
+```bash
+TMPFILE="$(dirname "${STATE_JSON}")/state.json.tmp.$$"
+jq --arg mid "<milestone-id>" \
+   --arg wp  ".claude/missions/<slug>/handoffs/<milestone-id>-walkthrough.md" \
+   '(.milestones[] | select(.id == $mid) | .walkthrough_path) = $wp' \
+   "${STATE_JSON}" > "${TMPFILE}" && mv "${TMPFILE}" "${STATE_JSON}"
+```
+
+Commit the walkthrough alongside the validation checkpoint (one commit, or as its own `chore(mission):` commit immediately after — pick whichever keeps the diff cleanest).
 
 *On `failed`:* give the milestone ONE bounded remediation pass — re-spawn the coder on the failing feature(s) with the verdicts as context (respect the attempt cap) — then re-validate. Still failing or cap hit → the milestone is blocked (`record-validation.sh` already incremented the breaker); log it and continue.
 
@@ -167,7 +181,9 @@ When no features remain (*finalize added by M6*):
 bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" <slug>
 ```
 
-Marks the mission `done` (all milestones passed) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review. Report the outcome and stop.
+Marks the mission `done` (all milestones passed) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review.
+
+Report the outcome to the user. The final report MUST include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
 
 ## Hard limits — do not override
 
@@ -182,6 +198,7 @@ Marks the mission `done` (all milestones passed) or `blocked`, removes the copie
 - **You never write product code** in the main session — that's the coder's job. You orchestrate.
 - **Validators never see the coder's reasoning** — they get a fresh context, the diff/app, and the contract. Don't paste implementation details into validator prompts.
 - **Never re-run a `done` feature.** Resume reads `commit_sha`; committed work is final.
+- **Schrijfstijl** — walkthroughs and orchestration narratives follow the "Schrijfstijl missions" block in [CONTEXT.md](../../../CONTEXT.md).
 
 ## Reviewing / resuming
 

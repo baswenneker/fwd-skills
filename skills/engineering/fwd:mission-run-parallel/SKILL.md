@@ -2,7 +2,7 @@
 name: fwd:mission-run-parallel
 description: Execute a planned mission in parallel waves — the opt-in, faster, riskier sibling of fwd:mission-run. Reads a v2 mission (one that has depends_on fields) and executes independent features concurrently: each wave spawns up to FWD_MISSION_MAX_PARALLEL (default 3) coder subagents, each in its own slot worktree, then integrates their work sequentially onto the mission branch through the unchanged record-feature machinery. Uses the same state.json checkpoint format, same adversarial validators, and same milestone boundaries as fwd:mission-run — switching runners between ticks is safe. Use when the user runs /fwd:mission-run-parallel <slug>, says "run mission <slug> in parallel" or "wave-based parallel execution", and the mission plan contains a dependency DAG. Refuses v1 missions (no depends_on anywhere) with a clear pointer to /fwd:mission-run. Typing this command is explicit risk acceptance: parallel coders are blind to each other, missed plan dependencies cost conflict round-trips, and tokens do not drop with wall-clock.
 argument-hint: "[<slug>] — run the mission in parallel waves"
-allowed-tools: Read, Glob, Grep, Bash, Agent
+allowed-tools: Read, Glob, Grep, Bash, Agent, Write
 ---
 
 # fwd:mission-run-parallel
@@ -124,6 +124,8 @@ Creates or resets `.trees/mission/<slug>--slot-<n>/` as a worktree on temp branc
 
 - the slot worktree path `<WT-slot>` (the coder works there, `cd`'d in),
 - the ONE feature (id, title) and its acceptance criteria (VC-IDs verbatim),
+- the mission's **design budget** (copy the "Strategy & Design Budget" section verbatim from `mission.md`) — the coder must stay within it,
+- the feature's `rule_paths` from `state.json` as a **mandatory reading list** — declare them binding ("these rules are binding; read each one before writing any code; report `rules_applied` for every rule in your handoff"). When `rule_paths` is absent or empty, omit this bullet entirely — backward compatible with v1/v2 plans.
 - "implement only this feature; add/adjust tests; stage your files; run `risky-scan.sh`; commit with a conventional message; do NOT push; return the handoff as JSON",
 - "NOTE: other coders are implementing sibling features concurrently in separate worktrees — you cannot see or depend on their work; implement your feature self-contained on the provided slot branch."
 
@@ -154,6 +156,10 @@ Exit codes from `integrate-feature.sh`:
 `integrate-feature.sh` pipes the handoff JSON through to `record-feature.sh` on exit 0 and exit 6 internally — the orchestrator passes handoff JSON on stdin. On exit 0, write the coder's prose narrative to `<WT>/.claude/missions/<slug>/handoffs/<feature-id>.md` from the handoff.
 
 `record-feature.sh` is **unchanged** — it verifies a new commit exists, records `commit_sha` + handoff, resets the breaker, and commits the checkpoint. The recorded `commit_sha` is the cherry-picked SHA on the mission branch (not the slot SHA).
+
+Before calling `integrate-feature.sh`, verify the handoff: if the feature's `rule_paths` is non-empty and the returned handoff lacks a non-empty `rules_applied` field (no verantwoording, no accepted handoff):
+- `attempts < FWD_MISSION_MAX_ATTEMPTS` → re-spawn the coder (3.4) for that slot with the failure context appended.
+- attempts exhausted → treat as coder failure: `record-feature.sh <slug> <feature-id> blocked "<reason>"`, increment the breaker, and go to 3.9.
 
 On exit 3 or 4 (conflict / gate-fail): see Conflict policy below.
 
@@ -189,12 +195,26 @@ Always tear down:
 bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/teardown-app.sh" <slug>
 ```
 
-Decide `validation_status` and record:
+Decide `validation_status`: any gate failed OR any scrutiny VC failed → `failed`; gates + scrutiny passed but user-testing couldn't run (no boot / boot failed) → `gates_passed`; everything that ran passed → `passed`. **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory").
+
+Record:
 
 ```bash
 echo '{"gate_results":<gate-results>,"vc_results":[...]}' \
   | bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/record-validation.sh" <slug> <milestone-id> <status>
 ```
+
+*Write the milestone walkthrough* (regardless of `validation_status` — every milestone ends with a readable walkthrough): compile `handoffs/<milestone-id>-walkthrough.md` following the template in REFERENCE.md ("In één oogopslag"; reading order; per-feature what/why + key files + self-verify commands; advisories section from the reviewer's `advisories[]`). Then set `milestones[].walkthrough_path` in `state.json` with an atomic write:
+
+```bash
+TMPFILE="$(dirname "${STATE_JSON}")/state.json.tmp.$$"
+jq --arg mid "<milestone-id>" \
+   --arg wp  ".claude/missions/<slug>/handoffs/<milestone-id>-walkthrough.md" \
+   '(.milestones[] | select(.id == $mid) | .walkthrough_path) = $wp' \
+   "${STATE_JSON}" > "${TMPFILE}" && mv "${TMPFILE}" "${STATE_JSON}"
+```
+
+Commit the walkthrough alongside the validation checkpoint (one commit, or as its own `chore(mission):` commit immediately after — pick whichever keeps the diff cleanest).
 
 *On `failed`:* one bounded remediation pass — re-spawn the coder on the failing feature(s) with the verdicts as context (serial: one at a time, respect attempt cap) — re-validate. Still failing or cap hit → milestone blocked, breaker incremented, continue.
 
@@ -228,7 +248,7 @@ bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/finalize.sh" <slug>
 
 Runs the serial `finalize.sh` byte-for-byte unchanged: marks the mission `done` or `blocked`, commits the final state, scrubs the mission worktree's own `.env*` copy, and keeps the worktree for review.
 
-Report the outcome (`done` or `blocked`) and stop.
+Report the outcome to the user. The final report MUST include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
 
 ## Conflict policy (standing decisions)
 
@@ -267,6 +287,8 @@ Both runners read and write the same `state.json` schema and the same checkpoint
 **`serial_only`-pinned features.** If the parallel runner pins a feature `serial_only: true` after a conflict, the serial runner still ignores that flag (it executes in array order regardless). The flag is consumed only by `pick-wave.sh` to force solo-wave execution in the parallel runner. Mixed runs are therefore safe: serial picks up the feature in order; parallel picks it up as a solo wave.
 
 **`depends_on` is invisible to the serial runner.** The serial runner executes features in `state.json["features"]` array order, period. `depends_on` fields are present in the JSON but never read by serial scripts. No migration needed between v1 and v2 plans.
+
+**Schema v3 optional fields (`rule_paths`, `rules_applied`, `walkthrough_path`) are handled identically by both runners.** Both runners pin `rule_paths` for each coder spawn, enforce `rules_applied` before recording a feature, and write the milestone walkthrough at `walkthrough_path`. The fields are optional and additive — absent on v1/v2 plans, both runners skip those steps cleanly. Switching runners mid-mission leaves no orphaned state.
 
 ## Hard limits — do not override
 
@@ -309,6 +331,7 @@ All shared scripts come **exclusively** via `${CLAUDE_SKILL_DIR}/../fwd:mission-
 - **Validators never see the coders' reasoning** — fresh context, the diff/app, and the contract.
 - **Never re-run a `done` feature.** Resume reads `commit_sha`; committed work is final.
 - **Slot branches are ephemeral.** They are local-only, created off the wave base, and cleaned by reconcile-waves/finalize. They are never pushed.
+- **Schrijfstijl** — walkthroughs and orchestration narratives follow the "Schrijfstijl missions" block in [CONTEXT.md](../../../CONTEXT.md).
 
 ## Configuration
 

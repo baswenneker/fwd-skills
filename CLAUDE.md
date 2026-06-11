@@ -52,6 +52,12 @@ Frontmatter: `name`, `description`, optional `tools` / `disallowedTools` (a `too
 
 The `fwd:mission-*` skills are the first users: `fwd-mission-coder` (write-capable), `fwd-mission-reviewer` and `fwd-mission-user-tester` (write-incapable validators — Bash for inspection, no `Write`/`Edit`). The family is three skills: `fwd:mission-plan` (interactive planning), `fwd:mission-run` (serial execution), and `fwd:mission-run-parallel` (opt-in wave-parallel sibling that shares the serial runner's scripts and state format). A mission's orchestration state + artifacts live on a `mission/<slug>` branch and are **committed there** (so the mission resumes from any worktree/clone) — deliberately not gitignored; only the per-worktree `.env` copy under `.trees/` stays ignored.
 
+**Rules-driven missions.** The mission family uses `.claude/rules/` as the source of truth for repo conventions. Bootstrap it with `/fwd:rules-audit` — the skill scans the codebase, proposes rule files each backed by at least one golden example (a path to a real, exemplary file), and writes only after explicit user approval. Only markdown files under `.claude/rules/` are written; no other files are touched.
+
+How the mission skills consume rules:
+- **`fwd:mission-plan`** inventories available rule files at session start (via `list-rules.sh`), forces a conscious choice when none are found (run `/fwd:rules-audit` first, or proceed without), generates compliance validation criteria (VC-IDs) per feature from the matching rule files, and records a `rules_manifest` in `state.json`.
+- **`fwd:mission-run` / `fwd:mission-run-parallel`** pin the feature's matched rule files as a mandatory reading list in the coder spawn prompt, reject a coder handoff when `rule_paths` is non-empty and `rules_applied` is missing (accountability without verantwoording is refused), compile a milestone walkthrough after each milestone, and propose rule candidates (rule-kandidaten) at finalize — the runner never mutates `.claude/rules/` itself; the human decides.
+
 ## Syncing from `fwd-claude-code`
 
 Most skills here originate in [baswenneker/fwd-claude-code](https://github.com/baswenneker/fwd-claude-code) at `fwd/skills/<skill>/SKILL.md`. To mirror one into this repo:

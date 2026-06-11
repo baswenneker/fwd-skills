@@ -68,6 +68,15 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
     "teardown_command": null            // null → orchestrator kills the boot PID it captured
   },
 
+  // ── Rules manifest (OPTIONAL, schema v3): freezes rule-file content at plan time.
+  // An array of {path, sha256} entries — path is relative to repo root, sha256 is the
+  // hash of the rule file at plan/materialization time. validate-artifacts.sh re-hashes
+  // each file and fails if any entry is missing or has drifted. Plans without this field
+  // (v1/v2) are fully valid everywhere — both runners, all scripts treat it as absent.
+  "rules_manifest": [
+    { "path": ".claude/rules/git.md", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }
+  ],
+
   // ── Features: ORDERED. Resume = first feature whose status != done. ──
   "features": [
     {
@@ -88,12 +97,24 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       // runner) — v1 plans without this field remain valid everywhere. Absent = chain
       // semantics: each feature implicitly depends on its predecessor.
       "depends_on": [],                 // e.g. ["F1","F2"]; absent or [] = chain order
+      // rule_paths (OPTIONAL, schema v3): rule-file paths that apply to this feature,
+      // computed at plan time from the feature's file-by-file table × rule paths: globs.
+      // The coder subagent receives these paths and reports per-rule application in
+      // its handoff (see rules_applied below). Plans without this field remain valid.
+      "rule_paths": [".claude/rules/git.md"],
       "handoff": {                      // structured summary; prose in handoffs/F1.md
         "implemented": ["POST /api/import route", "clipboard parser util"],
         "left_undone": ["multi-file upload — out of scope for this feature"],
         "commands": [ { "command": "npm test tests/import.test.ts", "exit_code": 0 } ],
         "issues_discovered": ["fixture CSV had a BOM; stripped it"],
         "procedures_followed": ["risky-scan clean; conventional commit feat(import):"],
+        // rules_applied (OPTIONAL, schema v3): one entry per rule in rule_paths,
+        // reporting how the coder honored it. record-feature.sh stores the handoff
+        // JSON integrally (no field whitelist), so this field travels into state.json
+        // without any script change.
+        "rules_applied": [
+          { "rule": ".claude/rules/git.md", "how": "used conventional commit prefix feat(import): per rule §3" }
+        ],
         "report_path": ".claude/missions/csv-clipboard-import/handoffs/F1.md"
       }
     }
@@ -113,7 +134,12 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       "vc_results": [                   // Layer B per-assertion verdicts
         { "id": "VC-1", "owner": "scrutiny-review", "passed": true,  "evidence": "route returns 201; parser handles BOM", "report_path": ".claude/missions/csv-clipboard-import/handoffs/M1-review.md" },
         { "id": "VC-3", "owner": "user-testing",    "passed": null,  "evidence": "not run — gates failed", "report_path": null }
-      ]
+      ],
+      // walkthrough_path (OPTIONAL, schema v3): path to the human-readable milestone
+      // walkthrough written by the runner after validation passes. Written in the user's
+      // language; see "Milestone walkthrough template" below. Plans without this field
+      // remain valid — the runner sets it after writing the walkthrough file.
+      "walkthrough_path": ".claude/missions/csv-clipboard-import/handoffs/M1-walkthrough.md"
     }
   ],
 
@@ -133,18 +159,24 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 - **`vc_results[].passed` is tri-state:** `true` / `false` / `null`. `null` = not-run or skipped (e.g. user-testing skipped because gates failed). A re-run never mistakes a skip for a pass.
 - **`gates` vs `gate_results`:** `gates` is the definition (from planning); `milestones[].gate_results` is the per-boundary outcome. Same split for `user_testing` (definition) vs `vc_results` (outcome).
 - **`circuit_breaker` + `decisions[]`** are byte-compatible with issue-fix, so `log-decision.sh` is a near-verbatim crib.
+- **Schema v3 fields are optional and additive.** Plans without `rules_manifest`, `features[].rule_paths`, `milestones[].walkthrough_path`, or `handoff.rules_applied` (v1/v2 plans) remain valid everywhere — both runners, all scripts. No renames, no removals; nothing breaks on absent fields.
+  - **`rules_manifest`** (top-level `[{path, sha256}]`): freezes rule-file content at plan/materialization time. `validate-artifacts.sh` re-hashes each entry and fails if a file is missing or has drifted. Absent or null → no check (v1/v2 behavior unchanged).
+  - **`features[].rule_paths`** (array of paths): rule files that apply to this feature, computed at plan time from the feature's file-by-file scope × rule `paths:` globs. Passed to the coder subagent as its rule context.
+  - **`milestones[].walkthrough_path`** (string path): where the runner writes the post-validation milestone walkthrough markdown (see *Milestone walkthrough template* below). Set by the runner after validation passes; absent in the initial plan.
+  - **`handoff.rules_applied`** (`[{rule, how}]`): see the handoff table below.
 
 ## The handoff report
 
-Every coder subagent returns a structured handoff (recorded into `features[].handoff`, prose into `handoffs/F<n>.md`). The five fields are non-negotiable — they're how the mission stays coherent across fresh contexts:
+Every coder subagent returns a structured handoff (recorded into `features[].handoff`, prose into `handoffs/F<n>.md`). The five core fields are non-negotiable — they're how the mission stays coherent across fresh contexts:
 
-| Field | Meaning |
-|---|---|
-| `implemented` | what this feature actually delivered |
-| `left_undone` | anything deferred or out of scope (so the next worker/validator knows) |
-| `commands` | commands the coder ran + their exit codes (self-check evidence) |
-| `issues_discovered` | surprises, gotchas, latent bugs found along the way |
-| `procedures_followed` | which conventions/gates were honored (risky-scan, conventional commit, …) |
+| Field | Type | Meaning |
+|---|---|---|
+| `implemented` | string[] | what this feature actually delivered |
+| `left_undone` | string[] | anything deferred or out of scope (so the next worker/validator knows) |
+| `commands` | {command, exit_code}[] | commands the coder ran + their exit codes (self-check evidence) |
+| `issues_discovered` | string[] | surprises, gotchas, latent bugs found along the way |
+| `procedures_followed` | string[] | which conventions/gates were honored (risky-scan, conventional commit, …) |
+| `rules_applied` | [{rule, how}][] | (OPTIONAL, schema v3) one entry per rule in `rule_paths`, describing how the coder honored that rule. `record-feature.sh` stores the handoff JSON integrally — no field whitelist — so this field travels into `state.json` without any script change. Absent when `rule_paths` is absent or empty. |
 
 Validators return per-VC verdicts (recorded into `milestones[].vc_results`), prose into `handoffs/M<n>-review.md`.
 
@@ -210,6 +242,47 @@ The User-Testing validator needs to launch the app. The boot recipe is **capture
 | `FWD_MISSION_WORKTREE_DIR` | `<repo>/.trees` | Worktree root (`<dir>/mission/<slug>/`) |
 | `FWD_MISSION_GATE_TIMEOUT` | `600` | Per-gate timeout (seconds) |
 | `FWD_MISSION_MAX_ATTEMPTS` | `3` | Coder attempts per feature |
+
+## Milestone walkthrough template
+
+After a milestone passes validation, the runner writes a human-readable walkthrough at `milestones[].walkthrough_path` (e.g. `.claude/missions/<slug>/handoffs/M1-walkthrough.md`). This file is the hand-off document for the human who reviews the milestone. Write it in the user's language; the structure below uses Dutch labels as prescribed but the skeleton is language-neutral.
+
+```markdown
+# <Milestone title> — walkthrough
+
+## In één oogopslag
+<!-- Max 5 sentences. What does this milestone deliver? Why does it matter?
+     What is the most important decision that was made? Any non-obvious risk? -->
+
+## Leesvolgorde
+<!-- Suggested reading order for someone reviewing the diff cold.
+     List files / commits in the order that builds the clearest mental model. -->
+1. `<path/to/key/file>` — <one sentence why to read this first>
+2. ...
+
+## Per feature
+
+### <Feature id>: <Feature title>
+**Wat / waarom** — <1-2 sentences: what was built and why this approach>
+
+**Sleutelbestanden**
+- `<path>` — <role>
+
+**Zelf verifiëren**
+```bash
+<command to smoke-test or check this feature's output>
+```
+
+<!-- Repeat for each feature in this milestone -->
+
+## Advisories
+<!-- Non-blocking findings from the Scrutiny reviewer: simplicity observations,
+     latent tech debt, things to watch. Not failures — those would have blocked
+     the milestone. Leave empty if the reviewer had no advisories. -->
+- <advisory> _(optional)_
+```
+
+The runner fills in each section from the coder handoffs and the validator reports. The "In één oogopslag" block must be written last (after reading all per-feature sections) so it can summarise the whole milestone honestly.
 
 ## Sources
 
