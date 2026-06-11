@@ -14,6 +14,7 @@
     "./skills/productivity/fwd:caveman",
     "./skills/productivity/fwd:explain",
     "./skills/productivity/fwd:handoff",
-    "./skills/productivity/fwd:premortem"
+    "./skills/productivity/fwd:premortem",
+    "./skills/productivity/fwd:jip-janneke"
   ]
 }
