@@ -74,6 +74,7 @@ Before any feature is installed, the wizard asks where it should land:
 | productivity | [fwd:explain](skills/productivity/fwd:explain/SKILL.md) | Break down anything heavy — a plan, code file, diff, doc, stack trace, PR, URL, or concept — into a layered walkthrough. Mental model first (problem framed + best-fit form: diagram, analogy, before/after, or causal narrative), then one chunk at a time on demand. |
 | productivity | [fwd:handoff](skills/productivity/fwd:handoff/SKILL.md) | Compact the current conversation into a handoff document for another agent to pick up. |
 | productivity | [fwd:premortem](skills/productivity/fwd:premortem/SKILL.md) | Stress-test a plan by imagining it has already failed, list concrete failure modes across 8 categories, grade each Low/Medium/High via Likelihood × Impact, then ICE-rank 2–4 candidate mitigations per meaningful failure and flag an early-signal per finding. Closes with a "hardened plan" diff and an explicit "risks we accept" list. |
+| productivity | [fwd:jip-janneke](skills/productivity/fwd:jip-janneke/SKILL.md) | Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke. |
 
 ## Adding a skill
 
