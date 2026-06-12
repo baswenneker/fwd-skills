@@ -1,7 +1,7 @@
 ---
 name: fwd:jip-janneke
 description: |
-  Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke.
+  Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only; output is always Dutch unless another language is explicitly requested. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke.
 
   Not fwd:explain (interactive layered walkthrough — explains, does not rewrite).
   Not fwd:caveman (compresses WITH abbreviations, cuts to fragments — opposite direction).
@@ -93,15 +93,15 @@ If a passage is genuinely ambiguous, reproduce it faithfully rather than resolvi
 
 Output lands in chat only. No files written.
 
-**Output language mirrors the source text's language.** Dutch source → Dutch rewrite. English source → English rewrite. Mixed → follow the dominant language.
+**Output language is Dutch by default — regardless of the source language.** English source → Dutch rewrite. Only when the user explicitly asks for another language ("in plain English", "in het Engels", …) does the rewrite follow that language instead.
 
 ### Output shape
 
 Render in this order, always:
 
 1. **Summary block** — 2–3 sentences, plain language.
-   - Dutch source: start with `**In 't kort**`
-   - English source: start with `**In short**`
+   - Dutch output (the default): start with `**In 't kort**`
+   - Explicitly requested other language: start with its equivalent (English: `**In short**`)
 
 2. **Rewritten text** — the full rewrite, applying all rules from Step 2 and Step 3.
 
