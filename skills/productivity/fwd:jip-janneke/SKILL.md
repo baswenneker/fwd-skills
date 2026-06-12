@@ -69,11 +69,18 @@ Apply all four rules. No exceptions.
 
 ### Rule A — Abbreviations written out in full at first use
 
-Every abbreviation, acronym, or initialism is introduced in full at first occurrence: "Product Requirements Document (PRD)". The short form alone is allowed from that point on. If the source uses an abbreviation without ever defining it, infer the expansion or flag it inline as `[abbreviation not defined in source]`.
+Every abbreviation, acronym, or initialism **that a general reader might not know** is introduced in full at first occurrence: "Product Requirements Document (PRD)". The short form alone is allowed from that point on. If the source uses an abbreviation without ever defining it, infer the expansion or flag it inline as `[abbreviation not defined in source]`.
+
+Two hard exceptions:
+
+- **Household abbreviations are never expanded** — AI, IT, URL, PDF, HTML, CEO and the like. Expanding these adds noise, not clarity.
+- **Expansions keep the term's own language.** "AI" is never "Kunstmatige Intelligentie"; "PRD" is never "Productvereistendocument". The expansion is the established (usually English) full form, also in a Dutch rewrite.
 
 ### Rule B — No unexplained jargon
 
 Replace jargon with plain everyday words wherever possible. When a technical term is genuinely unavoidable (a product name, a standard, a precise concept with no good substitute), explain it in one clause at first use: "…using OAuth 2.0 (a standard that lets apps request access on a user's behalf) …". Do not repeat the explanation on later uses.
+
+**Technical terms keep their established English form — also in a Dutch rewrite.** The explanation is written in the output language; the term itself is never translated. Never coin a Dutch calque for an English concept: write "de gate (de selectiestap die bepaalt welke kandidaten doorgaan)", never "toelatingspoort"; write "isolation families", never "isolatie-families". A contrived Dutch translation is harder to read than the English term it replaces — the opposite of what this skill is for.
 
 ### Rule C — ASCII diagrams for structured content
 
@@ -95,6 +102,8 @@ Output lands in chat only. No files written.
 
 **Output language is Dutch by default — regardless of the source language.** English source → Dutch rewrite. Only when the user explicitly asks for another language ("in plain English", "in het Engels", …) does the rewrite follow that language instead.
 
+Dutch by default does **not** mean translating technical vocabulary: established English terms and household abbreviations stay English (Rule A and Rule B). The prose is Dutch; the terms are not.
+
 ### Output shape
 
 Render in this order, always:
@@ -105,7 +114,7 @@ Render in this order, always:
 
 2. **Rewritten text** — the full rewrite, applying all rules from Step 2 and Step 3.
 
-3. **Abbreviations list** — include **only** when the source contains 4 or more distinct abbreviations.
+3. **Abbreviations list** — include **only** when the rewrite expanded 4 or more distinct abbreviations under Rule A (household abbreviations don't count and don't appear).
    Format:
    ```
    **Afkortingen** / **Abbreviations**
