@@ -38,8 +38,18 @@ rtk git add -- ".claude/missions/$SLUG" >&2
 rtk git commit -q -m "chore(mission): finalize $SLUG ($OUT)" >&2
 
 # Scrub the copied secrets + boot artifacts; keep the worktree itself for review.
+# Only remove env files that are NOT tracked by git (the copied secrets). A bare
+# `rm .env.*` also matches tracked templates like .env.example and would delete
+# them from the branch — so check each file and keep anything git tracks.
 shopt -s nullglob
-rm -f "$WT_PATH"/.env "$WT_PATH"/.env.* "$WT_PATH"/.mission-boot.pid "$WT_PATH"/.mission-boot.log
+for f in "$WT_PATH"/.env "$WT_PATH"/.env.*; do
+  [[ -e "$f" ]] || continue
+  if git -C "$WT_PATH" ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+    continue  # tracked template (e.g. .env.example) — keep it
+  fi
+  rm -f "$f"
+done
+rm -f "$WT_PATH"/.mission-boot.pid "$WT_PATH"/.mission-boot.log
 shopt -u nullglob
 
 echo "$OUT"

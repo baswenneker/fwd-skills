@@ -10,6 +10,8 @@ Regels voor alles wat missions produceren: plannen, rapporten, walkthroughs, han
 - **Geen onverklaarde afkortingen.** De eerste keer dat een term of afkorting verschijnt, volgt een korte uitleg op dezelfde regel.
 - **Rapporten beginnen met "In één oogopslag".** Dit is een alinea van maximaal 5 zinnen die de kern samenvat. De lezer weet daarna wat er is gedaan en waarom.
 - **Schrijf in de taal van de gebruiker.** Is de gebruiker Nederlandstalig, schrijf dan Nederlands. Is de gebruiker Engelstalig, schrijf dan Engels.
+- **Schrijf voor een mens die het moet doorvertellen.** De lezer moet jouw uitkomst aan een collega kunnen uitleggen. Toets vóór je iets oplevert: "kan ik dit aan een collega uitleggen?" Zo nee, herschrijf.
+- **Vertaal interne codes; dump ze niet rauw.** Orkestratie-termen (VC-ID, milestone-id, gate-namen, DAG width, `state.json`-velden) en rauwe JSON horen thuis in de bestanden voor de agent-keten — niet onvertaald in wat de gebruiker leest. Noem in lopende tekst eerst wát het is, dan pas de code: "validatiecriterium VC-3 (…)".
 
 ## Vocabulary
 

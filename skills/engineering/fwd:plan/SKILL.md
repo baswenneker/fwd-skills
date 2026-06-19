@@ -39,7 +39,7 @@ Render eerst — vóór elke `AskUserQuestion` — een **confident voorstel** vo
 Format — numbered bullets, géén box-drawing, géén `AskUserQuestion`:
 
 ```
-DoD — voorstel:
+Definition of Done (DoD) — voorstel:
 
 1. <observeerbaar gedrag, test of contract #1>
 2. <criterium #2>
@@ -185,5 +185,6 @@ In 1-plan modus: verdict-block is een korte verantwoording (2-3 zinnen) waarom d
 ## Style
 
 - Plain language. Geen filler.
+- **Schrijf afkortingen uit bij eerste gebruik** (DoD = Definition of Done, enz.). De lezer is een mens die het plan aan een collega moet kunnen uitleggen.
 - Match de gebruiker's taal (NL/EN); houd file-paths en code-identifiers exact.
 - Na het verdict-block: **stop**. Niet implementeren; wacht op de volgende stap van de gebruiker.

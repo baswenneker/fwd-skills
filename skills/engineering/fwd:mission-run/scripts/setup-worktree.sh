@@ -22,9 +22,16 @@ fi
 
 # Copy .env* into the worktree root so the User-Testing validator can boot the app.
 # These stay gitignored / are guarded by risky-scan — never committed.
+# Only copy untracked secrets: tracked templates (e.g. .env.example) are already
+# present in the worktree via the branch checkout, and copying — then later
+# scrubbing — them would delete a tracked file from the branch.
 shopt -s nullglob
 for f in "$REPO_ROOT"/.env "$REPO_ROOT"/.env.*; do
-  [[ -f "$f" ]] && cp -f "$f" "$WT_PATH/"
+  [[ -f "$f" ]] || continue
+  if git -C "$REPO_ROOT" ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+    continue  # tracked template — already in the worktree
+  fi
+  cp -f "$f" "$WT_PATH/"
 done
 shopt -u nullglob
 
