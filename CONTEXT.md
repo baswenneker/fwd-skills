@@ -13,6 +13,15 @@ Regels voor alles wat missions produceren: plannen, rapporten, walkthroughs, han
 - **Schrijf voor een mens die het moet doorvertellen.** De lezer moet jouw uitkomst aan een collega kunnen uitleggen. Toets vóór je iets oplevert: "kan ik dit aan een collega uitleggen?" Zo nee, herschrijf.
 - **Vertaal interne codes; dump ze niet rauw.** Orkestratie-termen (VC-ID, milestone-id, gate-namen, DAG width, `state.json`-velden) en rauwe JSON horen thuis in de bestanden voor de agent-keten — niet onvertaald in wat de gebruiker leest. Noem in lopende tekst eerst wát het is, dan pas de code: "validatiecriterium VC-3 (…)".
 
+## Codecommentaar (gegenereerde code)
+
+Geldt voor alle code die de coder schrijft — broncode én tests, comments én docstrings. Dit is de doortrekking van de "Vertaal interne codes"-regel hierboven naar de code zelf: wat niet onvertaald op het scherm van de gebruiker hoort, hoort al helemaal niet in de committe deliverable.
+
+- **Comments beschrijven wát de code doet en waaróm.** Zelfstandig leesbaar voor iemand die deze mission nooit heeft gezien. Niet wanneer, niet in welke volgorde, niet ten opzichte van wat eerder is gebouwd.
+- **Nooit mission-interne codes in code.** Feature-IDs (`F1`, `F3`), milestone-IDs (`M1`), validatiecriteria (`VC-5`) en historie-verwijzingen ("pre-F4", "voor feature X", "stap 2 van de mission") horen nergens in committe code, comments, docstrings of commit messages. Het zijn orkestratie-codes; buiten de mission betekenen ze niets. Echte tokens die toevallig op zo'n code lijken — een flake8 `noqa: F401`, een hexwaarde — zijn geen mission-codes en blijven gewoon staan.
+- **Test-docstrings beschrijven het geteste gedrag, niet het criterium-nummer.** Schrijf "Een cross-org file-ref gooit `ValueError` (fail-closed)", niet "VC-6: …".
+- **Toets:** zou deze comment nog kloppen en nut hebben als de mission nooit had bestaan? Zo nee, herschrijf.
+
 ## Vocabulary
 
 _Voeg een entry toe zodra een term op meer dan één plek wordt gebruikt en één canonieke definitie nodig heeft._

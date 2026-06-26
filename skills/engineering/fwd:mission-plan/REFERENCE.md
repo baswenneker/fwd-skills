@@ -91,6 +91,7 @@ Each assertion: given / when / then, a stable ID, an owner, the milestone it gat
 - **VC-1** (scrutiny-review): *Given* a CSV on the clipboard, *when* `POST /api/import` is called, *then* it returns 201 and persists the rows. · *The import endpoint stores the data.* *(features: F1)*
 - **VC-2** (scrutiny-review): *Given* a malformed CSV, *when* imported, *then* the endpoint returns 400 with a field-level error — no partial write. · *Bad input is rejected cleanly.* *(features: F1)*
 - **VC-3** (user-testing): *Given* the app is running, *when* a user pastes CSV into the import box and clicks Import, *then* the rows appear in the table within 2s. · *The user sees the result fast.* *(features: F2)*
+- **VC-4** (scrutiny-review): *Given* the committed code of this milestone, *when* the reviewer reads the diff, *then* no comment, docstring, or commit message contains a mission-internal code (feature/milestone/VC ID, or a history reference like "pre-F4") — every comment is standalone-readable. · *Comments explain what/why, no mission jargon.* *(features: F1, F2)*
 
 ## App boot (user-testing)
 - boot: `npm run dev`
@@ -104,6 +105,7 @@ Each assertion: given / when / then, a stable ID, an owner, the milestone it gat
 - **Falsifiable.** A validator must be able to render a clear PASS/FAIL with evidence.
 - **Owned.** `scrutiny-review` for anything checkable from the diff/tests; `user-testing` for anything that needs the running app. If there's no bootable app, everything is `scrutiny-review`.
 - **Mapped.** Every VC-ID lists the feature(s) that satisfy it; every feature's `vc_ids` in `state.json` lists the VC-IDs it targets. The two must agree.
+- **Comment hygiene is a standing VC.** Every milestone carries one `scrutiny-review` assertion (the VC-4 shape above), regardless of whether `.claude/rules/` exist, enforcing that committed comments/docstrings/commit messages contain no mission-internal codes (feature/milestone/VC IDs, history references) and read standalone. The reviewer judges it like any compliance-VC. The norm is the "Codecommentaar" block in [CONTEXT.md](../../../CONTEXT.md).
 
 ## Worked example (minimal)
 

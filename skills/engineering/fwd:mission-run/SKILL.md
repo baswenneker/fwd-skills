@@ -98,6 +98,7 @@ Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first f
 - the ONE feature (id, title) and its acceptance criteria (the VC-IDs verbatim),
 - the mission's **design budget** (copy the "Strategy & Design Budget" section verbatim from `mission.md`) — the coder must stay within it,
 - the feature's `rule_paths` from `state.json` as a **mandatory reading list** — declare them binding ("these rules are binding; read each one before writing any code; report `rules_applied` for every rule in your handoff"). When `rule_paths` is absent or empty, omit this bullet entirely — backward compatible with v1/v2 plans.
+- the **comment standard** (binding): the VC-IDs and feature/milestone IDs in this prompt are internal orchestration codes — the coder must never write them (or history references like "pre-F4") into code, comments, docstrings, or commit messages; comments explain what/why and are standalone-readable (CONTEXT.md "Codecommentaar"). The milestone's comment-hygiene VC fails the review otherwise.
 - "implement only this feature; add/adjust tests; stage your files; run `risky-scan.sh`; commit with a conventional message; do NOT push; return the handoff as JSON".
 
 The coder returns a structured handoff (the five fields — see REFERENCE).
@@ -122,7 +123,7 @@ bash "${CLAUDE_SKILL_DIR}/scripts/run-gates.sh" <slug> <milestone-id>
 
 Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed. Capture it as `<gate-results>`.
 
-*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
+*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
 
 *User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND scrutiny passed (else record these VC-IDs `null`, evidence "skipped: upstream failed"). Boot the app:
 

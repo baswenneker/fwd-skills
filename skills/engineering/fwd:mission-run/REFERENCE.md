@@ -181,6 +181,8 @@ Two layers, written **before any code**, independent of implementation:
   - `scrutiny-review` — judged by the adversarial code reviewer against the diff.
   - `user-testing` — judged by the user-tester against the running app.
 
+Every milestone also carries a **standing comment-hygiene VC** (`scrutiny-review`): committed comments, docstrings, and commit messages must contain no mission-internal codes (feature/milestone/VC IDs, history references like "pre-F4") and must read standalone. `fwd:mission-plan` generates it per milestone regardless of whether `.claude/rules/` exist; the reviewer judges it like any compliance-VC, and a violation fails the milestone. The norm is CONTEXT.md's "Codecommentaar" block.
+
 Validators judge against specific VC-IDs (not vibes); per-ID pass/fail flows into `vc_results` and the handoff reports.
 
 ## Execution & resume semantics

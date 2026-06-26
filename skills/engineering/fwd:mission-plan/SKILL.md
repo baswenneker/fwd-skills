@@ -113,6 +113,12 @@ Elke VC bevat ook een één-regel-samenvatting in gewone taal (het `· *cursief*
 4. Genereer per match een compliance-assertion in Layer B, bijv.: "Feature X's aangepaste bestanden voldoen aan rule Y — beoordeeld door de reviewer."
 5. Bij materialisatie (het schrijven van `state.json` op de mission-branch): vul het top-level `rules_manifest` met `[{path, sha256}]` per regelbestand. Zie het schema in `../fwd:mission-run/REFERENCE.md` (schema v3) — documenteer het schema hier niet opnieuw.
 
+**Comment-hygiëne-VC (verplicht — elke milestone, altijd).** Voeg per milestone één staande `scrutiny-review`-assertion toe die zelfstandig leesbare comments afdwingt, gemapt op álle features van die milestone. Dit geldt onafhankelijk van of er `.claude/rules/` zijn — zo heeft de reviewer altijd een VC-ID-slot om hard op te falen. Sjabloon:
+
+> **VC-N** (scrutiny-review): *Given* de gecommitte code van deze milestone, *when* de reviewer de diff leest, *then* bevat geen enkele comment, docstring of commit message een mission-interne code (feature-ID, milestone-ID, validatiecriterium-ID of historie-verwijzing zoals "pre-F4") — elke comment is zelfstandig leesbaar. · *Comments leggen het wat/waarom uit, zonder mission-jargon.* *(features: alle van deze milestone)*
+
+De norm die deze VC afdwingt is de "Codecommentaar"-block in [CONTEXT.md](../../../CONTEXT.md).
+
 **App-boot config (for user-testing).** Discover boot candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, `Makefile` run target). Confirm with the user: the `boot_command`, a `ready_probe` (HTTP poll or log-line match — essential), and 1–3 `smoke_commands`. If the app can't be booted (e.g. a library), set no boot command and tag everything `scrutiny-review`.
 
 ### 4.5. Simplicity grill (vóór de approval gate)
