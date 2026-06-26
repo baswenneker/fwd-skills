@@ -80,21 +80,14 @@ Once the PRD holds, propose an **ordered** feature list grouped into **milestone
 - Each feature maps to the acceptance criteria (VC-IDs) it must satisfy.
 - A milestone is a meaningful checkpoint where the validators run. Smaller milestones = more frequent validation = a more stable foundation for long missions.
 
-**Propose `depends_on` per feature.** For each feature, identify which earlier features it genuinely needs (code it builds on). Write their ids as `depends_on`. The conservative default: **when unsure, add the edge** — a false dependency only costs parallelism; a missed dependency causes a conflict round-trip at run time. Constraints:
-
-- Only reference ids that exist (within the same or an earlier milestone — no forward-milestone refs, no cycles).
-- A feature with no real prerequisite (beyond the preceding feature) may omit `depends_on` or leave it empty (`[]`).
-- The serial runner (`fwd:mission-run`) ignores `depends_on` entirely and always executes in array order, so an overly conservative DAG has zero cost there.
-- The parallel runner (`fwd:mission-run-parallel`) groups features into waves using these edges, so accuracy matters for throughput — but correctness always beats speed.
-
-Present as a numbered tree with inline `depends_on` annotations, e.g.:
+**Order features so each builds on the ones before it.** Features execute serially in array order, each inheriting its predecessors' code via git, so sequence is the only ordering signal — place a feature after everything it depends on. Present as a numbered tree, e.g.:
 
 ```
-M1 → F1 (depends_on: []), F2 (depends_on: [F1]), F3 (depends_on: [F1])
-M2 → F4 (depends_on: [F2, F3])
+M1 → F1, F2, F3
+M2 → F4
 ```
 
-Let the user reorder/split or adjust dependencies in plain text.
+Let the user reorder or split features in plain text.
 
 ### 4. Write the validation contract (`validation-contract.md`)
 
@@ -162,12 +155,7 @@ It asserts the three artifacts exist and are well-formed (valid `state.json` wit
 
 ### 7. Hand off
 
-Report: the slug, the branch, the worktree path, the milestone/feature count, **DAG stats**, and both run commands.
-
-**DAG stats to compute and print:**
-
-- **DAG width** — the largest number of features that can run concurrently at any point (the widest wave: max number of features at the same "depth" in the dependency graph, i.e. the largest antichain / max wave size). A pure chain has width 1; independent features increase this.
-- **Critical-path length** — the longest chain of dependencies from any root feature to any leaf, in feature count. This is the minimum number of sequential steps the parallel runner must take regardless of parallelism.
+Report: the slug, the branch, the worktree path, the milestone/feature count, and the run command.
 
 Example output block:
 
@@ -176,15 +164,12 @@ Mission planned: <slug>
   Branch:   mission/<slug>
   Worktree: .trees/mission/<slug>/
   Features: <N> across <M> milestones
-  DAG width (max parallel): <W>
-  Critical-path length:     <C> features
 
 Run it:
-  /fwd:mission-run <slug>              ← serial, safe default
-  /fwd:mission-run-parallel <slug>     ← parallel waves, opt-in (requires correct depends_on)
+  /fwd:mission-run <slug>
 ```
 
-For long missions add `/loop` in front of either command.
+For long missions add `/loop` in front of the command.
 
 ## Boundaries
 
