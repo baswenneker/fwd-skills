@@ -34,8 +34,29 @@ if [[ -f "$STATE" ]]; then
   fi
 fi
 
+if [[ -f "$MDIR/mission.md" ]]; then
+  grep -Eq '^## Zo ziet klaar eruit' "$MDIR/mission.md" \
+    || errs+=("mission.md mist de sectie '## Zo ziet klaar eruit' (het verplichte eindbeeld)")
+fi
+
 if [[ -f "$MDIR/validation-contract.md" ]]; then
   grep -Eq 'VC-[0-9]+' "$MDIR/validation-contract.md" || errs+=("validation-contract.md has no VC- assertions")
+
+  # Robustness coverage: every feature needs a line in '## Robuustheid' that either
+  # names covering VC's or records an explicit user-confirmed waiver.
+  if ! grep -Eq '^## Robuustheid' "$MDIR/validation-contract.md"; then
+    errs+=("validation-contract.md mist de sectie '## Robuustheid'")
+  elif [[ -f "$STATE" ]] && jq -e . "$STATE" >/dev/null 2>&1; then
+    ROBUST_SECTION="$(awk '/^## Robuustheid/{flag=1;next}/^## /{flag=0}flag' "$MDIR/validation-contract.md")"
+    while IFS= read -r fid; do
+      [[ -n "$fid" ]] || continue
+      # Escape regex metacharacters: feature ids are F<n> by convention, but an exotic
+      # id must fail closed instead of matching (or breaking) the pattern.
+      fid_re="$(sed -e 's/[][\.|$(){}?+*^\\]/\\&/g' <<<"$fid")"
+      grep -E "(^|[^A-Za-z0-9])${fid_re}([^0-9]|$)" <<<"$ROBUST_SECTION" | grep -Eq 'VC-[0-9]+|waiver' \
+        || errs+=("Robuustheid: feature ${fid} heeft geen VC-verwijzing of waiver")
+    done < <(jq -r '.features[].id // empty' "$STATE" 2>/dev/null)
+  fi
 fi
 
 # ── Rules-manifest check (schema v3, additive) ───────────────────────────────

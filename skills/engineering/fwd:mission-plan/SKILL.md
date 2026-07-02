@@ -65,12 +65,13 @@ Present a confident PRD draft in plain text (not `AskUserQuestion`), built from 
 1. **Problem Statement** — who hurts, and the measurable cost.
 2. **Goals & Success Metrics** — the primary goal + measurable targets.
 3. **Acceptance Criteria** — observable, testable; these seed the Layer-B assertions.
-4. **Implementation Strategy** — approach + the existing patterns to follow.
-5. **File-by-file breakdown** — concrete paths (only real paths from Step 1).
-6. **Testing & Verification** — how correctness is confirmed.
-7. **Security considerations** — secrets, input validation, authz.
+4. **Zo ziet klaar eruit** — het concrete eindbeeld: bij UI-werk een ASCII-mockup of referentiescreenshot (bied bij smaakgevoelig werk 2–3 stijlvarianten aan en laat de gebruiker kiezen), bij CLI/API-werk een letterlijk input→output-voorbeeld, bij een refactor een before/after van het publieke contract; anders "n.v.t. — <reden>". Template in REFERENCE.md.
+5. **Implementation Strategy** — approach + the existing patterns to follow.
+6. **File-by-file breakdown** — concrete paths (only real paths from Step 1).
+7. **Testing & Verification** — how correctness is confirmed.
+8. **Security considerations** — secrets, input validation, authz.
 
-Stop and let the user correct it in plain text. Re-render on changes. Don't bluff — if Step 1 was too thin, say what context you're missing and wait.
+Stop and let the user correct it in plain text. Re-render on changes. Don't bluff — if Step 1 was too thin, say what context you're missing and wait. De draft is niet compleet zonder het Zo-ziet-klaar-eruit-blok; de approval gate (stap 5) mag niet bereikt worden zolang het ontbreekt.
 
 ### 3. Decompose into features → milestones
 
@@ -105,6 +106,8 @@ It prints a JSON array of resolvable gate commands (test/typecheck/lint/build �
 
 Elke VC bevat ook een één-regel-samenvatting in gewone taal (het `· *cursief*`-patroon — zie REFERENCE.md voor het template).
 
+**Smaak-VC's zijn verankerd.** Stijl- en smaak-assertions ("oogt verzorgd", "geen default look") zijn alleen toegestaan als hun *then* expliciet verwijst naar het gekozen eindbeeld in `mission.md` §"Zo ziet klaar eruit" — anders herschrijven of schrappen. Zonder anker kan geen validator erop falen en wordt smaak een gok van de coder.
+
 **Compliance-VC-generatie (verplicht wanneer `.claude/rules/` niet leeg is).** Zet de file-by-file-tabel van de PRD om in contract-criteria als volgt:
 
 1. Neem per feature de paden uit de file-by-file-tabel.
@@ -119,15 +122,25 @@ Elke VC bevat ook een één-regel-samenvatting in gewone taal (het `· *cursief*
 
 De norm die deze VC afdwingt is de "Codecommentaar"-block in [CONTEXT.md](../../../CONTEXT.md).
 
+**Test-kwaliteits-VC (verplicht — elke milestone, altijd).** Voeg per milestone één staande `scrutiny-review`-assertion toe die afdwingt dat de tests van die milestone echt gedrag bewijzen, gemapt op álle features van die milestone. Sjabloon:
+
+> **VC-N** (scrutiny-review): *Given* de tests die deze milestone toevoegt of wijzigt, *when* de reviewer ze leest, *then* importeert elke test de échte productiecode (geen gekopieerde of nagebootste logica in het testbestand), bevat geen test een tautologische assert (een test die ook slaagt als de import faalt), en oefent minstens één test het echte integratiepad via de publieke entrypoint in plaats van direct opgebouwde interne state. · *De groene tests bewijzen echt gedrag.* *(features: alle van deze milestone)*
+
+Mocks van *dependencies* blijven toegestaan — alleen de logica ónder test mag niet gedupliceerd zijn. De reviewer auditeert dit statisch en laat vacueuze of gekopieerde-logica-tests hard op deze VC falen.
+
 **App-boot config (for user-testing).** Discover boot candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, `Makefile` run target). Confirm with the user: the `boot_command`, a `ready_probe` (HTTP poll or log-line match — essential), and 1–3 `smoke_commands`. If the app can't be booted (e.g. a library), set no boot command and tag everything `scrutiny-review`.
 
-### 4.5. Simplicity grill (vóór de approval gate)
+### 4.5. Simplicity & robustness grill (vóór de approval gate)
 
-Toets het plan op drie vragen vóórdat de gebruiker het goedkeurt. Presenteer bevindingen als plain text; verwerk ze in het plan als er actie op volgt.
+Toets het plan op vijf vragen vóórdat de gebruiker het goedkeurt. Presenteer bevindingen als plain text; verwerk ze in het plan als er actie op volgt.
 
 1. **Kunnen features samengevoegd?** Zijn er features die samen kleiner en begrijpelijker zijn dan apart? Elke onnodige feature-grens is extra orchestratie-overhead.
 2. **Welke component is speculatief?** Een component is speculatief als hij op aannames berust die nog niet door stap 1 (codebase-onderzoek) zijn bevestigd. Markeer speculatieve componenten expliciet.
 3. **Wat is het eenvoudigste ontwerp dat het contract haalt?** Controleer of het voorgestelde ontwerp de goedkoopste weg is naar alle VC-IDs — niet meer, niet minder.
+4. **Heeft elke user-facing input minimaal één sad-path-VC?** Denk aan: leeg, malformed, quotes/apostrof, te groot, gelijktijdig gebruik. Genereer scenario's met de premortem-denkwijze: "het is al misgegaan — hoe?".
+5. **Heeft elke feature die externe of live data raakt minimaal één realistische-schaal-VC?** Denk aan: aantallen zoals in productie, paginering, een lege dataset.
+
+Ontbreekt bij vraag 4 of 5 dekking voor een feature, dan óf een VC toevoegen, óf een expliciete waiver laten bevestigen door de gebruiker via `AskUserQuestion` — een waiver is nooit een planner-default. De dekking (VC's of waiver per feature) landt in de sectie `## Robuustheid` van het contract (template in REFERENCE.md); `validate-artifacts.sh` weigert een plan zonder die sectie.
 
 De uitkomst gaat terug naar de gebruiker. Is er aanleiding tot vereenvoudiging, pas dan de feature-lijst, het design budget of het contract aan vóór stap 5.
 
@@ -157,7 +170,7 @@ Finally validate and commit the plan:
 bash "${CLAUDE_SKILL_DIR}/scripts/validate-artifacts.sh" <slug>
 ```
 
-It asserts the three artifacts exist and are well-formed (valid `state.json` with required fields; ≥1 `VC-` in the contract), then commits `.claude/missions/<slug>/` on the mission branch as `docs(mission): scope <slug>`. On a non-zero exit, fix what it reports and re-run — do not hand off a malformed mission.
+It asserts the three artifacts exist and are well-formed (valid `state.json` with required fields; ≥1 `VC-` in the contract; mission.md bevat `## Zo ziet klaar eruit`; het contract bevat `## Robuustheid` met dekking of waiver per feature), then commits `.claude/missions/<slug>/` on the mission branch as `docs(mission): scope <slug>`. On a non-zero exit, fix what it reports and re-run — do not hand off a malformed mission.
 
 ### 7. Hand off
 

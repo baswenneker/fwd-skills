@@ -30,6 +30,17 @@ else
   OUT=done
 fi
 
+# A bootable deliverable may only be "done" after a successful cold start: the runner
+# must have booted it fresh (the way the user will) and recorded the proof in state.
+if [[ "$OUT" == "done" ]]; then
+  BOOT_CMD="$(jq -r '.user_testing.boot_command // empty' "$STATE")"
+  PROOF_OK="$(jq -r '.cold_start_proof.ok // false' "$STATE")"
+  if [[ -n "$BOOT_CMD" && "$PROOF_OK" != "true" ]]; then
+    echo "no cold-start-proof: boot_command is set but cold_start_proof.ok is not true — run the RUNBOOK cold start first" >&2
+    OUT=blocked
+  fi
+fi
+
 TMP="$STATE.tmp.$$"
 jq --arg s "$OUT" --arg t "$(date -u +%FT%TZ)" '.status = $s | .completed_at = $t' "$STATE" > "$TMP" && mv "$TMP" "$STATE"
 

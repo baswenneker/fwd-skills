@@ -40,6 +40,17 @@ Factory's PRD shape. Keep it concrete and measurable; this is the contract's nar
 - <criterion>
 - <criterion>
 
+## Zo ziet klaar eruit
+<Het concrete eindbeeld — verplicht. Kies de vorm die bij het werk past:
+- UI-werk: een ASCII-mockup of een pad naar een referentiescreenshot. Bij smaakgevoelig
+  werk: bied 2–3 stijlvarianten aan, laat de gebruiker kiezen en leg de gekozen variant
+  hier vast.
+- CLI/API-werk: een letterlijk voorbeeld van input → output, of een korte voorbeeldsessie
+  (commando's + exacte output).
+- Refactor/library: een before/after van het publieke contract (de aanroep en het resultaat).
+- Niets zichtbaars: "n.v.t. — <reden>" (alleen toegestaan als er werkelijk niets zichtbaar
+  verandert).>
+
 ## Strategy & Design Budget
 
 <Aanpak en de bestaande patronen/bestanden die gevolgd worden (uit stap 1). Beschrijf de seriële volgorde.>
@@ -92,6 +103,13 @@ Each assertion: given / when / then, a stable ID, an owner, the milestone it gat
 - **VC-2** (scrutiny-review): *Given* a malformed CSV, *when* imported, *then* the endpoint returns 400 with a field-level error — no partial write. · *Bad input is rejected cleanly.* *(features: F1)*
 - **VC-3** (user-testing): *Given* the app is running, *when* a user pastes CSV into the import box and clicks Import, *then* the rows appear in the table within 2s. · *The user sees the result fast.* *(features: F2)*
 - **VC-4** (scrutiny-review): *Given* the committed code of this milestone, *when* the reviewer reads the diff, *then* no comment, docstring, or commit message contains a mission-internal code (feature/milestone/VC ID, or a history reference like "pre-F4") — every comment is standalone-readable. · *Comments explain what/why, no mission jargon.* *(features: F1, F2)*
+- **VC-5** (scrutiny-review): *Given* the tests this milestone adds or changes, *when* the reviewer reads them, *then* every test imports the real production code (no copied or mimicked logic in the test file), no test passes vacuously (still green when the import fails), and at least one test exercises the real integration path through the public entrypoint. · *Green tests prove real behaviour.* *(features: F1, F2)*
+
+## Robuustheid
+One line per feature: the sad-path / realistic-scale VCs that cover it, or an explicit
+user-confirmed waiver. `validate-artifacts.sh` fails the plan when a feature has neither.
+- **F1**: VC-2
+- **F2**: waiver — <reden, door de gebruiker bevestigd>
 
 ## App boot (user-testing)
 - boot: `npm run dev`
@@ -106,15 +124,18 @@ Each assertion: given / when / then, a stable ID, an owner, the milestone it gat
 - **Owned.** `scrutiny-review` for anything checkable from the diff/tests; `user-testing` for anything that needs the running app. If there's no bootable app, everything is `scrutiny-review`.
 - **Mapped.** Every VC-ID lists the feature(s) that satisfy it; every feature's `vc_ids` in `state.json` lists the VC-IDs it targets. The two must agree.
 - **Comment hygiene is a standing VC.** Every milestone carries one `scrutiny-review` assertion (the VC-4 shape above), regardless of whether `.claude/rules/` exist, enforcing that committed comments/docstrings/commit messages contain no mission-internal codes (feature/milestone/VC IDs, history references) and read standalone. The reviewer judges it like any compliance-VC. The norm is the "Codecommentaar" block in [CONTEXT.md](../../../CONTEXT.md).
+- **Test quality is a standing VC.** Every milestone carries one `scrutiny-review` assertion (the VC-5 shape above) enforcing that the milestone's tests prove real behaviour: each test imports the real production code (no copied or mimicked logic in the test file), no test asserts tautologically (a test that also passes when the import fails), and at least one test exercises the real integration path through the public entrypoint. Mocks of *dependencies* are explicitly allowed — only the logic under test must not be duplicated. The reviewer audits this statically and fails the VC hard on violations.
+- **Anchored taste.** Style/taste assertions ("oogt verzorgd", "geen default look") are only allowed when their *then* explicitly references the chosen end state in `mission.md` §"Zo ziet klaar eruit" — otherwise rewrite or drop them.
 
 ## Worked example (minimal)
 
 Goal: *"add a /health endpoint"* → slug `health-endpoint`.
 
-- **PRD**: problem = no liveness probe for the deploy platform; metric = probe returns 200 < 100ms.
+- **PRD**: problem = no liveness probe for the deploy platform; metric = probe returns 200 < 100ms. Zo ziet klaar eruit: `curl localhost:3000/health` → `200 {"status":"ok"}`.
 - **Gates**: G1 `npm test`, G2 `npx tsc --noEmit`.
-- **Assertions**: VC-1 (scrutiny-review) route returns 200 + `{status:"ok"}`; VC-2 (user-testing) `GET /health` on the booted app returns 200.
-- **Features**: F1 "add route + test" → M1. **Milestone**: M1 "health live" → [F1], gates [G1,G2], VCs [VC-1, VC-2].
+- **Assertions**: VC-1 (scrutiny-review) route returns 200 + `{status:"ok"}`; VC-2 (user-testing) `GET /health` on the booted app returns 200; VC-3 (scrutiny-review) an unknown path returns 404, not 200.
+- **Robuustheid**: F1 → VC-3.
+- **Features**: F1 "add route + test" → M1. **Milestone**: M1 "health live" → [F1], gates [G1,G2], VCs [VC-1, VC-2, VC-3].
 - **Boot**: `npm run dev`, ready-probe `GET /health → 200`.
 
 That's a complete, runnable mission.

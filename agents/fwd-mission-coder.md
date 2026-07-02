@@ -27,7 +27,12 @@ When your spawn prompt lists rule paths, those rules are **mandatory** — not s
 
 1. **Orient.** Read the relevant existing files. Match the codebase's conventions exactly — naming, structure, error handling, comment density, test layout. Do not introduce new abstractions or dependencies unless the feature truly requires them; prefer the conservative choice.
 2. **Implement only this feature.** Not the next one, not a refactor you find tempting. Scope discipline is the whole point of serial execution.
-3. **Add or adjust tests** that exercise the acceptance criteria, following the project's existing test patterns.
+3. **Add or adjust tests** that prove the acceptance criteria, following the project's existing test patterns. Three binding rules:
+   - Tests import the **real production code** — never copy or re-implement the logic under test inside the test file (a copy stays green while the real code drifts). Mocking *dependencies* is fine; the logic under test is not a dependency.
+   - Every test asserts on **observable output of the code under test** — a test that also passes when the import fails is itself a bug.
+   - Cover at least one **sad path** per feature (bad input, error path, empty state) next to the happy path, and where feasible let one test run through the real public entrypoint instead of directly assembled internal state.
+
+   The milestone reviewer audits your tests against a standing test-quality assertion and fails vacuous or copied-logic tests hard.
 4. **Self-check.** Run the feature's relevant tests/checks via `Bash`. Capture the exact commands and their exit codes — you report these.
 5. **Commit.**
    - Stage **only the specific files you created or changed** — `rtk git add <paths>`. **Never `git add -A`** (the worktree contains a copied `.env` and other untracked scaffolding that must not be committed).

@@ -14,18 +14,25 @@ if [[ ${#BR[@]} -eq 0 ]]; then
   exit 0
 fi
 
-printf '%-30s %-12s %-10s %s\n' "SLUG" "STATUS" "FEATURES" "MILESTONES"
+printf '%-30s %-12s %-10s %-11s %-6s %s\n' "SLUG" "STATUS" "FEATURES" "MILESTONES" "AGE" "MERGED"
 for br in "${BR[@]}"; do
   slug="${br#mission/}"
   st="$(rtk git show "$br:.claude/missions/$slug/state.json" 2>/dev/null || true)"
   if [[ -z "$st" ]] || ! jq -e . >/dev/null 2>&1 <<<"$st"; then
-    printf '%-30s %-12s %-10s %s\n' "$slug" "?" "—" "(no state)"
+    # ASCII placeholders: printf pads on bytes, so a multibyte em-dash would skew the columns.
+    printf '%-30s %-12s %-10s %-11s %-6s %s\n' "$slug" "?" "-" "(no state)" "-" "-"
     continue
   fi
   status="$(jq -r '.status' <<<"$st")"
   feats="$(jq -r '"\([.features[]|select(.status=="done")]|length)/\(.features|length)"' <<<"$st")"
   miles="$(jq -r '"\([.milestones[]|select(.validation_status=="passed" or .validation_status=="gates_passed")]|length)/\(.milestones|length)"' <<<"$st")"
-  printf '%-30s %-12s %-10s %s\n' "$slug" "$status" "$feats" "$miles"
+  # AGE: days since completed_at — how long finished work has been waiting for a decision.
+  age="$(jq -r 'if .completed_at then ((now - (.completed_at | fromdateiso8601)) / 86400 | floor | tostring) + "d" else "-" end' <<<"$st")"
+  # MERGED: is the branch tip reachable from the base branch? A squash-merge shows "no" —
+  # use AGE to spot finished-but-undecided work either way.
+  base="$(jq -r '.base_branch // "main"' <<<"$st")"
+  if rtk git merge-base --is-ancestor "$br" "$base" 2>/dev/null; then merged="yes"; else merged="no"; fi
+  printf '%-30s %-12s %-10s %-11s %-6s %s\n' "$slug" "$status" "$feats" "$miles" "$age" "$merged"
 done
 
 echo

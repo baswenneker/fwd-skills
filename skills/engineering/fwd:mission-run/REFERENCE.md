@@ -136,6 +136,12 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
     }
   ],
 
+  // ── Cold-start-proof (OPTIONAL, schema v4): set by the runner at finalize time,
+  // after it booted the deliverable fresh via the RUNBOOK and saw the demo steps
+  // succeed. finalize.sh refuses "done" when user_testing.boot_command is set and
+  // this proof is absent or not ok. Absent in older plans — additive, nothing breaks.
+  "cold_start_proof": { "ok": true, "at": "2026-06-02T12:00:00Z" },
+
   "circuit_breaker": { "consecutive_failures": 0 },   // 3 → preflight refuses
 
   "decisions": [                                       // autonomous choices logged, never prompted
@@ -156,6 +162,8 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
   - **`features[].rule_paths`** (array of paths): rule files that apply to this feature, computed at plan time from the feature's file-by-file scope × rule `paths:` globs. Passed to the coder subagent as its rule context.
   - **`milestones[].walkthrough_path`** (string path): where the runner writes the post-validation milestone walkthrough markdown (see *Milestone walkthrough template* below). Set by the runner after validation passes; absent in the initial plan.
   - **`handoff.rules_applied`** (`[{rule, how}]`): see the handoff table below.
+- **Schema v4 is equally optional and additive.**
+  - **`cold_start_proof`** (top-level `{ok, at}`): written by the runner at finalize (step 3.0 in SKILL.md) after a successful fresh boot + demo-step run per the RUNBOOK. `finalize.sh` refuses `done` when `user_testing.boot_command` is set and this proof is absent or not ok. Older plans without the field stay valid; missions without a boot command never need it.
 
 ## The handoff report
 
@@ -241,7 +249,7 @@ The User-Testing validator needs to launch the app. The boot recipe is **capture
 
 After a milestone passes validation, the runner writes a human-readable walkthrough at `milestones[].walkthrough_path` (e.g. `.claude/missions/<slug>/handoffs/M1-walkthrough.md`). This file is the hand-off document for the human who reviews the milestone. Write it in the user's language; the structure below uses Dutch labels as prescribed but the skeleton is language-neutral.
 
-```markdown
+````markdown
 # <Milestone title> — walkthrough
 
 ## In één oogopslag
@@ -274,9 +282,84 @@ After a milestone passes validation, the runner writes a human-readable walkthro
      latent tech debt, things to watch. Not failures — those would have blocked
      the milestone. Leave empty if the reviewer had no advisories. -->
 - <advisory> _(optional)_
-```
+````
 
 The runner fills in each section from the coder handoffs and the validator reports. The "In één oogopslag" block must be written last (after reading all per-feature sections) so it can summarise the whole milestone honestly.
+
+## RUNBOOK template
+
+Written by the runner at finalize (SKILL.md step 3.0) at `handoffs/RUNBOOK.md`, then **self-tested via a cold start** before the `.env` scrub. This is the human's "zo start, login en demo je dit" document — the first thing to open after a mission. Write it in the user's language.
+
+````markdown
+# <Mission title> — runbook
+
+## Starten
+```bash
+<the bare start command, exactly as a user runs it — no test-only env vars like DEMO_REPLAY=1>
+```
+
+## Omgeving
+<!-- Names only, never values. -->
+- `<ENV_VAR>` — <where it comes from / how to obtain it>
+
+Herstel na finalize: finalize verwijdert de gekopieerde `.env` uit de worktree — kopieer
+hem terug uit de hoofd-checkout, of draai `setup-worktree.sh <slug>` opnieuw.
+
+## Inloggen
+<credentials pointer, of "n.v.t.">
+
+## Demo (3–5 stappen, read-only)
+1. <stap> → verwacht: <observeerbare uitkomst>
+2. ...
+
+## Laatst geverifieerd
+<datum> — <geobserveerde uitkomst van de cold start door de runner zelf>
+````
+
+The demo steps must be read-only (no seeds or writes) so re-running them is always safe. For non-bootable deliverables (notebooks, reports, libraries) the "Starten" block holds the fresh-execution command instead (e.g. `jupyter nbconvert --execute`), and "Laatst geverifieerd" records that top-to-bottom run.
+
+## Mission eindrapport template
+
+Written by the runner at finalize (SKILL.md step 3.2) at `handoffs/EINDRAPPORT.md`. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, handoffs, decisions) or the milestone walkthroughs — the compiler adds no new prose claims. Write it in the user's language.
+
+````markdown
+# Mission <slug> — eindrapport
+
+## In één oogopslag
+<!-- Max 5 sentences: the promised end state (mission.md §"Zo ziet klaar eruit")
+     next to what is on the branch now. Name any gap honestly. -->
+
+## Milestones
+| Milestone | Status | Walkthrough |
+|---|---|---|
+| <title> | passed / gates_passed / failed | [<file>](<file>) |
+
+## Open advisories
+<!-- Aggregated from the "Advisories" sections of all milestone walkthroughs (the durable
+     home of the reviewer's advisories[]); empty list is fine. -->
+- <advisory + location>
+
+## Niet gedaan
+<!-- Every left_undone item from the feature handoffs, with its feature title. -->
+- <item>
+
+## Niet (volledig) bewezen
+<!-- Every VC with passed != true, verbatim from vc_results, with the recorded reason. -->
+- <VC-id> (<owner>): <evidence/reason>
+
+## Zo bekijk je het
+1. Start via [RUNBOOK.md](RUNBOOK.md)
+2. <max 5 stappen totaal>
+
+## Wat nu?
+Kies één van de drie routes:
+- **A) Accepteren & mergen** — <exact merge commands per the *Merge hygiene* note above,
+  plus worktree cleanup>
+- **B) Eerst zelf proberen** — start bij [RUNBOOK.md](RUNBOOK.md); de demo-stappen tonen
+  het beloofde gedrag.
+- **C) Afwijzen met reden** — noteer de reden; die gaat als les mee naar de volgende
+  /fwd:mission-plan.
+````
 
 ## Sources
 

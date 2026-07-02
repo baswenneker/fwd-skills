@@ -123,7 +123,7 @@ bash "${CLAUDE_SKILL_DIR}/scripts/run-gates.sh" <slug> <milestone-id>
 
 Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed. Capture it as `<gate-results>`.
 
-*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
+*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. The standing test-quality VC travels in the same way — the reviewer audits the milestone's tests statically and fails it on vacuous or copied-logic tests. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
 
 *User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND scrutiny passed (else record these VC-IDs `null`, evidence "skipped: upstream failed"). Boot the app:
 
@@ -176,15 +176,37 @@ bash "${CLAUDE_SKILL_DIR}/scripts/append-lesson.sh" <type> <scope> "<context>" "
 
 ### 3. Finalize
 
-When no features remain (*finalize added by M6*):
+When no features remain, close the mission in three sub-steps: prove it starts cold, derive the final status, compile the eindrapport.
+
+**3.0 — RUNBOOK + cold-start-proof.** Runs *before* `finalize.sh`, while the copied `.env` is still present. Write `<WT>/.claude/missions/<slug>/handoffs/RUNBOOK.md` following the template in REFERENCE.md: the bare start command (no test-only env vars), the needed env vars (names + where they come from — never values — plus the recovery recipe for after the `.env` scrub), a login/credentials pointer, and 3-5 read-only demo steps with expected outcomes.
+
+Then execute the runbook yourself, exactly as the user would:
+
+1. `bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>` (clean slate), then `bash "${CLAUDE_SKILL_DIR}/scripts/boot-app.sh" <slug>`.
+2. Run the demo steps as probes (curl/CLI) and compare against the expected outcomes.
+3. Record the observed result in RUNBOOK.md under "Laatst geverifieerd", then tear down again.
+
+For non-bootable deliverables (notebooks, reports, libraries): re-execute the deliverable fresh, top-to-bottom, and log command + outcome the same way. On success, record the proof in `state.json` with the same atomic write pattern as `walkthrough_path`:
+
+```bash
+TMPFILE="$(dirname "${STATE_JSON}")/state.json.tmp.$$"
+jq --arg t "$(date -u +%FT%TZ)" '.cold_start_proof = {ok: true, at: $t}' \
+   "${STATE_JSON}" > "${TMPFILE}" && mv "${TMPFILE}" "${STATE_JSON}"
+```
+
+Commit RUNBOOK.md + state as `chore(mission): runbook + cold-start-proof <slug>`. If the cold start fails: do NOT set the proof — treat it like a failed validation (one bounded remediation pass, then blocked). `finalize.sh` refuses `done` when a `boot_command` exists without a proof.
+
+**3.1 — Derive the status.**
 
 ```
 bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" <slug>
 ```
 
-Marks the mission `done` (all milestones passed) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review.
+Marks the mission `done` (all milestones passed and, when a `boot_command` exists, the cold-start-proof is set) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review.
 
-Report the outcome to the user. The final report MUST include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
+**3.2 — Compile the eindrapport.** Write `<WT>/.claude/missions/<slug>/handoffs/EINDRAPPORT.md` following the template in REFERENCE.md. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, handoffs, decisions) or the milestone walkthroughs — add no new prose claims. It aggregates what a human must judge: the promised eindbeeld naast wat er staat, per-milestone status + walkthrough links, all open advisories, all `left_undone` items, every VC with `passed != true` (with reason), the kijkinstructie (max 5 steps, pointing at RUNBOOK.md), and the landing block "Wat nu?" with the three written-out routes (accepteren & mergen met exacte commando's / eerst zelf proberen via RUNBOOK.md / afwijzen met reden — die reden gaat als les mee naar de volgende `/fwd:mission-plan`). Plain text options — never `AskUserQuestion` (autonomous mode). Commit it as `chore(mission): eindrapport <slug>`.
+
+Report the outcome to the user by opening with the eindrapport — not a git-log one-liner. The report MUST also include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
 
 ## Hard limits — do not override
 
@@ -202,6 +224,8 @@ Report the outcome to the user. The final report MUST include a **rule-kandidate
 - **Schrijfstijl** — walkthroughs and orchestration narratives follow the "Schrijfstijl missions" block in [CONTEXT.md](../../../CONTEXT.md).
 
 ## Reviewing / resuming
+
+Review starts at the two finalize artifacts, not at the git log: `handoffs/EINDRAPPORT.md` (what to judge + the "Wat nu?"-routes) and `handoffs/RUNBOOK.md` (how to start and demo it yourself).
 
 ```
 /fwd:mission-run <slug> status                    # progress
