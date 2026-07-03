@@ -20,7 +20,10 @@ STATE="$WT_PATH/.claude/missions/$SLUG/state.json"
 
 IN='{}'
 [[ ! -t 0 ]] && IN="$(cat)"
-jq -e . >/dev/null 2>&1 <<<"$IN" || IN='{}'
+# Refuse malformed input instead of silently recording an empty result: a checkpoint
+# without its verdicts is worse than no checkpoint (the evidence is gone for good).
+jq -e . >/dev/null 2>&1 <<<"$IN" \
+  || { echo "invalid JSON on stdin — refusing to record validation (verdicts would be lost)" >&2; exit 1; }
 GATES="$(jq -c '.gate_results // []' <<<"$IN")"
 VCS="$(jq -c '.vc_results // []'   <<<"$IN")"
 
@@ -34,7 +37,14 @@ jq --arg m "$MID" --arg vs "$VSTATUS" --arg t "$(date -u +%FT%TZ)" \
   | .milestones |= map(
       if .id == $m then
         .gate_results = $g
-        | .vc_results = (.vc_results | map(. + ($vmap[.id] // {})))
+        # Update existing entries by id AND append incoming verdicts for ids not yet
+        # present — a plan that starts with an empty vc_results array must not make
+        # recorded verdicts vanish.
+        | .vc_results = (
+            ((.vc_results // []) | map(. + ($vmap[.id] // {}))) as $updated
+            | ($updated | map(.id)) as $have
+            | $updated + ($v | map(select(.id as $i | ($have | index($i)) | not)))
+          )
         | .validation_status = $vs
         | .validated_at = $t
       else . end)

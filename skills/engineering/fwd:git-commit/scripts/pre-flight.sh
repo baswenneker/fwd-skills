@@ -37,6 +37,10 @@ if ! status_output=$(rtk git status --porcelain 2>&1); then
   exit 0
 fi
 
+# rtk rewrites empty status output to the literal line "ok" — strip that artifact,
+# or a clean tree skips the no-changes exit. Real porcelain lines are never exactly "ok".
+status_output="$(grep -vx 'ok' <<<"$status_output" || true)"
+
 if [[ -z "$status_output" ]]; then
   echo "no-changes"
   exit 0

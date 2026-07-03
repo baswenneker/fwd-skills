@@ -10,7 +10,9 @@ else
   echo "ℹ️  No tmp/eval/ to remove."
 fi
 
-diff_output="$(rtk git status --porcelain 2>/dev/null || true)"
+# rtk rewrites empty status output to the literal line "ok" — strip that artifact,
+# or a clean tree triggers the "other changes" warning. Real porcelain lines are never exactly "ok".
+diff_output="$(rtk git status --porcelain 2>/dev/null | grep -vx 'ok' || true)"
 if [ -n "$diff_output" ]; then
   echo ""
   echo "⚠️  Other changes still present (not cleaned by fwd:skill-eval):"

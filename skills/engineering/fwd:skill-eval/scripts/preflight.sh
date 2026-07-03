@@ -17,7 +17,9 @@ if [ ! -f "$target/SKILL.md" ]; then
   exit 6
 fi
 
-dirty="$(rtk git status --porcelain 2>/dev/null || true)"
+# rtk rewrites empty status output to the literal line "ok" — strip that artifact,
+# or a clean tree reads as dirty. Real porcelain lines are never exactly "ok".
+dirty="$(rtk git status --porcelain 2>/dev/null | grep -vx 'ok' || true)"
 if [ -n "$dirty" ]; then
   echo "🛑 Working tree is dirty — fwd:skill-eval refuses to run."
   echo ""
