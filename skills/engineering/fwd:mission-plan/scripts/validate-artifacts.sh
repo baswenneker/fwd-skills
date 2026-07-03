@@ -59,6 +59,69 @@ if [[ -f "$MDIR/validation-contract.md" ]]; then
   fi
 fi
 
+# ── Plan-lint: contract ↔ state consistency ──────────────────────────────────
+# Anchors on the bold assertion pattern (**VC-n**) so prose mentions of a VC
+# (summaries, the Robuustheid section) never count as assertions. Runs only
+# when both the contract and a valid state.json are present. Plan-phase only:
+# stricter than what the runner tolerates at execution time.
+if [[ -f "$MDIR/validation-contract.md" && -f "$STATE" ]] && jq -e . "$STATE" >/dev/null 2>&1; then
+  CONTRACT_VCS="$(grep -oE '\*\*VC-[0-9]+\*\*' "$MDIR/validation-contract.md" 2>/dev/null | tr -d '*' | sort -u || true)"
+  STATE_VCS="$(jq -r '.features[]?.vc_ids[]? // empty' "$STATE" 2>/dev/null | sort -u || true)"
+
+  # A contract that mentions VC's but has zero bold assertions deviated from the
+  # template format — say so once, instead of one cryptic error per vc_id.
+  if [[ -z "$CONTRACT_VCS" ]] && grep -Eq 'VC-[0-9]+' "$MDIR/validation-contract.md"; then
+    errs+=("plan-lint: geen enkele **VC-n**-assertion gevonden terwijl het contract wel VC's noemt — schrijf assertions als '- **VC-n** (owner): ...' conform het template")
+  fi
+
+  # Every vc_id a feature targets must exist as a real assertion in the contract.
+  while IFS= read -r vc; do
+    [[ -n "$vc" ]] || continue
+    grep -qx -- "$vc" <<<"$CONTRACT_VCS" \
+      || errs+=("plan-lint: state.json verwijst naar $vc maar het contract heeft geen **$vc**-assertion")
+  done <<<"$STATE_VCS"
+
+  # Every contract assertion must be targeted by at least one feature.
+  while IFS= read -r vc; do
+    [[ -n "$vc" ]] || continue
+    grep -qx -- "$vc" <<<"$STATE_VCS" \
+      || errs+=("plan-lint: contract-assertion $vc is aan geen enkele feature gekoppeld (vc_ids)")
+  done <<<"$CONTRACT_VCS"
+
+  # Milestone ↔ feature integrity: referenced features exist, every feature
+  # points at an existing milestone, and that milestone lists the feature back.
+  MF_ERRS="$(jq -r '
+    [.features[]?.id] as $fids
+    | [.milestones[]?.id] as $mids
+    | ( [ .milestones[]? as $m
+          | ($m.feature_ids // [])[]
+          | select((. as $f | $fids | index($f)) | not)
+          | "plan-lint: milestone \($m.id) noemt onbekende feature \(.)" ]
+      + [ .features[]?
+          | select((.milestone == null) or ((.milestone as $mm | $mids | index($mm)) | not))
+          | "plan-lint: feature \(.id) wijst naar geen bestaande milestone (milestone: \(.milestone // "ontbreekt"))" ]
+      + [ . as $root | .features[]?
+          | select(.milestone != null) | . as $f
+          | ($root.milestones[]? | select(.id == $f.milestone)) as $m
+          | select(((($m.feature_ids // []) | index($f.id))) | not)
+          | "plan-lint: feature \($f.id) staat niet in feature_ids van zijn milestone \($f.milestone)" ]
+      )[]
+  ' "$STATE" 2>/dev/null || true)"
+  while IFS= read -r e; do
+    [[ -n "$e" ]] || continue
+    errs+=("$e")
+  done <<<"$MF_ERRS"
+
+  # A user-testing assertion is only judgeable when the app can actually boot.
+  # Anchor on the assertion shape ("**VC-n** (user-testing)"): the template's
+  # "## App boot (user-testing)" heading and prose must never trigger this.
+  if grep -qE '\*\*VC-[0-9]+\*\*[[:space:]]*\(user-testing\)' "$MDIR/validation-contract.md"; then
+    jq -e '.user_testing.boot_command | type=="string" and length>0' "$STATE" >/dev/null 2>&1 \
+      || errs+=("plan-lint: user-testing-VC's in het contract maar geen boot_command in state.json — die VC's worden nooit beoordeeld")
+  fi
+fi
+# ── end plan-lint ─────────────────────────────────────────────────────────────
+
 # ── Rules-manifest check (schema v3, additive) ───────────────────────────────
 # Only runs when state.json is present, valid JSON, AND .rules_manifest is a
 # non-empty array. Plans without the field (v1/v2) pass through unchanged.

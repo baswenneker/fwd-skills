@@ -13,6 +13,14 @@ This is the **interactive** half of the `fwd:mission-*` layer. Factory's insight
 
 **Interactive-mode principle.** Unlike `/fwd:mission-run` (which runs unattended and never prompts), this skill **should** ask. `AskUserQuestion` is allowed and encouraged for discrete choices. Iterate the PRD and contract in plain text until the user approves.
 
+**Vraaghygiëne (geldt voor élke vraag in deze skill — stap 1 t/m 5).**
+
+1. **Zelfstandig leesbaar.** Benoem welk deel van het plan de vraag raakt en waarom de keuze ertoe doet — de vraag moet begrijpelijk zijn zonder de voorgaande conversatie terug te lezen.
+2. **Gewone taal.** Geen vakterm die de gebruiker zelf nog niet gebruikte; bij twijfel één concreet voorbeeld of mini-diagram van wat elke optie voor het eindresultaat betekent.
+3. **Impact per optie.** Elke antwoordoptie krijgt één regel in gewone taal: wat betekent deze keuze voor het eindresultaat?
+
+Voor niet-triviale keuzevragen: volg het format van fwd:grill-me ([QUESTION_FORMAT.md](../../productivity/fwd:grill-me/references/QUESTION_FORMAT.md)). De drie regels staan bewust ook hier inline, zodat de norm blijft werken als dat pad ooit breekt.
+
 **No product code.** This skill writes only mission artifacts (`mission.md`, `validation-contract.md`, `state.json`). It never implements features — that's the coder's job under `/fwd:mission-run`.
 
 See [REFERENCE.md](REFERENCE.md) for the PRD + contract templates and slug rules, and [`fwd:mission-run`'s reference](../fwd:mission-run/REFERENCE.md) for the canonical `state.json` schema.
@@ -98,7 +106,7 @@ Let the user reorder or split features in plain text.
 bash "${CLAUDE_SKILL_DIR}/scripts/discover-gates.sh"
 ```
 
-It prints a JSON array of resolvable gate commands (test/typecheck/lint/build — only ones that actually resolve). Show them to the user and confirm (`AskUserQuestion` or plain text); drop or add as needed. These become `state.gates`.
+It prints a JSON array of resolvable gate commands (test/typecheck/lint/build — only ones that actually resolve). Show them to the user and confirm (`AskUserQuestion` or plain text); drop or add as needed. These become `state.gates`. Print het script een **lege array** (`[]` — geen enkele gate resolvet), dan geldt de test-infra-gate verderop in deze stap: een verplichte expliciete keuze. Stilzwijgend doorgaan zonder één gate is geen optie.
 
 **Layer B — assertions.** Write per-feature/per-milestone acceptance criteria as `given / when / then`, each with a stable ID (`VC-1`, `VC-2`, …) and an `owner` tag:
 - `scrutiny-review` — judged against the diff by the adversarial reviewer.
@@ -128,7 +136,25 @@ De norm die deze VC afdwingt is de "Codecommentaar"-block in [CONTEXT.md](../../
 
 Mocks van *dependencies* blijven toegestaan — alleen de logica ónder test mag niet gedupliceerd zijn. De reviewer auditeert dit statisch en laat vacueuze of gekopieerde-logica-tests hard op deze VC falen.
 
-**App-boot config (for user-testing).** Discover boot candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, `Makefile` run target). Confirm with the user: the `boot_command`, a `ready_probe` (HTTP poll or log-line match — essential), and 1–3 `smoke_commands`. If the app can't be booted (e.g. a library), set no boot command and tag everything `scrutiny-review`.
+**Afspraken-VC's (verplicht zodra de gebruiker expliciete afspraken maakte).** Houd tijdens stap 2–3 een lijst **"Expliciete afspraken"** bij: gekozen aanpak of API, beoogde mappenstructuur, verboden alternatieven — alléén afspraken die de gebruiker zélf maakte, geen planner-voorkeuren. Zet élke afspraak om in een eigen `scrutiny-review`-VC met gewone-taal-samenvatting. Sjabloon:
+
+> **VC-N** (scrutiny-review): *Given* de diff, *when* de reviewer de agent-constructie leest, *then* wordt `create_agent` gebruikt en komt `create_deep_agent` nergens voor. · *We gebruiken de afgesproken API, niet het alternatief.* *(features: F<n>)*
+
+Afspraken-VC's mógen implementatiekeuzes vastleggen — dat is precies hun functie (zie de uitzondering op "Independent of implementation" in REFERENCE.md).
+
+**Design-budget-VC (verplicht — elke milestone, altijd).** Voeg per milestone één staande `scrutiny-review`-assertion toe die het design budget afdwingt, gemapt op álle features van die milestone. Kopieer de limitatieve lijsten uit `mission.md` §"Strategy & Design Budget" **verbatim in de VC-tekst** — zo krijgt de reviewer het budget te zien (zonder deze VC bindt het alleen de coder en heeft "overschrijden laat een review zakken" geen handhavingspad). Sjabloon:
+
+> **VC-N** (scrutiny-review): *Given* de gecommitte code van deze milestone, *when* de reviewer de diff leest, *then* introduceert de diff geen dependency, abstractie of top-level map buiten deze lijsten — toegestane nieuwe dependencies: <lijst verbatim uit mission.md>; toegestane nieuwe abstracties: <lijst verbatim uit mission.md>. · *De code blijft binnen het afgesproken design budget.* *(features: alle van deze milestone)*
+
+**App-boot config (for user-testing).** Discover boot candidates (`package.json` `dev`/`start`/`serve`, `Procfile`, `docker-compose.yml`, `Makefile` run target). Confirm with the user: the `boot_command`, a `ready_probe` (HTTP poll or log-line match — essential), and 1–3 `smoke_commands`. Benoem bij die bevestiging expliciet dat stap 4.7 het boot-commando straks **écht draait in de hoofd-checkout, mét de echte `.env`** — een boot_command met seeds of migraties raakt dus de dev-omgeving.
+
+**Test-infra-gate (verplichte keuze — stille degradatie is verboden).** Raakt de missie UI of browser-runtime, check dan de testlaag: is er een boot-kandidaat, en heeft het project een browser-testlaag? (Zoek in `package.json` naar `playwright`/`jsdom` en naar `playwright.config.*` — dit voedt meteen `playwright_present`.) Ontbreekt de boot_command óf de browser-testlaag, stel dan via `AskUserQuestion` een bewuste keuze voor, naar het model van stap 1.0:
+
+> (a) Neem het opzetten van de testlaag op als **eerste feature** van de missie. Begrensd in het design budget: één dependency, één configbestand, één smoke-spec — niet meer.
+>
+> (b) Accepteer expliciet dat de betreffende VC's alleen op code-inspectie steunen. Hertag dan ook de owners: elke VC die van de ontbrekende laag afhing wordt `(scrutiny-review)` — een achtergebleven `(user-testing)`-owner zonder boot_command laat de plan-lint bij stap 6 hard falen. Leg de keuze vast in `mission.md` §*Aannames en afwijkingen* én als kopregel bovenin het contract: "Bewust geaccepteerd: VC-<x>..<y> steunen alleen op code-inspectie."
+
+Dezelfde verplichte keuze geldt bij een **lege gates-array** uit `discover-gates.sh` (testcommando opzetten als eerste feature, of expliciet accepteren — vastgelegd in `mission.md`). Alleen voor een echt niet-bootbare library zonder UI blijft alles-`scrutiny-review` geldig — maar ook dát wordt als expliciete keuze genoteerd, nooit stilzwijgend aangenomen.
 
 ### 4.5. Simplicity & robustness grill (vóór de approval gate)
 
@@ -144,9 +170,48 @@ Ontbreekt bij vraag 4 of 5 dekking voor een feature, dan óf een VC toevoegen, �
 
 De uitkomst gaat terug naar de gebruiker. Is er aanleiding tot vereenvoudiging, pas dan de feature-lijst, het design budget of het contract aan vóór stap 5.
 
+### 4.6. Plan-lint — kan elke VC ooit beoordeeld worden?
+
+Loop élke VC langs met de adversariële vraag: **"waarom kan deze nooit beoordeeld worden?"** Vier faalpatronen; elk gevonden geval wordt herschreven of geschrapt vóór de approval gate:
+
+1. **Handmatige UI-handeling in de *then*.** Geen validator kan klikken of een notebook bedienen — zo'n VC is een permanente blocker. Herformuleer naar iets dat de reviewer in de diff of de user-tester via CLI/HTTP kan waarnemen.
+2. **Preconditie die nú al onwaar is.** Een *given* die een toestand eist die vandaag niet bestaat (bv. "de git-tree is schoon" bij een dirty repo). Toets zulke precondities écht met een bash-commando — geloof ze niet op papier.
+3. **User-testing zonder boot.** Owner `user-testing` terwijl er geen `boot_command` is — die VC wordt bij de run op `null` gezet en nooit beoordeeld.
+4. **Then zonder waarneembaar bewijs.** Een *then* waarvoor geen validator concreet bewijs kan aanwijzen (bestand, regel, HTTP-respons, exit code).
+
+Presenteer bevindingen als plain text en verwerk ze vóór stap 5. De machinale kant van deze lint (VC-kruisconsistentie contract ↔ `state.json`, milestone↔feature-integriteit, user-testing ⇒ `boot_command`) draait in `validate-artifacts.sh` bij stap 6 — dat is het vangnet, niet de plek om het te ontdekken.
+
+### 4.7. Boot-preflight (live) — alleen bij een afgesproken boot_command
+
+Test de boot-config nú, in de plan-fase — niet pas bij de eerste milestone. Draai in de hoofd-checkout (de worktree bestaat nog niet):
+
+```
+echo '<user_testing-json>' | bash "${CLAUDE_SKILL_DIR}/../fwd:mission-run/scripts/boot-app.sh" --probe
+```
+
+De probe checkt eerst of de probe-URL al antwoordt vóór het booten (dan zit een ander proces op de poort), boot dan de app, wacht op de `ready_probe` en ruimt zichzelf op. Géén `smoke_commands` — die kunnen seeds of writes bevatten; de preflight raakt de dev-omgeving zo min mogelijk. Uitkomsten:
+
+- `ready` → noteer het resultaat; bij stap 6 gaat `user_testing.plan_probe = {ok: true, at: "<timestamp>"}` mee in `state.json` (schema v5, additief).
+- `port-in-use` → een ander proces (bv. een sibling-workspace) antwoordt al op de probe-URL. Los dat eerst op — een user-tester zou straks de verkeerde app testen.
+- `boot-timeout` / `boot-crashed` / `no-boot` → de boot-config klopt niet.
+
+Bij een faal-uitkomst: verplichte keuze via `AskUserQuestion`:
+
+> (a) Fix de boot-config (ander commando, andere poort, andere probe) en draai de preflight opnieuw.
+>
+> (b) Hertag de user-testing-VC's naar `scrutiny-review`, zet `user_testing.boot_command` op `null` (anders eist de runner bij finalize alsnog een cold-start-proof) en herschrijf de App-boot-sectie in het contract naar "geen — bewust geaccepteerd". Leg het vast zoals bij de test-infra-gate optie (b): `mission.md` §Aannames + kopregel in het contract.
+>
+> (c) Ga bewust door mét de kapotte boot-config. Waarschuwing: de missie eindigt dan bij finalize op `blocked` — de user-testing-VC's blijven `null` en de cold-start-proof kan nooit gezet worden. Alleen een mens kan dat accepteren via de bestaande waiver (`FWD_MISSION_ACCEPT_UNVERIFIED`, dekt onbewezen VC's én de ontbrekende cold-start-proof) — er komt géén tweede waiver-mechanisme.
+
 ### 5. Approval gate
 
-Present the complete plan in one view: PRD summary, the milestone/feature tree, the gates, the Layer-B assertions, and the boot config. Ask for explicit approval (`AskUserQuestion`: *Approve & create the mission* / *Revise* / *Cancel*). Only proceed on approval.
+Presenteer het plan gelaagd — eindbeeld eerst, detail daarna:
+
+1. **Eerst het eindbeeld:** "In één oogopslag" + het "Zo ziet klaar eruit"-blok uit de PRD.
+2. **Dan per milestone één regel:** "Na M<n> kun je: <zichtbaar gedrag of resultaat>."
+3. **Dan pas het volledige detail:** milestone/feature-boom, gates, alle Layer-B-assertions (met hun één-regel-samenvattingen), boot-config mét de uitkomst van de boot-preflight (4.7), en de Robuustheid-sectie.
+
+Sluit af, vóór de `AskUserQuestion`, met de navertel-toets als vaste regel: *"Kun je in twee zinnen aan een collega navertellen wat er gebouwd wordt en hoe je ziet dat het af is? Zo nee → kies Revise."* Ask for explicit approval (`AskUserQuestion`: *Approve & create the mission* / *Revise* / *Cancel*). Only proceed on approval.
 
 ### 6. Materialise the mission
 
@@ -162,7 +227,7 @@ Then, into `<worktree>/.claude/missions/<slug>/`, write the three artifacts with
 
 - `mission.md` — the PRD from Step 2.
 - `validation-contract.md` — Layer A + Layer B from Step 4.
-- `state.json` — fill the skeleton: `gates[]`, `user_testing{}`, ordered `features[]` (each with `vc_ids`, `status: "pending"`), `milestones[]` (with `feature_ids`, `validation_status: "pending"`). Match the schema in `../fwd:mission-run/REFERENCE.md` exactly.
+- `state.json` — fill the skeleton: `gates[]`, `user_testing{}` (inclusief `plan_probe` wanneer de boot-preflight uit 4.7 slaagde — schema v5, additief), ordered `features[]` (each with `vc_ids`, `status: "pending"`), `milestones[]` (with `feature_ids`, `validation_status: "pending"`). Match the schema in `../fwd:mission-run/REFERENCE.md` exactly.
 
 Finally validate and commit the plan:
 
@@ -170,7 +235,7 @@ Finally validate and commit the plan:
 bash "${CLAUDE_SKILL_DIR}/scripts/validate-artifacts.sh" <slug>
 ```
 
-It asserts the three artifacts exist and are well-formed (valid `state.json` with required fields; ≥1 `VC-` in the contract; mission.md bevat `## Zo ziet klaar eruit`; het contract bevat `## Robuustheid` met dekking of waiver per feature), then commits `.claude/missions/<slug>/` on the mission branch as `docs(mission): scope <slug>`. On a non-zero exit, fix what it reports and re-run — do not hand off a malformed mission.
+It asserts the three artifacts exist and are well-formed (valid `state.json` with required fields; ≥1 `VC-` in the contract; mission.md bevat `## Zo ziet klaar eruit`; het contract bevat `## Robuustheid` met dekking of waiver per feature) **en draait de plan-lint**: elke feature-`vc_id` bestaat als `**VC-n**`-assertion in het contract en elke contract-assertion hoort bij ≥1 feature; elke milestone-`feature_id` bestaat en elke feature wijst naar een milestone die hem ook terugnoemt; user-testing-VC's vereisen een non-null `boot_command`. Then it commits `.claude/missions/<slug>/` on the mission branch as `docs(mission): scope <slug>`. On a non-zero exit, fix what it reports and re-run — do not hand off a malformed mission.
 
 ### 7. Hand off
 

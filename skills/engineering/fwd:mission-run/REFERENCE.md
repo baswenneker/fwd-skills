@@ -65,7 +65,11 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       "curl -fsS http://localhost:3000/health"
     ],
     "playwright_present": false,
-    "teardown_command": null            // null → orchestrator kills the boot PID it captured
+    "teardown_command": null,           // null → orchestrator kills the boot PID it captured
+    // plan_probe (OPTIONAL, schema v5): set by fwd:mission-plan (step 4.7) after a
+    // successful live plan-time boot-preflight (boot-app.sh --probe). Absent in older
+    // plans and in missions without a boot command — additive, nothing breaks.
+    "plan_probe": { "ok": true, "at": "2026-06-02T10:03:00Z" }
   },
 
   // ── Rules manifest (OPTIONAL, schema v3): freezes rule-file content at plan time.
@@ -163,8 +167,10 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
   - **`milestones[].walkthrough_path`** (string path): where the runner writes the post-validation milestone walkthrough markdown (see *Milestone walkthrough template* below). Set by the runner after validation passes; absent in the initial plan.
   - **`handoff.rules_applied`** (`[{rule, how}]`): see the handoff table below.
 - **Schema v4 is equally optional and additive.**
-  - **`cold_start_proof`** (top-level `{ok, at}`): written by the runner at finalize (step 3.0 in SKILL.md) after a successful fresh boot + demo-step run per the RUNBOOK. `finalize.sh` refuses `done` when `user_testing.boot_command` is set and this proof is absent or not ok. Older plans without the field stay valid; missions without a boot command never need it.
-  - **`unverified_waiver`** (top-level `{reason, at}`): written by `finalize.sh` only when a human re-ran it with `FWD_MISSION_ACCEPT_UNVERIFIED="<reden>"` to knowingly accept remaining `null` verdicts / `gates_passed` milestones. Absent on missions that were fully proven — its presence is itself review information.
+  - **`cold_start_proof`** (top-level `{ok, at}`): written by the runner at finalize (step 3.0 in SKILL.md) after a successful fresh boot + demo-step run per the RUNBOOK. `finalize.sh` refuses `done` when `user_testing.boot_command` is set and this proof is absent or not ok — only the human waiver (`FWD_MISSION_ACCEPT_UNVERIFIED`) overrides that refusal. Older plans without the field stay valid; missions without a boot command never need it.
+  - **`unverified_waiver`** (top-level `{reason, at}`): written by `finalize.sh` only when a human re-ran it with `FWD_MISSION_ACCEPT_UNVERIFIED="<reden>"` to knowingly accept remaining `null` verdicts / `gates_passed` milestones / a missing cold-start-proof. Absent on missions that were fully proven — its presence is itself review information.
+- **Schema v5 is equally optional and additive.**
+  - **`user_testing.plan_probe`** (`{ok, at}`): written by `fwd:mission-plan` (step 4.7) after a successful live plan-time boot-preflight (`boot-app.sh --probe` in the main checkout). Proves the boot config worked at least once before execution started. Absent in older plans and in missions without a boot command.
 
 ## The handoff report
 
@@ -190,7 +196,7 @@ Two layers, written **before any code**, independent of implementation:
   - `scrutiny-review` — judged by the adversarial code reviewer against the diff.
   - `user-testing` — judged by the user-tester against the running app.
 
-Every milestone also carries a **standing comment-hygiene VC** (`scrutiny-review`): committed comments, docstrings, and commit messages must contain no mission-internal codes (feature/milestone/VC IDs, history references like "pre-F4") and must read standalone. `fwd:mission-plan` generates it per milestone regardless of whether `.claude/rules/` exist; the reviewer judges it like any compliance-VC, and a violation fails the milestone. The norm is CONTEXT.md's "Codecommentaar" block.
+Every milestone also carries a **standing comment-hygiene VC** (`scrutiny-review`): committed comments, docstrings, and commit messages must contain no mission-internal codes (feature/milestone/VC IDs, history references like "pre-F4") and must read standalone. `fwd:mission-plan` generates it per milestone regardless of whether `.claude/rules/` exist; the reviewer judges it like any compliance-VC, and a violation fails the milestone. The norm is CONTEXT.md's "Codecommentaar" block. Two more standing VCs are generated per milestone the same way: the **test-quality VC** (tests import the real production code, no vacuous asserts, at least one test through the public entrypoint) and the **design-budget VC** (the mission.md budget lists verbatim in the assertion; anything outside them fails). Explicit user agreements from planning land as **afspraken-VC's** — assertions that deliberately pin implementation choices.
 
 Validators judge against specific VC-IDs (not vibes); per-ID pass/fail flows into `vc_results` and the handoff reports.
 

@@ -32,19 +32,27 @@ fi
 
 # A bootable deliverable may only be "done" after a successful cold start: the runner
 # must have booted it fresh (the way the user will) and recorded the proof in state.
+# The human waiver (FWD_MISSION_ACCEPT_UNVERIFIED) covers this refusal too — it is
+# the same "unproven" family as null verdicts, and there is only ONE waiver.
+WAIVER=""
 if [[ "$OUT" == "done" ]]; then
   BOOT_CMD="$(jq -r '.user_testing.boot_command // empty' "$STATE")"
   PROOF_OK="$(jq -r '.cold_start_proof.ok // false' "$STATE")"
   if [[ -n "$BOOT_CMD" && "$PROOF_OK" != "true" ]]; then
-    echo "no cold-start-proof: boot_command is set but cold_start_proof.ok is not true — run the RUNBOOK cold start first" >&2
-    OUT=blocked
+    if [[ -n "${FWD_MISSION_ACCEPT_UNVERIFIED:-}" ]]; then
+      WAIVER="${FWD_MISSION_ACCEPT_UNVERIFIED}"
+      echo "missing cold-start-proof accepted by human waiver: $WAIVER" >&2
+    else
+      echo "no cold-start-proof: boot_command is set but cold_start_proof.ok is not true — run the RUNBOOK cold start first" >&2
+      echo "a human can accept this knowingly: FWD_MISSION_ACCEPT_UNVERIFIED=\"<reden>\" bash \"$0\" \"$SLUG\"" >&2
+      OUT=blocked
+    fi
   fi
 fi
 
 # Unproven verdicts (passed: null) or milestones stuck on gates_passed never roll up
 # into a silent "done". Only a human may accept them, by re-running finalize with
 # FWD_MISSION_ACCEPT_UNVERIFIED="<reden>" — the reason lands in state.json.
-WAIVER=""
 if [[ "$OUT" == "done" ]]; then
   NULL_VCS="$(jq '[.milestones[] | (.vc_results // [])[] | select(.passed == null)] | length' "$STATE")"
   GP_M="$(jq '[.milestones[] | select(.validation_status == "gates_passed")] | length' "$STATE")"
