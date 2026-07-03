@@ -4,7 +4,7 @@ Shared vocabulary for the `fwd-skills` repo. Keeps terminology consistent across
 
 ## Schrijfstijl missions
 
-Regels voor alles wat missions produceren: plannen, rapporten, walkthroughs, handoff-narratieven.
+Regels voor alles wat missions en steps-runs produceren: plannen, rapporten, walkthroughs, stap-rapporten, handoff-narratieven.
 
 - **Korte zinnen.** Eén gedachte per zin. Splits lange zinnen op.
 - **Geen onverklaarde afkortingen.** De eerste keer dat een term of afkorting verschijnt, volgt een korte uitleg op dezelfde regel.
@@ -15,7 +15,7 @@ Regels voor alles wat missions produceren: plannen, rapporten, walkthroughs, han
 
 ## Codecommentaar (gegenereerde code)
 
-Geldt voor alle code die de coder schrijft — broncode én tests, comments én docstrings. Dit is de doortrekking van de "Vertaal interne codes"-regel hierboven naar de code zelf: wat niet onvertaald op het scherm van de gebruiker hoort, hoort al helemaal niet in de committe deliverable.
+Geldt voor alle gegenereerde code — door de mission-coder of door de hoofdsessie in een steps-run; broncode én tests, comments én docstrings. Dit is de doortrekking van de "Vertaal interne codes"-regel hierboven naar de code zelf: wat niet onvertaald op het scherm van de gebruiker hoort, hoort al helemaal niet in de committe deliverable.
 
 - **Comments beschrijven wát de code doet en waaróm.** Zelfstandig leesbaar voor iemand die deze mission nooit heeft gezien. Niet wanneer, niet in welke volgorde, niet ten opzichte van wat eerder is gebouwd.
 - **Nooit mission-interne codes in code.** Feature-IDs (`F1`, `F3`), milestone-IDs (`M1`), validatiecriteria (`VC-5`) en historie-verwijzingen ("pre-F4", "voor feature X", "stap 2 van de mission") horen nergens in committe code, comments, docstrings of commit messages. Het zijn orkestratie-codes; buiten de mission betekenen ze niets. Echte tokens die toevallig op zo'n code lijken — een flake8 `noqa: F401`, een hexwaarde — zijn geen mission-codes en blijven gewoon staan.
@@ -30,9 +30,21 @@ _Voeg een entry toe zodra een term op meer dan één plek wordt gebruikt en éé
 
 Een niet-blokkerende vereenvoudigingsvinding van de reviewer ("kan dit simpeler?"). Een advisory staat los van het reviewvonnis en heeft nooit invloed op de validatiestatus.
 
+### deferral
+
+Een bewust-uitgestelde uitbreiding of verbetering in een steps-run, vastgelegd bij het stap-akkoord als `{note, when}`: wát is uitgesteld en bij welk signaal het alsnog moet gebeuren. In de code staat op die plek een zelfstandig leesbare comment met plafond + upgrade-pad; het eindrapport verzamelt alle deferrals.
+
 ### design budget
 
 De limitatieve lijst in een missieplan van toegestane nieuwe afhankelijkheden en nieuwe abstracties. Het overschrijden van het design budget laat een review zakken.
+
+### eindbeeld-anker
+
+Het verplichte "zo ziet klaar eruit"-blok in een stappenplan: een letterlijk input→output-voorbeeld (CLI/API) of een ASCII-mockup/referentiescreenshot (UI). Smaak-eisen ("oogt strak") mogen alleen bestaan als ze naar dit anker verwijzen.
+
+### gate-moment
+
+Het stopmoment na elke stap in een steps-run. De gebruiker reageert plain text: `ok` (commit + door), `m` (meer detail), `stop` (pauze) of vrije tekst (correctie/vraag/planwijziging). Akkoord op het gate-moment is het enige dat een commit veroorzaakt.
 
 ### golden example
 
@@ -41,6 +53,18 @@ Een pad naar een bestaand, exemplarisch bestand in de repo dat een regel in de p
 ### rule-kandidaat
 
 Een patroon dat tijdens de mission-finalisatiefase wordt gedestilleerd uit gevonden issues of lessons, en wordt voorgesteld als mogelijke nieuwe `.claude/rules/`-regel. De mens beslist; de runner schrijft zelf nooit regels.
+
+### seam
+
+De publieke interface waarop tests mikken (functie-, endpoint- of CLI-niveau), vooraf afgesproken in het stappenplan. Tests komen alléén op afgesproken seams, nooit op interne details — zo overleven ze refactors.
+
+### stap-rapport
+
+Het vaste rapport (±15 regels) na elke stap van een steps-run: wat kan er nu, waarom zo, bewijs (rood→groen + gate), vers reviewer-oordeel, bestanden, één zelf-zien-commando en de teller "Stap N/M".
+
+### tussenbalans
+
+De tussentijdse review na elke 4 goedgekeurde stappen van een steps-run: twee doubt-subagents beantwoorden elk één vraag ("waar zijn we het minst zeker over?" / "wat is de grootste blinde vlek?") in caveman-stijl met bewijs-verwijzingen; de orchestrator consolideert in helder Nederlands mét verdict.
 
 ### walkthrough
 

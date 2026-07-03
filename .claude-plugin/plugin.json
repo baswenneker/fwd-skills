@@ -10,6 +10,8 @@
     "./skills/engineering/fwd:setup",
     "./skills/engineering/fwd:rules-audit",
     "./skills/engineering/fwd:skill-eval",
+    "./skills/engineering/fwd:steps-plan",
+    "./skills/engineering/fwd:steps-run",
     "./skills/productivity/fwd:grill-me",
     "./skills/productivity/fwd:caveman",
     "./skills/productivity/fwd:explain",
