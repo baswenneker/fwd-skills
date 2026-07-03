@@ -41,8 +41,34 @@ if [[ "$OUT" == "done" ]]; then
   fi
 fi
 
+# Unproven verdicts (passed: null) or milestones stuck on gates_passed never roll up
+# into a silent "done". Only a human may accept them, by re-running finalize with
+# FWD_MISSION_ACCEPT_UNVERIFIED="<reden>" — the reason lands in state.json.
+WAIVER=""
+if [[ "$OUT" == "done" ]]; then
+  NULL_VCS="$(jq '[.milestones[] | (.vc_results // [])[] | select(.passed == null)] | length' "$STATE")"
+  GP_M="$(jq '[.milestones[] | select(.validation_status == "gates_passed")] | length' "$STATE")"
+  if (( NULL_VCS > 0 || GP_M > 0 )); then
+    if [[ -n "${FWD_MISSION_ACCEPT_UNVERIFIED:-}" ]]; then
+      WAIVER="${FWD_MISSION_ACCEPT_UNVERIFIED}"
+      echo "unverified items accepted by human waiver: $WAIVER" >&2
+    else
+      echo "unproven verdicts remain ($NULL_VCS null VC(s), $GP_M gates_passed milestone(s)) — refusing a silent done." >&2
+      jq -r '.milestones[] | .id as $m | (.vc_results // [])[] | select(.passed == null) | "  - \($m)/\(.id): \(.evidence // "no reason recorded")"' "$STATE" >&2
+      jq -r '.milestones[] | select(.validation_status == "gates_passed") | "  - \(.id): gates_passed — niet alles bewezen"' "$STATE" >&2
+      echo "a human can accept these knowingly: FWD_MISSION_ACCEPT_UNVERIFIED=\"<reden>\" bash \"$0\" \"$SLUG\"" >&2
+      OUT=blocked
+    fi
+  fi
+fi
+
 TMP="$STATE.tmp.$$"
-jq --arg s "$OUT" --arg t "$(date -u +%FT%TZ)" '.status = $s | .completed_at = $t' "$STATE" > "$TMP" && mv "$TMP" "$STATE"
+if [[ -n "$WAIVER" ]]; then
+  jq --arg s "$OUT" --arg t "$(date -u +%FT%TZ)" --arg w "$WAIVER" \
+     '.status = $s | .completed_at = $t | .unverified_waiver = {reason: $w, at: $t}' "$STATE" > "$TMP" && mv "$TMP" "$STATE"
+else
+  jq --arg s "$OUT" --arg t "$(date -u +%FT%TZ)" '.status = $s | .completed_at = $t' "$STATE" > "$TMP" && mv "$TMP" "$STATE"
+fi
 
 cd "$WT_PATH"
 rtk git add -- ".claude/missions/$SLUG" >&2

@@ -25,7 +25,8 @@ for br in "${BR[@]}"; do
   fi
   status="$(jq -r '.status' <<<"$st")"
   feats="$(jq -r '"\([.features[]|select(.status=="done")]|length)/\(.features|length)"' <<<"$st")"
-  miles="$(jq -r '"\([.milestones[]|select(.validation_status=="passed" or .validation_status=="gates_passed")]|length)/\(.milestones|length)"' <<<"$st")"
+  # Only fully proven milestones count as complete; gates_passed means "not everything proven".
+  miles="$(jq -r '"\([.milestones[]|select(.validation_status=="passed")]|length)/\(.milestones|length)"' <<<"$st")"
   # AGE: days since completed_at — how long finished work has been waiting for a decision.
   age="$(jq -r 'if .completed_at then ((now - (.completed_at | fromdateiso8601)) / 86400 | floor | tostring) + "d" else "-" end' <<<"$st")"
   # MERGED: is the branch tip reachable from the base branch? A squash-merge shows "no" —

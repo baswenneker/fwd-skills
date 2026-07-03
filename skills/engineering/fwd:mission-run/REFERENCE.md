@@ -154,7 +154,7 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 
 - **`features[]` is ordered**, not keyed (unlike issue-fix's `issues{}`): features have a deterministic sequence and inherit each other via git. Resume = the first feature with `status != "done"`. The runner always executes features in array order.
 - **`commit_sha` is the checkpoint.** Resume re-derives position from `status` + `commit_sha`; committed work is never replayed. If a feature is `in_progress` but its commit already exists on the branch (crash between commit and record), adopt it — mark `done`, don't re-spawn.
-- **`vc_results[].passed` is tri-state:** `true` / `false` / `null`. `null` = not-run or skipped (e.g. user-testing skipped because gates failed). A re-run never mistakes a skip for a pass.
+- **`vc_results[].passed` is tri-state:** `true` / `false` / `null`. `null` = not-run, skipped, or unverifiable (a validator that structurally could not see the evidence — external repo, missing key, unreachable feature). A re-run never mistakes a skip for a pass, and **a `null` never rolls up into `done`**: `finalize.sh` blocks until a human accepts it via `FWD_MISSION_ACCEPT_UNVERIFIED` (recorded as `unverified_waiver`).
 - **`gates` vs `gate_results`:** `gates` is the definition (from planning); `milestones[].gate_results` is the per-boundary outcome. Same split for `user_testing` (definition) vs `vc_results` (outcome).
 - **`circuit_breaker` + `decisions[]`** are byte-compatible with issue-fix, so `log-decision.sh` is a near-verbatim crib.
 - **Schema v3 fields are optional and additive.** Plans without `rules_manifest`, `features[].rule_paths`, `milestones[].walkthrough_path`, or `handoff.rules_applied` (older plans) remain valid everywhere — the runner and all scripts. No renames, no removals; nothing breaks on absent fields.
@@ -164,6 +164,7 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
   - **`handoff.rules_applied`** (`[{rule, how}]`): see the handoff table below.
 - **Schema v4 is equally optional and additive.**
   - **`cold_start_proof`** (top-level `{ok, at}`): written by the runner at finalize (step 3.0 in SKILL.md) after a successful fresh boot + demo-step run per the RUNBOOK. `finalize.sh` refuses `done` when `user_testing.boot_command` is set and this proof is absent or not ok. Older plans without the field stay valid; missions without a boot command never need it.
+  - **`unverified_waiver`** (top-level `{reason, at}`): written by `finalize.sh` only when a human re-ran it with `FWD_MISSION_ACCEPT_UNVERIFIED="<reden>"` to knowingly accept remaining `null` verdicts / `gates_passed` milestones. Absent on missions that were fully proven — its presence is itself review information.
 
 ## The handoff report
 
@@ -244,6 +245,7 @@ The User-Testing validator needs to launch the app. The boot recipe is **capture
 | `FWD_MISSION_WORKTREE_DIR` | `<repo>/.trees` | Worktree root (`<dir>/mission/<slug>/`) |
 | `FWD_MISSION_GATE_TIMEOUT` | `600` | Per-gate timeout (seconds) |
 | `FWD_MISSION_MAX_ATTEMPTS` | `3` | Coder attempts per feature |
+| `FWD_MISSION_ACCEPT_UNVERIFIED` | unset | Human-only waiver: re-run `finalize.sh` with a reason to accept remaining unproven verdicts. The runner never sets this. |
 
 ## Milestone walkthrough template
 
@@ -359,6 +361,11 @@ Kies één van de drie routes:
   het beloofde gedrag.
 - **C) Afwijzen met reden** — noteer de reden; die gaat als les mee naar de volgende
   /fwd:mission-plan.
+
+<!-- Only when finalize blocked on unproven verdicts: add the waiver route below,
+     with the absolute-path command copied verbatim from finalize's stderr. -->
+- **Onbewezen punten accepteren** — na het lezen van "Niet (volledig) bewezen":
+  `FWD_MISSION_ACCEPT_UNVERIFIED="<reden>" bash <absoluut pad>/finalize.sh <slug>`
 ````
 
 ## Sources

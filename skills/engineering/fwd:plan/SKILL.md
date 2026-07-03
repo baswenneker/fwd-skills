@@ -11,9 +11,10 @@ Vier stappen: investigate → clarify → present → verdict (op commando).
 
 **Hard constraints:**
 
-- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen in 2b/2c. De DoD in 2a is **géén `AskUserQuestion`** maar een plain-text voorstel met numbered bullets — gebruiker bevestigt met "ok" of geeft aanpassingen aan. Render de DoD-bullets en stop de turn; vuur de `AskUserQuestion`-bundle van 2b/2c pas af **nadat** de gebruiker akkoord heeft gegeven.
+- **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen in 2b/2c. De DoD (Definition of Done) in 2a is **géén `AskUserQuestion`** maar een plain-text voorstel met numbered bullets — gebruiker bevestigt met "ok" of geeft aanpassingen aan. Render de DoD-bullets en stop de turn; vuur de `AskUserQuestion`-bundle van 2b/2c pas af **nadat** de gebruiker akkoord heeft gegeven.
 - **Subagents alleen als de gebruiker er expliciet om vraagt.** Default: blijf in main turn — subagents kunnen geen vervolgvragen stellen en verstoppen context. Bij "use subagents" / "spawn agents to research X" of vergelijkbaar mag `Agent`. Anders zelf doen.
 - **Geen code-wijzigingen.** Skill eindigt met aanbeveling; implementatie is een aparte stap.
+- **Roep nooit `ExitPlanMode` aan** — ook niet als de sessie in Claude Code plan mode draait en de harness om plan-goedkeuring vraagt; haal de tool ook niet via `ToolSearch` op. Het DoD-akkoord plus het verdict-block is het énige goedkeuringsmoment van deze skill; een tweede goedkeuring erbovenop laat de sessie stranden op een afgewezen tool-call. Dit geldt de hele skill-run, ook ná het verdict.
 
 ## Step 1 — Gather context
 
@@ -42,8 +43,11 @@ Format — numbered bullets, géén box-drawing, géén `AskUserQuestion`:
 Definition of Done (DoD) — voorstel:
 
 1. <observeerbaar gedrag, test of contract #1>
+   — bewijs: `<commando>` → <verwachte observatie>
 2. <criterium #2>
-3. <criterium #3>
+   — bewijs: `<commando>` → <verwachte observatie>
+3. <faalgedrag: wat gebeurt er bij foute input / ontbrekende data>
+   — bewijs: `<commando>` → <verwachte foutmelding of status>
 
 Ok of geef aan wat je aan wil passen.
 ```
@@ -53,6 +57,8 @@ Ok of geef aan wat je aan wil passen.
 Regels:
 
 - 2-5 criteria. Concreet en observeerbaar (gedrag, tests, contracten). Geen vage doelen.
+- **Elk criterium krijgt een bewijsregel**: "— bewijs: `<commando>` → `<verwachte observatie>`". Zo is bij oplevering afvinkbaar hoe "werkend" gedemonstreerd wordt. Vereist het bewijs een key of omgeving die er nu niet is, markeer dat expliciet ("— bewijs: **live**, vereist `<X>`"); een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft.
+- **Minstens één criterium beschrijft faalgedrag** (foute input, ontbrekende data, error-pad) — niet alleen de bekende weg.
 - Bouw uit échte Step 1-vondsten. Verzin geen criteria.
 - Bij correctie: render de aangepaste DoD opnieuw als numbered bullets, dán door naar 2b.
 - Als Step 1 te dun was om iets te voorstellen: zeg dat expliciet ("ik mis context X om de DoD scherp te krijgen — kun je Y wijzen?") en wacht. Niet bluffen.

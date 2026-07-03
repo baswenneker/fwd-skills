@@ -26,7 +26,8 @@ jq -r '
   (.features[] | "  \(.id) \(.status)\t\(if .commit_sha then .commit_sha[0:7] else "—" end)\t\(.title)\(if .error then "  [" + .error + "]" else "" end)"),
   "",
   "milestones:",
-  (.milestones[] | "  \(.id) \(.validation_status)\t" + ((.vc_results // []) | map("\(.id)=\(if .passed == true then "pass" elif .passed == false then "FAIL" else "skip" end)") | join(" "))),
+  (.milestones[] | "  \(.id) \(.validation_status)\t" + ((.vc_results // []) | map("\(.id)=\(if .passed == true then "pass" elif .passed == false then "FAIL" else "unproven" end)") | join(" "))),
+  (if .unverified_waiver then "", "unverified waiver: \(.unverified_waiver.reason)  (\(.unverified_waiver.at))" else empty end),
   "",
   "circuit breaker: \(.circuit_breaker.consecutive_failures)   decisions logged: \((.decisions // []) | length)"
 ' <<<"$STATE_JSON"

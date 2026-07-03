@@ -125,7 +125,7 @@ Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed
 
 *Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. The standing test-quality VC travels in the same way — the reviewer audits the milestone's tests statically and fails it on vacuous or copied-logic tests. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
 
-*User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND scrutiny passed (else record these VC-IDs `null`, evidence "skipped: upstream failed"). Boot the app:
+*User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND no scrutiny VC failed — a scrutiny `null` (unverifiable) does NOT skip user-testing, those layers prove different things. When a gate or scrutiny VC did fail, record the user-testing VC-IDs `null` with evidence "skipped: gates or scrutiny failed". Boot the app:
 
 ```
 bash "${CLAUDE_SKILL_DIR}/scripts/boot-app.sh" <slug>
@@ -141,7 +141,7 @@ Always tear down afterwards (whatever the boot outcome):
 bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
 ```
 
-*Decide `validation_status`:* any gate failed OR any scrutiny VC failed → `failed`; gates + scrutiny passed but user-testing couldn't run (no boot / boot failed) → `gates_passed`; everything that ran (gates + scrutiny + user-testing) passed → `passed`. **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory").
+*Decide `validation_status`:* any gate failed OR any VC failed → `failed`; every judged VC passed but ≥1 VC is `null` (unverifiable, or user-testing that couldn't run) → `gates_passed`; every VC `true` → `passed`. A `null` never counts as proven — `gates_passed` means "gates ok, maar niet alles bewezen", and `finalize.sh` refuses a silent `done` while nulls remain (human waiver required, see step 3.1). **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory").
 
 *Record + commit:*
 
@@ -204,6 +204,8 @@ bash "${CLAUDE_SKILL_DIR}/scripts/finalize.sh" <slug>
 
 Marks the mission `done` (all milestones passed and, when a `boot_command` exists, the cold-start-proof is set) or `blocked`, removes the copied `.env` from the worktree, and keeps the worktree for review.
 
+It also refuses a silent `done` while unproven verdicts remain (any `vc_results` entry with `passed: null`, or a milestone stuck on `gates_passed`): the outcome becomes `blocked` and stderr lists exactly which VCs lack proof, followed by the waiver command with the script's **absolute path** already expanded. Only a human can override that, by running that command (`FWD_MISSION_ACCEPT_UNVERIFIED="<reden>" bash /abs/path/to/finalize.sh <slug>`) — the reason is recorded in `state.json` as `unverified_waiver`. **Never set that variable yourself** (autonomous mode): report the blocked outcome, copy the absolute-path waiver command **verbatim from finalize's stderr** into the eindrapport's "Wat nu?" block (never the `${CLAUDE_SKILL_DIR}` form — that variable doesn't exist in the human's shell), and let the human decide.
+
 **3.2 — Compile the eindrapport.** Write `<WT>/.claude/missions/<slug>/handoffs/EINDRAPPORT.md` following the template in REFERENCE.md. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, handoffs, decisions) or the milestone walkthroughs — add no new prose claims. It aggregates what a human must judge: the promised eindbeeld naast wat er staat, per-milestone status + walkthrough links, all open advisories, all `left_undone` items, every VC with `passed != true` (with reason), the kijkinstructie (max 5 steps, pointing at RUNBOOK.md), and the landing block "Wat nu?" with the three written-out routes (accepteren & mergen met exacte commando's / eerst zelf proberen via RUNBOOK.md / afwijzen met reden — die reden gaat als les mee naar de volgende `/fwd:mission-plan`). Plain text options — never `AskUserQuestion` (autonomous mode). Commit it as `chore(mission): eindrapport <slug>`.
 
 Report the outcome to the user by opening with the eindrapport — not a git-log one-liner. The report MUST also include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
@@ -212,6 +214,7 @@ Report the outcome to the user by opening with the eindrapport — not a git-log
 
 - Attempts per feature: `FWD_MISSION_MAX_ATTEMPTS` (default 3).
 - Circuit breaker: 3 consecutive blocked features/milestones → preflight refuses.
+- `FWD_MISSION_ACCEPT_UNVERIFIED` is the **human's** waiver — the runner never sets it.
 - Crash recovery: `reconcile.sh` (loop start) adopts an orphan commit or discards partial leftovers — commit-based, not time-based.
 - One active mission per repo (serial; single-writer state).
 
