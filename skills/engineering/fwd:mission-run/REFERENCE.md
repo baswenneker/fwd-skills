@@ -171,6 +171,7 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
   - **`unverified_waiver`** (top-level `{reason, at}`): written by `finalize.sh` only when a human re-ran it with `FWD_MISSION_ACCEPT_UNVERIFIED="<reden>"` to knowingly accept remaining `null` verdicts / `gates_passed` milestones / a missing cold-start-proof. Absent on missions that were fully proven — its presence is itself review information.
 - **Schema v5 is equally optional and additive.**
   - **`user_testing.plan_probe`** (`{ok, at}`): written by `fwd:mission-plan` (step 4.7) after a successful live plan-time boot-preflight (`boot-app.sh --probe` in the main checkout). Proves the boot config worked at least once before execution started. Absent in older plans and in missions without a boot command.
+  - **`milestones[].concerns`** (`[{location, issue, why_it_matters, category}]`): the reviewer's surviving concerns for that milestone — suspected defects *outside* the contract (category `bug` | `dataverlies` | `security`). Persisted by `record-validation.sh` per validation round: a payload **with** the key replaces the list (empty array clears it), a payload **without** the key leaves the field untouched — older payloads stay valid. Concerns never affect `validation_status` or the circuit breaker; see the *concern* entry in `CONTEXT.md`.
 
 ## The handoff report
 
@@ -264,6 +265,8 @@ After a milestone passes validation, the runner writes a human-readable walkthro
 <!-- Max 5 sentences. What does this milestone deliver? Why does it matter?
      What is the most important decision that was made? Any non-obvious risk? -->
 
+Verdictbalans: <X> pass / <Y> fail / <Z> onbewezen · pogingen: <per feature, bv. F1: 1 · F2: 2>
+
 ## Leesvolgorde
 <!-- Suggested reading order for someone reviewing the diff cold.
      List files / commits in the order that builds the clearest mental model. -->
@@ -278,6 +281,12 @@ After a milestone passes validation, the runner writes a human-readable walkthro
 **Sleutelbestanden**
 - `<path>` — <role>
 
+**Bewijs per criterium**
+<!-- One line per VC this feature targets: the plain-language summary from the
+     contract, plus the file:line evidence VERBATIM from vc_results (reviewer /
+     user-tester). This is the diff-anchored proof — never re-narrate it. -->
+- <samenvatting in gewone taal> — bewijs: <file:regel-evidence verbatim uit vc_results>
+
 **Zelf verifiëren**
 ```bash
 <command to smoke-test or check this feature's output>
@@ -285,14 +294,29 @@ After a milestone passes validation, the runner writes a human-readable walkthro
 
 <!-- Repeat for each feature in this milestone -->
 
+## Zorgen
+<!-- The reviewer's surviving concerns (milestones[].concerns): suspected defects
+     OUTSIDE the contract (bug | dataverlies | security), after the bounded
+     remediation pass. Not failures — the human decides at the eindrapport's
+     "Open punten". Leave empty if there are none. -->
+- `<locatie>` — <issue> (<category>): <why_it_matters> _(optional)_
+
+## Nieuw t.o.v. het design budget
+<!-- Every new directory, abstraction, or test hook relative to the budget lists
+     in mission.md, each with its justification — or the single word "geen". -->
+- <wat + verantwoording, of "geen">
+
 ## Advisories
 <!-- Non-blocking findings from the Scrutiny reviewer: simplicity observations,
      latent tech debt, things to watch. Not failures — those would have blocked
      the milestone. Leave empty if the reviewer had no advisories. -->
 - <advisory> _(optional)_
+
+---
+Verificatie: <n> paden en <n> symbolen gecontroleerd tegen de diff.
 ````
 
-The runner fills in each section from the coder handoffs and the validator reports. The "In één oogopslag" block must be written last (after reading all per-feature sections) so it can summarise the whole milestone honestly.
+The runner fills in each section from the coder handoffs and the validator reports. The "In één oogopslag" block must be written last (after reading all per-feature sections) so it can summarise the whole milestone honestly. The closing "Verificatie:" footer is mandatory — it records the walkthrough verification pass (SKILL.md step 2.5): every named path checked against `rtk git -C <WT> diff --name-only <range>` (or existence on the mission branch's HEAD in the worktree), every named symbol grepped in its file.
 
 ## RUNBOOK template
 
@@ -328,7 +352,7 @@ The demo steps must be read-only (no seeds or writes) so re-running them is alwa
 
 ## Mission eindrapport template
 
-Written by the runner at finalize (SKILL.md step 3.2) at `handoffs/EINDRAPPORT.md`. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, handoffs, decisions) or the milestone walkthroughs — the compiler adds no new prose claims. Write it in the user's language.
+Written by the runner at finalize (SKILL.md step 3.2) at `handoffs/EINDRAPPORT.md`. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, `concerns`, handoffs, decisions) or the milestone walkthroughs — the compiler adds no new prose claims. Write it in the user's language.
 
 ````markdown
 # Mission <slug> — eindrapport
@@ -342,10 +366,21 @@ Written by the runner at finalize (SKILL.md step 3.2) at `handoffs/EINDRAPPORT.m
 |---|---|---|
 | <title> | passed / gates_passed / failed | [<file>](<file>) |
 
-## Open advisories
-<!-- Aggregated from the "Advisories" sections of all milestone walkthroughs (the durable
-     home of the reviewer's advisories[]); empty list is fine. -->
-- <advisory + location>
+## Open punten
+<!-- ONE table for everything a human still has to decide on: surviving concerns
+     (type "zorg", from milestones[].concerns), open advisories (from the
+     walkthroughs), and functional issues_discovered from the coder handoffs
+     (type "handoff-vondst"). The Beslissing column is for the human — leave it
+     as the two written-out options. Empty table is fine. -->
+| Type | Locatie | Omschrijving | Beslissing |
+|---|---|---|---|
+| zorg \| advisory \| handoff-vondst | `<file:regel>` | <één regel> | fixen / bewust accepteren |
+
+<!-- Only when the whole mission counts 0 failed verdicts, 0 concerns AND every
+     feature sits on attempts: 1 — include this calibration warning verbatim: -->
+> **Kalibratie:** alles in één keer groen. Ervaring leert dat dit vaker op een te
+> zacht contract wijst dan op foutloze code. Steekproef: <2-3 concrete
+> zelf-verifieer-commando's uit de walkthroughs>.
 
 ## Niet gedaan
 <!-- Every left_undone item from the feature handoffs, with its feature title. -->

@@ -43,7 +43,15 @@ case "$OUTCOME" in
       exit 1
     fi
     BASE="$(jq -r '.base_branch' "$STATE")"
-    PREV="$(jq -r '[.features[].commit_sha | select(. != null)] | last // empty' "$STATE")"
+    # Frontier = the git-NEWEST recorded feature commit (see reconcile.sh for why
+    # array order is wrong once a remediation re-records an earlier feature).
+    PREV=""; PREV_N=-1
+    while IFS= read -r sha; do
+      [[ -n "$sha" ]] || continue
+      n="$(rtk git rev-list --count "$sha" 2>/dev/null | grep -oE '^[0-9]+' | head -1)"
+      [[ -n "$n" ]] || continue
+      if (( n > PREV_N )); then PREV_N="$n"; PREV="$sha"; fi
+    done < <(jq -r '.features[].commit_sha // empty' "$STATE")
     [[ -z "$PREV" ]] && PREV="$BASE"
     # Require a real CODE commit since PREV — exclude the mission metadata dir, so the
     # previous feature's metadata-only "checkpoint" commit can't be mistaken for the

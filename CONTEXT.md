@@ -30,6 +30,10 @@ _Voeg een entry toe zodra een term op meer dan één plek wordt gebruikt en éé
 
 Een niet-blokkerende vereenvoudigingsvinding van de reviewer ("kan dit simpeler?"). Een advisory staat los van het reviewvonnis en heeft nooit invloed op de validatiestatus.
 
+### concern
+
+Een vermoedelijk écht defect (categorie: bug, dataverlies of security) dat de reviewer vindt búiten het validatiecontract — het schendt geen enkele meegegeven VC letterlijk, maar zou de gebruiker wél storen. Harde regel: een gevonden gebrek als terzijde parkeren ("not a fail", "known limitation") is verboden — het is óf een FAIL van een passende VC, óf een concern. Een concern raakt validatiestatus noch circuit breaker, maar triggert één begrensde remediatiepas (dezelfde als bij een gefaalde VC). Een concern die de remediatiepas overleeft, landt verplicht in de walkthrough (sectie "Zorgen") en het eindrapport (tabel "Open punten"); een concern die in de remediatie gefixt wordt, verdwijnt (concerns worden per validatieronde vervangen, geen historie). Twijfel en smaak blijven een advisory.
+
 ### deferral
 
 Een bewust-uitgestelde uitbreiding of verbetering in een steps-run, vastgelegd bij het stap-akkoord als `{note, when}`: wát is uitgesteld en bij welk signaal het alsnog moet gebeuren. In de code staat op die plek een zelfstandig leesbare comment met plafond + upgrade-pad; het eindrapport verzamelt alle deferrals.

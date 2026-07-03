@@ -123,7 +123,7 @@ bash "${CLAUDE_SKILL_DIR}/scripts/run-gates.sh" <slug> <milestone-id>
 
 Prints a JSON array of per-gate `{exit_code, passed}` and exits 0 iff all passed. Capture it as `<gate-results>`.
 
-*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. The standing test-quality VC travels in the same way — the reviewer audits the milestone's tests statically and fails it on vacuous or copied-logic tests. So does the standing design-budget VC (with the verbatim budget lists in its assertion text) — the reviewer fails it on any dependency, abstraction, or top-level directory outside those lists. Afspraken-VC's (explicit user agreements pinned as assertions) travel in like any other. It returns `{narrative, verdicts:[{id,passed,evidence}]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
+*Scrutiny (Layer B — `scrutiny-review` VC-IDs):* spawn `fwd-skills:fwd-mission-reviewer` (Agent tool). The prompt MUST pin the worktree path, the milestone's commit range (the feature SHAs from `state.json`), and the `scrutiny-review` assertions verbatim. The milestone's standing comment-hygiene VC is one of these `scrutiny-review` assertions — it travels in verbatim like the rest, and the reviewer fails it on any mission-internal code (feature/milestone/VC ID, history reference) found in committed comments, docstrings, or commit messages. The standing test-quality VC travels in the same way — the reviewer audits the milestone's tests statically and fails it on vacuous or copied-logic tests. So does the standing design-budget VC (with the verbatim budget lists in its assertion text) — the reviewer fails it on any dependency, abstraction, or top-level directory outside those lists. Afspraken-VC's (explicit user agreements pinned as assertions) travel in like any other. It returns `{narrative, verdicts:[{id,passed,evidence}], concerns:[{location,issue,why_it_matters,category}], advisories:[...]}` — write its narrative to `handoffs/<milestone-id>-review.md`.
 
 *User-Testing (Layer B — `user-testing` VC-IDs):* run only if gates passed AND no scrutiny VC failed — a scrutiny `null` (unverifiable) does NOT skip user-testing, those layers prove different things. When a gate or scrutiny VC did fail, record the user-testing VC-IDs `null` with evidence "skipped: gates or scrutiny failed". Boot the app:
 
@@ -141,16 +141,40 @@ Always tear down afterwards (whatever the boot outcome):
 bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
 ```
 
-*Decide `validation_status`:* any gate failed OR any VC failed → `failed`; every judged VC passed but ≥1 VC is `null` (unverifiable, or user-testing that couldn't run) → `gates_passed`; every VC `true` → `passed`. A `null` never counts as proven — `gates_passed` means "gates ok, maar niet alles bewezen", and `finalize.sh` refuses a silent `done` while nulls remain (human waiver required, see step 3.1). **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory").
+*Decide `validation_status`:* any gate failed OR any VC failed → `failed`; every judged VC passed but ≥1 VC is `null` (unverifiable, or user-testing that couldn't run) → `gates_passed`; every VC `true` → `passed`. A `null` never counts as proven — `gates_passed` means "gates ok, maar niet alles bewezen", and `finalize.sh` refuses a silent `done` while nulls remain (human waiver required, see step 3.1). **Advisories from the reviewer never influence `validation_status`** — they are non-blocking by definition (see CONTEXT.md "advisory"). **Concerns don't either** — but they are not free: see the concern remediation pass below.
 
 *Record + commit:*
 
 ```
-echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>]}' \
+echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>],"concerns":[<reviewer concerns, verbatim>]}' \
   | bash "${CLAUDE_SKILL_DIR}/scripts/record-validation.sh" <slug> <milestone-id> <status>
 ```
 
-*Write the milestone walkthrough* (regardless of `validation_status` — every milestone ends with a readable walkthrough): compile `handoffs/<milestone-id>-walkthrough.md` following the template in REFERENCE.md ("In één oogopslag"; reading order; per-feature what/why + key files + self-verify commands; advisories section from the reviewer's `advisories[]`). Then set `milestones[].walkthrough_path` in `state.json` with an atomic write:
+*Remediation — ONE bounded pass (concerns and failures share it).* Trigger it when the milestone came back `failed` (a gate or scrutiny VC failed) **or** the reviewer raised ≥1 concern (a defect **outside** the contract — see CONTEXT.md "concern"). There is exactly **one** pass — never a separate pass per channel:
+
+1. Re-spawn ONE coder (2.3) on the affected feature(s), with the failing verdicts **and** the concerns **verbatim** in the prompt. Respect the attempt cap: a feature already at `FWD_MISSION_MAX_ATTEMPTS` is not re-spawned — the milestone is blocked instead.
+2. If the coder committed a fix, **record that feature again** so the ledger follows the code — do this immediately, before re-validating:
+   ```
+   echo '<handoff-json>' | bash "${CLAUDE_SKILL_DIR}/scripts/record-feature.sh" <slug> <feature-id> done
+   ```
+   This advances the feature's `commit_sha` to the remediation commit, so `reconcile.sh` sees the fix as recorded and never adopts an unrelated feature at the next tick (its frontier is the git-newest recorded commit, so re-recording *any* feature — not just the milestone's last — moves it to HEAD). It also bumps `attempts`, which keeps the cap durable across a resume and stops the mission from reading as "first-try green". (If the coder committed nothing, skip this and the re-validation; the concern/failure stands.)
+3. Re-validate the milestone **once**: rerun *Gates → Scrutiny → User-Testing → Decide status → Record* above, with the reviewer pinned to the **new** HEAD range (so it sees the fix) and user-testing re-run when the milestone has `user-testing` VCs (so no stale runtime verdict survives the code change). Do **not** enter remediation a second time — a concern or failure still present after this one pass is final for the milestone.
+
+Concerns never change `validation_status`, and the breaker only ever moves on a `failed` record — a milestone that ends `passed`/`gates_passed` after remediation never increments it, so a concern on a green milestone leaves the breaker untouched. Still `failed` or cap hit after the pass → the milestone is blocked (`record-validation.sh` already incremented the breaker on the failed record); log it and continue. Surviving concerns land verbatim in the walkthrough's "Zorgen" section and the eindrapport's "Open punten" — parking a found defect nowhere is not an option.
+
+*Write the milestone walkthrough* (regardless of `validation_status` — every milestone ends with a readable walkthrough): compile `handoffs/<milestone-id>-walkthrough.md` following the template in REFERENCE.md ("In één oogopslag" + verdictbalans; reading order; per-feature what/why + key files + **bewijs per criterium** uit `vc_results` + self-verify commands; "Zorgen" from the surviving concerns; "Nieuw t.o.v. het design budget"; advisories).
+
+**Verificatiepas (verplicht, vóór de walkthrough-commit).** De walkthrough is zelfrapportage totdat hij tegen de diff is gehouden:
+
+1. Bouw de bestandslijst van de milestone met `rtk git -C <WT> diff --name-only <range>`. Draai altijd met `-C <WT>` — de orchestrator staat in de hoofd-checkout, waar HEAD *niet* de mission-branch is; alleen in de worktree wijst HEAD naar de mission-code. (Dit is een membership-check: een enkele extra regel in de rtk-output kan geen echt pad wegnemen, dus filteren is hier onnodig — net als in `record-feature.sh` en `reconcile.sh`, die `rtk git diff --name-only` ook rauw gebruiken.)
+2. Elk pad dat de walkthrough noemt moet in die lijst staan, of op HEAD van de mission-branch bestaan (`rtk git -C <WT> cat-file -e HEAD:<pad>`) — een pad uit een eerdere milestone van dezelfde missie bestaat wél op HEAD maar niet in deze range.
+3. Grep elke genoemde functie/symbool in het genoemde bestand (in de worktree).
+4. Bij een mismatch: corrigeer de walkthrough — een niet-geverifieerde claim wordt nooit gepubliceerd.
+5. Herlees de tekst tegen de "Schrijfstijl missions"-normen (CONTEXT.md).
+
+Sluit de walkthrough af met de verplichte footer: `Verificatie: <n> paden en <n> symbolen gecontroleerd tegen de diff.`
+
+Then set `milestones[].walkthrough_path` in `state.json` with an atomic write:
 
 ```bash
 TMPFILE="$(dirname "${STATE_JSON}")/state.json.tmp.$$"
@@ -160,9 +184,7 @@ jq --arg mid "<milestone-id>" \
    "${STATE_JSON}" > "${TMPFILE}" && mv "${TMPFILE}" "${STATE_JSON}"
 ```
 
-Commit the walkthrough alongside the validation checkpoint (one commit, or as its own `chore(mission):` commit immediately after — pick whichever keeps the diff cleanest).
-
-*On `failed`:* give the milestone ONE bounded remediation pass — re-spawn the coder on the failing feature(s) with the verdicts as context (respect the attempt cap) — then re-validate. Still failing or cap hit → the milestone is blocked (`record-validation.sh` already incremented the breaker); log it and continue.
+Commit the walkthrough alongside the validation checkpoint (one commit, or as its own `chore(mission):` commit immediately after — pick whichever keeps the diff cleanest). Write it only after the remediation pass above has settled — it reads the final `vc_results` and surviving concerns.
 
 **2.6 — Learn.** After a milestone, if the handoffs' `issues_discovered` or any VC failure taught something reusable, distil ONE lesson and append it:
 
@@ -206,7 +228,11 @@ Marks the mission `done` (all milestones passed and, when a `boot_command` exist
 
 It also refuses a silent `done` while unproven verdicts remain (any `vc_results` entry with `passed: null`, a milestone stuck on `gates_passed`, or — per 3.0 — a missing cold-start-proof): the outcome becomes `blocked` and stderr lists exactly which VCs lack proof, followed by the waiver command with the script's **absolute path** already expanded. Only a human can override that, by running that command (`FWD_MISSION_ACCEPT_UNVERIFIED="<reden>" bash /abs/path/to/finalize.sh <slug>`) — the reason is recorded in `state.json` as `unverified_waiver`. **Never set that variable yourself** (autonomous mode): report the blocked outcome, copy the absolute-path waiver command **verbatim from finalize's stderr** into the eindrapport's "Wat nu?" block (never the `${CLAUDE_SKILL_DIR}` form — that variable doesn't exist in the human's shell), and let the human decide.
 
-**3.2 — Compile the eindrapport.** Write `<WT>/.claude/missions/<slug>/handoffs/EINDRAPPORT.md` following the template in REFERENCE.md. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, handoffs, decisions) or the milestone walkthroughs — add no new prose claims. It aggregates what a human must judge: the promised eindbeeld naast wat er staat, per-milestone status + walkthrough links, all open advisories, all `left_undone` items, every VC with `passed != true` (with reason), the kijkinstructie (max 5 steps, pointing at RUNBOOK.md), and the landing block "Wat nu?" with the three written-out routes (accepteren & mergen met exacte commando's / eerst zelf proberen via RUNBOOK.md / afwijzen met reden — die reden gaat als les mee naar de volgende `/fwd:mission-plan`). Plain text options — never `AskUserQuestion` (autonomous mode). Commit it as `chore(mission): eindrapport <slug>`.
+**3.2 — Compile the eindrapport.** Write `<WT>/.claude/missions/<slug>/handoffs/EINDRAPPORT.md` following the template in REFERENCE.md. **Data-driven only:** every claim comes verbatim from `state.json` (`vc_results`, `concerns`, handoffs, decisions) or the milestone walkthroughs — add no new prose claims. It aggregates what a human must judge: the promised eindbeeld naast wat er staat, per-milestone status + walkthrough links, één **"Open punten"-tabel** (Type: zorg / advisory / handoff-vondst · Locatie · Omschrijving · Beslissing — alle overgebleven concerns, open advisories én functionele `issues_discovered` uit de handoffs op één leesplek), all `left_undone` items, every VC with `passed != true` (with reason), the kijkinstructie (max 5 steps, pointing at RUNBOOK.md), and the landing block "Wat nu?" with the three written-out routes (accepteren & mergen met exacte commando's / eerst zelf proberen via RUNBOOK.md / afwijzen met reden — die reden gaat als les mee naar de volgende `/fwd:mission-plan`). Plain text options — never `AskUserQuestion` (autonomous mode).
+
+**Kalibratiewaarschuwing (verplicht bij verdacht groen).** Tel missie-breed alle verdicts, concerns en attempts. Is de uitkomst 0 fails, 0 concerns én elke feature op `attempts` 1, neem dan de kalibratie-blockquote uit het eindrapport-template (REFERENCE.md, de letterlijke tekst staat daar) op, met 2-3 concrete zelf-verifieer-commando's uit de walkthroughs ingevuld. Puur een signaal — geen blokkade, geen prompt. Merk op dat een echte remediatiepas `attempts` ophoogt, dus een missie die remediatie nodig had valt vanzelf buiten deze conditie.
+
+Commit it as `chore(mission): eindrapport <slug>`.
 
 Report the outcome to the user by opening with the eindrapport — not a git-log one-liner. The report MUST also include a **rule-kandidaten** section: distil candidate new rules from the accumulated `issues_discovered` fields across all feature handoffs and from any lessons appended during the mission. Present each candidate as a one-sentence proposal — what pattern, and why it belongs in `.claude/rules/`. **The runner never mutates `.claude/rules/` itself.** The human reviews these kandidaten and decides whether to add them as rules.
 
