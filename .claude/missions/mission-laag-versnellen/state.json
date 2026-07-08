@@ -181,10 +181,55 @@
       "feature_ids": [
         "F1"
       ],
-      "validation_status": "pending",
-      "validated_at": null,
-      "gate_results": [],
-      "vc_results": []
+      "validation_status": "failed",
+      "validated_at": "2026-07-08T08:20:04Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-1",
+          "passed": true,
+          "evidence": "geen CONTEXT.md-refs; normen inline waar nodig; user-tester/doubt-weglating verdedigbaar",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-2",
+          "passed": true,
+          "evidence": "gedragsverbod met drie bullets in alle 5, find / in elk",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-3",
+          "passed": false,
+          "evidence": "norm-drift in fwd-mission-reviewer.md schrijfstijl-blok: In-een-oogopslag-opening en taal-van-de-gebruiker weggelaten t.o.v. CONTEXT.md",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-4",
+          "passed": true,
+          "evidence": "commit message schoon, geen mission-code in comments",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-5",
+          "passed": true,
+          "evidence": "grep-bewijs draait echte bestanden, niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-6",
+          "passed": true,
+          "evidence": "alleen 5 agent-bestanden, geen budget-overschrijding",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        }
+      ],
+      "concerns": []
     },
     {
       "id": "M2",
@@ -213,7 +258,7 @@
     }
   ],
   "circuit_breaker": {
-    "consecutive_failures": 0
+    "consecutive_failures": 1
   },
   "decisions": []
 }
