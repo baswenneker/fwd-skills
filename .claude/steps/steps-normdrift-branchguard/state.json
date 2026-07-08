@@ -2,7 +2,7 @@
   "version": 1,
   "slug": "steps-normdrift-branchguard",
   "title": "steps-laag verharden met lessen uit mission-laag-versnellen",
-  "status": "planned",
+  "status": "in_progress",
   "branch": "steps/steps-normdrift-branchguard",
   "base_branch": "main",
   "created_at": "2026-07-08T00:00:00Z",
@@ -23,8 +23,8 @@
         "expected": "exit != 0 + melding op verkeerde branch; exit 0 + recorded=S1 op juiste branch"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T13:16:12Z",
       "deferrals": []
     },
     {

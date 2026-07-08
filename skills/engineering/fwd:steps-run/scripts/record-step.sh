@@ -18,6 +18,15 @@ STATE="$REPO_ROOT/.claude/steps/$SLUG/state.json"
 PLAN_MD="$REPO_ROOT/.claude/steps/$SLUG/plan.md"
 [[ -f "$STATE" ]] || { echo "state.json missing: $STATE" >&2; exit 1; }
 
+# Guard: only ever commit onto the plan's own branch. A worktree left on the base branch
+# (or any other) would otherwise bury the step commit where the run can't find it.
+WANT_BRANCH="$(jq -r '.branch // empty' "$STATE")"
+HEAD_BRANCH="$(rtk git rev-parse --abbrev-ref HEAD)"
+if [[ -n "$WANT_BRANCH" && "$HEAD_BRANCH" != "$WANT_BRANCH" ]]; then
+  echo "refusing to commit: worktree HEAD is '$HEAD_BRANCH', expected '$WANT_BRANCH' (.branch)" >&2
+  exit 1
+fi
+
 jq -e --arg s "$SID" 'any(.steps[]; .id == $s and .status == "todo")' "$STATE" >/dev/null \
   || { echo "no open step '$SID' in $SLUG (already done, skipped, or unknown)" >&2; exit 1; }
 
