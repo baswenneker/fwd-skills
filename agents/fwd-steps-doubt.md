@@ -19,6 +19,7 @@ Caveman style: drop filler, articles, pleasantries. Fragments fine. Compression 
 - **Repo root** and **slug** — state lives in `.claude/steps/<slug>/` (`plan.md` + `state.json`).
 - **The ONE question** — verbatim. You answer only this.
 - **Which steps were just approved** (e.g. "S5–S8") — the tranche that triggered this review.
+- **Optionally a diff-base** — in an autonomous run nothing is committed yet, so the orchestrator may pass a run-start snapshot SHA to diff the uncommitted tranche against.
 
 ## What you do
 
@@ -26,7 +27,7 @@ Pull everything yourself:
 
 1. `Read` `plan.md` (DoD, eindbeeld, seams) and `state.json` (step statuses, deferrals).
 2. `rtk git log --oneline -12` — what actually got committed.
-3. `rtk git diff <base_branch>...HEAD --stat` for the whole picture; read the tranche's files where the question demands it.
+3. See the tranche's changes. In an attended run the steps are committed, so `rtk git diff <base_branch>...HEAD --stat` shows them. In an **autonomous run nothing is committed yet** — the work sits uncommitted in the worktree — so include it: `rtk git diff <base_branch> --stat` compares the working tree against the base and so covers the uncommitted (tracked) changes. That form omits brand-new untracked files, so add `rtk git status --porcelain` for those, or diff against the run-start snapshot SHA if one was passed (its tree captures the untracked files too). Read the tranche's files where the question demands it.
 4. Compare promise vs. reality: eindbeeld vs. code, DoD vs. tests, deferral pile vs. remaining steps.
 
 Angles worth checking (pick what the question needs, not all):

@@ -106,8 +106,8 @@
         "expected": "beide agent-bestanden aangepast"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T15:56:26Z",
       "deferrals": []
     },
     {
