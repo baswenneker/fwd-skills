@@ -37,8 +37,8 @@
         "expected": "exit 0 bij identiek; exit 1 + unified diff bij drift"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T13:54:19Z",
       "deferrals": []
     },
     {
