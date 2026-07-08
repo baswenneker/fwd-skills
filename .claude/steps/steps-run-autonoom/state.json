@@ -11,6 +11,7 @@
   "seams": [
     "record-step.sh [--no-commit] <slug> <step-id> \"<msg>\"",
     "finalize-autonomous.sh <slug> \"<msg>\"",
+    "snapshot-worktree.sh <slug>",
     "status.sh <slug>",
     "tests/run-tests.sh"
   ],
@@ -84,12 +85,11 @@
     },
     {
       "id": "S6",
-      "title": "steps-run SKILL.md: sectie Autonome modus",
-      "behavior": "loop zonder stops via --no-commit; reviewer op opgestapelde diff (negeert .claude/steps/**, oordeelt alleen huidige stap); doubt elke 4 auto-door bij 'niets aanpassen' anders break-out; break-out-condities",
+      "title": "snapshot-worktree.sh (nieuw): per-stap isolatie-ref",
+      "behavior": "legt de volledige worktree (tracked + untracked) vast als off-branch commit-ref en echoot de SHA; wijzigt HEAD, branch noch working tree; twee snapshots omsluiten precies één stap",
       "done_criterion": {
-        "type": "command",
-        "value": "grep sectiekop 'Autonome modus' + break-out-lijst + '--no-commit' in skills/engineering/fwd:steps-run/SKILL.md",
-        "expected": "alle drie aanwezig"
+        "type": "test",
+        "value": "test_snapshot_worktree (in tests/run-tests.sh): na een wijziging op een vuile tree toont git diff <snap-voor> <snap-na> precies die wijziging incl. nieuw untracked bestand; HEAD en working tree onveranderd"
       },
       "rule_paths": [],
       "status": "todo",
@@ -98,6 +98,34 @@
     },
     {
       "id": "S7",
+      "title": "reviewer- + doubt-agent: optionele diff-range",
+      "behavior": "fwd-steps-reviewer accepteert een optionele diff-basis (default HEAD; in autonoom de twee per-stap snapshots -> ziet alleen de huidige stap); fwd-steps-doubt diff't ongecommit-inclusief zodat opgestapeld werk meetelt",
+      "done_criterion": {
+        "type": "command",
+        "value": "grep optionele diff-basis/range in agents/fwd-steps-reviewer.md + ongecommit-inclusieve diff in agents/fwd-steps-doubt.md",
+        "expected": "beide agent-bestanden aangepast"
+      },
+      "rule_paths": [],
+      "status": "todo",
+      "approved_at": null,
+      "deferrals": []
+    },
+    {
+      "id": "S8",
+      "title": "steps-run SKILL.md: sectie Autonome modus",
+      "behavior": "loop zonder stops via --no-commit; snapshot voor+na elke stap -> range aan de reviewer (negeert .claude/steps/**, oordeelt alleen huidige stap); doubt elke 4 ongecommit-inclusief -> auto-door bij 'niets aanpassen' anders break-out; break-out-condities",
+      "done_criterion": {
+        "type": "command",
+        "value": "grep sectiekop 'Autonome modus' + break-out-lijst + '--no-commit' + snapshot-verwijzing in skills/engineering/fwd:steps-run/SKILL.md",
+        "expected": "alle vier aanwezig"
+      },
+      "rule_paths": [],
+      "status": "todo",
+      "approved_at": null,
+      "deferrals": []
+    },
+    {
+      "id": "S9",
       "title": "steps-run SKILL.md: eindreview + commit-gate + hervat-proza",
       "behavior": "eindreview-rapport (het eindbeeld), commit alleen na ok via finalize-autonomous.sh (squash/split-keuze), stop=ongecommit; hervatten bij pending_autonomous_commit=yes biedt doorgaan/afronden en herbouwt nooit een done-stap",
       "done_criterion": {
@@ -111,7 +139,7 @@
       "deferrals": []
     },
     {
-      "id": "S8",
+      "id": "S10",
       "title": "Docs-sync: schema + README",
       "behavior": "steps-plan state.json-schema krijgt approved_mode (default attended) + 1-regel notitie over de autonome auto-afronding; README steps-run-rij noemt auto",
       "done_criterion": {
@@ -125,7 +153,7 @@
       "deferrals": []
     },
     {
-      "id": "S9",
+      "id": "S11",
       "title": "fwd:skill-eval shakedown van steps-run",
       "behavior": "de repo's eigen black-box skill-test als behavioral capstone; grep bewijst alleen dat de tekst er staat, niet dat-ie klopt",
       "done_criterion": {
