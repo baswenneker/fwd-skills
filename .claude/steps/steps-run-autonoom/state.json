@@ -92,8 +92,8 @@
         "value": "test_snapshot_worktree (in tests/run-tests.sh): na een wijziging op een vuile tree toont git diff <snap-voor> <snap-na> precies die wijziging incl. nieuw untracked bestand; HEAD en working tree onveranderd"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T15:49:53Z",
       "deferrals": []
     },
     {
