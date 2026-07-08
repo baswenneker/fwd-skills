@@ -35,8 +35,35 @@ cd "$WT_PATH"
 
 case "$OUTCOME" in
   done)
-    # Clean worktree, ignoring the copied .env* and boot artifacts (expected, untracked).
-    DIRTY="$(rtk git status --porcelain | grep -vx 'ok' | grep -vE '(\.env(\.[^/]+)?|\.mission-boot\.(pid|log))$' || true)"
+    # A handoff JSON is optional on stdin, but if one was actually piped in for
+    # a "done" outcome, it must carry the fields the mission relies on downstream
+    # (the milestone walkthrough, the finalize report, and the rules audit all
+    # read these back out of state.json). Reject early with a field-specific
+    # message rather than silently writing an incomplete handoff.
+    if [[ "$HANDOFF" != 'null' ]]; then
+      for field in implemented left_undone commands issues_discovered procedures_followed; do
+        jq -e --arg f "$field" 'has($f)' >/dev/null 2>&1 <<<"$HANDOFF" \
+          || { echo "handoff missing required field: $field" >&2; exit 1; }
+      done
+      # When the feature was assigned rule files to follow, the coder must report
+      # back how each was applied — accountability without follow-through is refused.
+      RULE_PATH_COUNT="$(jq -r --arg f "$FID" '(.features[] | select(.id == $f) | .rule_paths // []) | length' "$STATE")"
+      if [[ "$RULE_PATH_COUNT" -gt 0 ]]; then
+        RULES_APPLIED_COUNT="$(jq -r '(.rules_applied // []) | length' <<<"$HANDOFF")"
+        [[ "$RULES_APPLIED_COUNT" -gt 0 ]] \
+          || { echo "handoff missing non-empty rules_applied although this feature has rule_paths" >&2; exit 1; }
+      fi
+    fi
+    # Clean worktree, ignoring the copied .env*, boot artifacts (expected, untracked),
+    # and a brand-new narrative file dropped under this mission's handoffs directory
+    # (the orchestrator writes it just before calling this script, so it is always
+    # untracked at this point — it gets folded into the checkpoint commit below).
+    # A *tracked* file with uncommitted changes anywhere else still fails the check.
+    DIRTY="$(rtk git status --porcelain \
+      | grep -vx 'ok' \
+      | grep -vE '(\.env(\.[^/]+)?|\.mission-boot\.(pid|log))$' \
+      | grep -vE "^\\?\\? \\.claude/missions/$SLUG/handoffs/" \
+      || true)"
     if [[ -n "$DIRTY" ]]; then
       echo "worktree has uncommitted changes — coder must commit before record:" >&2
       echo "$DIRTY" >&2
