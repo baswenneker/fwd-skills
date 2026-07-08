@@ -137,13 +137,14 @@ Sluit af met exact deze regels:
       "rule_paths": [".claude/rules/<x>.md"],
       "status": "todo",
       "approved_at": null,
+      "approved_mode": "attended",
       "deferrals": []
     }
   ]
 }
 ```
 
-`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen.
+`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `approved_mode` (`attended` | `autonomous`, default `attended`) legt vast hoe de stap is goedgekeurd — steps-run kent naast het per-stap `ok` ook een autonome `auto`-afronding die alle resterende stappen zonder tussenstops afmaakt en pas na één eindreview commit. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen.
 
 ## Stijl
 
