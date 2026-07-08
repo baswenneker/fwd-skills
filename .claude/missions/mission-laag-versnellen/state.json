@@ -153,12 +153,57 @@
         "VC-14",
         "VC-15"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "8d22f9170a7a46be9a2604e7cee5e58dae25bce9",
+      "started_at": "2026-07-08T08:40:03Z",
+      "completed_at": "2026-07-08T08:40:03Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "agents/fwd-mission-scribe.md nieuw: model haiku, tools Read/Glob/Grep/Bash zonder Write/Edit, volledige verificatiepas + verplichte slotregel, expliciet geen oordeelsvorming",
+          "SKILL.md 2.5: walkthrough-compilatie gedelegeerd aan scribe, orchestrator schrijft/commit",
+          "SKILL.md 2.5 Scrutiny: reviewer-prompt krijgt gate_results + HEAD-SHA met her-run-verbod op gelijke SHA",
+          "REFERENCE.md: scribe in subagent-naming",
+          "CLAUDE.md: scribe in Agents-sectie"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep model: haiku scribe",
+            "exit_code": 0
+          },
+          {
+            "command": "grep tools Write|Edit scribe",
+            "exit_code": 1
+          },
+          {
+            "command": "grep Verificatie: scribe",
+            "exit_code": 0
+          },
+          {
+            "command": "grep unchanged-from-gate-run SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Bestanden eerst per ongeluk naar de hoofd-checkout geschreven; hersteld via git checkout, hoofd-checkout weer clean, edits opnieuw in de worktree toegepast"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen de vier opgegeven bestanden gestaged",
+          "geen mission-interne codes in commit-message of nieuwe producttekst"
+        ]
+      }
     },
     {
       "id": "F4",
