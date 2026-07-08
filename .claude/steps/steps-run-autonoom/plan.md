@@ -50,7 +50,7 @@ Onderbreekt autonoom halverwege (bijv. S5 loopt vast), dan verschijnt in plaats 
 
 ## Stappen
 - [x] S1 — Testharnas + gate: plain-bash harnas met assert-helpers + een wegwerp-git-fixture (mini steps-plan). Klaar als: `bash skills/engineering/fwd:steps-run/tests/run-tests.sh` → exit 0 (hiermee bestaat de gate voor S2+). Regels: geen
-- [ ] S2 — `record-step.sh --no-commit`: markeert stap done, tikt plan.md, zet `approved_mode=autonomous`, commit niet; `interim_review` vuurt nog elke 4e; attended-modus ongewijzigd. Klaar als: harnastest — na `--no-commit` is de stap done + plan.md getikt + HEAD onveranderd, en attended commit nog wél. Regels: geen
+- [x] S2 — `record-step.sh --no-commit`: markeert stap done, tikt plan.md, zet `approved_mode=autonomous`, commit niet; `interim_review` vuurt nog elke 4e; attended-modus ongewijzigd. Klaar als: harnastest — na `--no-commit` is de stap done + plan.md getikt + HEAD onveranderd, en attended commit nog wél. Regels: geen
 - [ ] S3 — `finalize-autonomous.sh` (nieuw): commit alle ongecommitte wijzigingen als één commit; status=done als geen todo's resten, anders in_progress (deel-finalize bij break-out). Klaar als: harnastest — precies 1 nieuwe commit bevat al 't werk; status klopt in beide gevallen. Regels: geen
 - [ ] S4 — `status.sh` → afgeleid `pending_autonomous_commit`: yes als tree dirty én laatst-goedgekeurde stap `approved_mode=autonomous`, anders no. Klaar als: harnastest — beide gevallen. Regels: geen
 - [ ] S5 — steps-run SKILL.md gate-optie `auto`: `auto`/`autonoom` als antwoord in §6 + de voetregel in het stap-rapport (§5). Klaar als: grep vindt `auto` in de voetregel-template én een gate-bullet. Regels: geen

@@ -38,8 +38,8 @@
         "value": "test_record_step_no_commit (in tests/run-tests.sh): na --no-commit is de stap done + plan.md getikt + HEAD onveranderd; attended commit nog wel"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T14:46:26Z",
       "deferrals": []
     },
     {

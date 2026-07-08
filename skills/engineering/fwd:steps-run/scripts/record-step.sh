@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Record the user's approval of ONE step: mark it done in state.json (merging any
-# deferrals from stdin), tick the plan.md checkbox, and commit code + state atomically.
-# The working tree was clean when the step started, so everything dirty now IS the step.
+# Record the approval of ONE step: mark it done in state.json (merging any deferrals from
+# stdin) and tick the plan.md checkbox. In attended mode it then commits code + state
+# atomically (the tree was clean when the step started, so everything dirty now IS the step).
+# With --no-commit it updates state + checkbox but commits nothing and leaves HEAD untouched
+# — the autonomous path, which accumulates steps and makes one commit at the end of the run.
+# The mode is recorded on the step as approved_mode (attended | autonomous).
 # Usage:
-#   echo '{"deferrals":[{"note":"…","when":"…"}]}' | record-step.sh <slug> <step-id> "<commit message>"
+#   echo '{"deferrals":[{"note":"…","when":"…"}]}' | record-step.sh [--no-commit] <slug> <step-id> "<commit message>"
 #   (stdin is optional)
 # Stdout: recorded=<id> · progress=<done>/<total> · status=<plan status> · interim_review=due|not-due
 set -euo pipefail
 
-SLUG="${1:?usage: record-step.sh <slug> <step-id> \"<commit message>\"}"
+NO_COMMIT=0
+if [[ "${1:-}" == "--no-commit" ]]; then NO_COMMIT=1; shift; fi
+SLUG="${1:?usage: record-step.sh [--no-commit] <slug> <step-id> \"<commit message>\"}"
 SID="${2:?step-id required (e.g. S3)}"
 MSG="${3:?commit message required}"
+MODE="attended"; [[ "$NO_COMMIT" -eq 1 ]] && MODE="autonomous"
 command -v jq >/dev/null 2>&1 || { echo "missing-jq — install jq (brew install jq)" >&2; exit 1; }
 
 REPO_ROOT="$(rtk git rev-parse --show-toplevel)"
@@ -37,8 +43,8 @@ NOW="$(date -u +%FT%TZ)"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-jq --arg s "$SID" --arg t "$NOW" --argjson d "$DEFERRALS" '
-  (.steps[] | select(.id == $s)) |= (.status = "done" | .approved_at = $t | .deferrals += $d)
+jq --arg s "$SID" --arg t "$NOW" --arg mode "$MODE" --argjson d "$DEFERRALS" '
+  (.steps[] | select(.id == $s)) |= (.status = "done" | .approved_at = $t | .approved_mode = $mode | .deferrals += $d)
   | .status = (if all(.steps[]; .status != "todo") then "done" else "in_progress" end)
   | .completed_at = (if .status == "done" then $t else .completed_at end)
 ' "$STATE" > "$TMP"
@@ -54,8 +60,12 @@ else
   echo "note: no '- [ ] $SID ' checkbox found in plan.md — state.json is the source of truth" >&2
 fi
 
-rtk git add -A
-rtk git commit -m "$MSG" >&2
+if [[ "$NO_COMMIT" -eq 1 ]]; then
+  echo "--no-commit: state + plan.md updated, HEAD left untouched" >&2
+else
+  rtk git add -A
+  rtk git commit -m "$MSG" >&2
+fi
 
 DONE="$(jq -r '[.steps[] | select(.status == "done")] | length' "$STATE")"
 TOTAL="$(jq -r '.steps | length' "$STATE")"
