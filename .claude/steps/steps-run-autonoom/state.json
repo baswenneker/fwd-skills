@@ -79,8 +79,8 @@
         "expected": "auto gevonden in voetregel-template en als gate-antwoord"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T15:21:52Z",
       "deferrals": []
     },
     {

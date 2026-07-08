@@ -131,7 +131,7 @@ Bestanden:      <pad> (+<regels>) · <pad> (+<regels>)
 Zelf zien:      <één copy-paste commando>
 
 Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
-── ok = commit & door · m = meer detail · stop = pauze · of typ correctie/vraag ──
+── ok = commit & door · auto = autonoom afmaken · m = meer detail · stop = pauze · of typ correctie/vraag ──
 ```
 
 **Stop hier.** De volgende beurt is aan de gebruiker.
@@ -148,6 +148,7 @@ Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
   - `interim_review=due` → draai de **tussenbalans** (volgende sectie) en stop de beurt.
   - `status=done` → draai het **eindrapport** (sectie 9) in deze beurt.
   - anders → begin de volgende stap (terug naar stap 1) en eindig bij háár rapport.
+- **`auto` / `autonoom`** (geldig overal waar `ok` mag) — rond de resterende stappen autonoom af: geen stop per stap, maar wél per stap dezelfde rood → groen → volledige gate → verse reviewer, en de doubt-tussenbalans elke 4. Er wordt niets gecommit tot de eindreview aan het eind. De loop, de break-out-condities en het commit-gate staan in **Autonome modus** hieronder.
 - **`m` (more)** — uitgebreide uitleg van dezelfde stap: per bestand de kernwijziging mét snippet, de volledige reviewer-bevindingen, overwogen alternatieven en waarom het deze vorm werd. Sluit weer af met de gate-voetregel; **niet committen**.
 - **`stop`** — niets committen. Meld: het werk van de klaarstaande stap staat in de working tree; hervatten kan altijd met `/fwd:steps-run <slug>` (de stap wordt dan her-geverifieerd en opnieuw gepresenteerd).
 - **Vrije tekst** — classificeer:
