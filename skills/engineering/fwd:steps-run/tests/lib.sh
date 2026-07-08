@@ -45,20 +45,16 @@ _FIXTURE_ROOT="$(mktemp -d)"
 _cleanup_fixtures() { [[ -n "${_FIXTURE_ROOT:-}" ]] && rm -rf "$_FIXTURE_ROOT"; return 0; }
 trap _cleanup_fixtures EXIT
 
-make_fixture() { # slug  ->  echoes repo path
-  local slug="${1:?make_fixture <slug>}"
-  local dir; dir="$(mktemp -d "$_FIXTURE_ROOT/fixture.XXXXXX")"
-  (
-    cd "$dir"
-    rtk git init -q -b main .
-    rtk git config user.email test@example.com
-    rtk git config user.name  "steps-test"
-    rtk git config commit.gpgsign false
-    printf '# base\n' > README.md
-    rtk git add -A && rtk git commit -q -m "base"
-    rtk git switch -q -c "steps/$slug"
-    mkdir -p ".claude/steps/$slug"
-    cat > ".claude/steps/$slug/state.json" <<JSON
+_fixture_git_config() { # run inside a repo: give it an identity and skip signing
+  rtk git config user.email test@example.com
+  rtk git config user.name  "steps-test"
+  rtk git config commit.gpgsign false
+}
+
+_scaffold_plan() { # slug ; writes .claude/steps/<slug>/{state.json,plan.md} under cwd
+  local slug="$1"
+  mkdir -p ".claude/steps/$slug"
+  cat > ".claude/steps/$slug/state.json" <<JSON
 {
   "slug": "$slug",
   "title": "Demo plan",
@@ -72,14 +68,47 @@ make_fixture() { # slug  ->  echoes repo path
   ]
 }
 JSON
-    cat > ".claude/steps/$slug/plan.md" <<MD
+  cat > ".claude/steps/$slug/plan.md" <<MD
 # Stappenplan: Demo plan
 
 ## Stappen
 - [ ] S1 — Eerste stap: doet het eerste. Klaar als: true. Regels: geen
 - [ ] S2 — Tweede stap: doet het tweede. Klaar als: pytest. Regels: geen
 MD
+}
+
+make_fixture() { # slug  ->  echoes repo path (checkout on steps/<slug>, plan committed)
+  local slug="${1:?make_fixture <slug>}"
+  local dir; dir="$(mktemp -d "$_FIXTURE_ROOT/fixture.XXXXXX")"
+  (
+    cd "$dir"
+    rtk git init -q -b main .
+    _fixture_git_config
+    printf '# base\n' > README.md
+    rtk git add -A && rtk git commit -q -m "base"
+    rtk git switch -q -c "steps/$slug"
+    _scaffold_plan "$slug"
     rtk git add -A && rtk git commit -q -m "plan"
   ) >/dev/null
   echo "$dir"
+}
+
+# Worktree-shaped fixture for status.sh, which detects a dirty tree via the
+# $FWD_STEPS_WORKTREE_DIR/steps/<slug> worktree rather than the current checkout. Echoes the
+# worktree-root: set FWD_STEPS_WORKTREE_DIR to it and cd into <root>/steps/<slug>. The plan is
+# committed clean; the caller mutates state.json / dirties the tree to drive the assertion.
+make_wt_fixture() { # slug  ->  echoes worktree-root
+  local slug="${1:?make_wt_fixture <slug>}"
+  local wtroot; wtroot="$(mktemp -d "$_FIXTURE_ROOT/wt.XXXXXX")"
+  local repo="$wtroot/steps/$slug"
+  mkdir -p "$repo"
+  (
+    cd "$repo"
+    rtk git init -q -b main .
+    _fixture_git_config
+    printf '# base\n' > README.md
+    _scaffold_plan "$slug"
+    rtk git add -A && rtk git commit -q -m "base"
+  ) >/dev/null
+  echo "$wtroot"
 }

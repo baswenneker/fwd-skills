@@ -64,8 +64,8 @@
         "value": "test_status_pending_autonomous_commit (in tests/run-tests.sh): yes- en no-geval beide correct"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T14:54:11Z",
       "deferrals": []
     },
     {

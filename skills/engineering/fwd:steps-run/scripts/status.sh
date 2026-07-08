@@ -5,7 +5,9 @@
 # Plans live on steps/<slug> branches; work happens in .trees/steps/<slug>.
 # Usage:
 #   status.sh            -> one line per steps-plan (from the steps/* branches)
-#   status.sh <slug>     -> key=value detail (next step, worktree presence, dirty tree)
+#   status.sh <slug>     -> key=value detail (next step, worktree presence, dirty tree,
+#                           and pending_autonomous_commit: yes when the dirty worktree holds
+#                           an interrupted autonomous run's work, still awaiting one commit)
 # Exit codes: 0 ok · 2 no such plan · 3 corrupt state.json
 set -euo pipefail
 
@@ -69,6 +71,7 @@ jq -r --arg wt "$WT_STATE" --arg wtpath "$WT_PATH" --arg dirty "${DIRTY:+yes}" '
   ([.steps[] | select(.status == "done")] | length) as $done
   | (.steps | length) as $total
   | ([.steps[] | select(.status == "todo")] | first) as $next
+  | ([.steps[] | select(.status == "done")] | sort_by(.approved_at) | last) as $lastdone
   | "slug=\(.slug)",
     "title=\(.title)",
     "status=\(.status)",
@@ -79,6 +82,7 @@ jq -r --arg wt "$WT_STATE" --arg wtpath "$WT_PATH" --arg dirty "${DIRTY:+yes}" '
     "progress=\($done)/\($total)",
     "gate=\(.gate_command)",
     "dirty_tree=\(if $dirty == "yes" then "yes" else "no" end)",
+    "pending_autonomous_commit=\(if ($dirty == "yes" and (($lastdone.approved_mode // "attended") == "autonomous")) then "yes" else "no" end)",
     (if $next == null then
       "next=none — alle stappen zijn done of skipped"
     else
