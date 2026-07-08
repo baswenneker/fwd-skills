@@ -2,11 +2,11 @@
   "version": 1,
   "slug": "steps-run-autonoom",
   "title": "Autonome modus voor fwd:steps-run",
-  "status": "in_progress",
+  "status": "done",
   "branch": "steps/steps-run-autonoom",
   "base_branch": "main",
   "created_at": "2026-07-08T13:14:11Z",
-  "completed_at": null,
+  "completed_at": "2026-07-08T16:35:47Z",
   "gate_command": "bash skills/engineering/fwd:steps-run/tests/run-tests.sh",
   "seams": [
     "record-step.sh [--no-commit] <slug> <step-id> \"<msg>\"",
@@ -162,9 +162,10 @@
         "expected": "regressievrije pass/fail-tabel"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
-      "deferrals": []
+      "status": "done",
+      "approved_at": "2026-07-08T16:35:47Z",
+      "deferrals": [],
+      "approved_mode": "attended"
     }
   ]
 }
