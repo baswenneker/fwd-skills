@@ -67,6 +67,10 @@ Factory's PRD shape. Keep it concrete and measurable; this is the contract's nar
 
 Het overschrijden van dit design budget laat een review zakken.
 
+## Feature sizing
+
+Eén feature is **~30–45 minuten bouwwerk**. Onderbouwing: elke verse coder-spawn betaalt vaste kosten los van het bouwen zelf — oriëntatie (plan, contract, regels en codebase herlezen) én afronding (tests draaien, risky-scan, commit schrijven). Een gemeten missie liet zien dat 9 kleine features samen ~80 minuten oriëntatie en ~63 minuten afronding kostten tegenover maar ~46 minuten echt bouwen: te fijn snijden vermenigvuldigt die overhead zonder bouwwaarde toe te voegen. Is een feature duidelijk korter dan ~30 minuten, dan is die een **samenvoeg-kandidaat** met een verwante buur (zelfde bestanden, zelfde laag, directe afhankelijkheid) — samenvoegen is de default, tenzij een harde reden dat verbiedt (een afhankelijkheidsgrens die serieel niet anders kan, of een milestone-grens die eigen validatie vereist). De grill (stap 4.5) toetst hierop expliciet vóór de approval gate.
+
 ## File-by-file
 | File | Change | Reason |
 |------|--------|--------|
