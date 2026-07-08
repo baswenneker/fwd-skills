@@ -51,8 +51,8 @@
         "value": "test_finalize_autonomous (in tests/run-tests.sh): precies 1 nieuwe commit bevat al 't werk; status klopt in beide gevallen"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T14:46:39Z",
       "deferrals": []
     },
     {
