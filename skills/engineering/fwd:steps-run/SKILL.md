@@ -1,6 +1,6 @@
 ---
 name: fwd:steps-run
-description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een stap-rapport van ±15 regels met "Stap N/M"-teller — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
+description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een stap-rapport van ±15 regels met "Stap N/M"-teller — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, auto = autonoom afmaken, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
 argument-hint: "[<slug>] — zonder argument: lijst alle stappenplannen"
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent
 ---
@@ -155,6 +155,27 @@ Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
   - *Correctie* → toepassen, gate én reviewer opnieuw, kort delta-rapport (alleen wat veranderde + vers oordeel), opnieuw wachten.
   - *Vraag* → beantwoorden zonder iets te wijzigen; meld dat de stap nog klaarstaat voor `ok`.
   - *Planwijziging* ("voeg een stap toe", "schrap S12", "splits S9") → werk `plan.md` + `state.json` bij; de teller herrekent zichzelf (afgeleid uit de statussen). Ligt er geen onafgeronde stap-code in de tree → commit de planwijziging direct (`chore(steps): plan bijgesteld — <wat>`); anders gaat hij mee met de eerstvolgende `ok`-commit. Meld de nieuwe telling expliciet.
+
+### 6a. Autonome modus (`auto`)
+
+Antwoordt de gebruiker `auto` (of `autonoom`) op een gate, dan maak je de resterende stappen af **zónder de beurt per stap te stoppen**. Elke stap krijgt exact dezelfde rigor als attended — brief, rood, groen, volledige gate én het verse oordeel — alleen stopt de beurt niet bij het stap-rapport en wordt er **niets op de branch gecommit tot de eindreview**. Het werk stapelt ongecommit op in de worktree.
+
+**De loop, per resterende stap:**
+
+1. **Snapshot vóór.** `SNAP_VOOR="$( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/snapshot-worktree.sh" <slug> )"` — legt de huidige (opgestapelde) worktree vast als isolatie-ref, zonder iets te muteren.
+2. **Bouw de stap** — brief, rood, groen, en de volledige gate in de worktree — precies als de attended stappen 1–3.
+3. **Snapshot ná.** `SNAP_NA="$( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/snapshot-worktree.sh" <slug> )"`.
+4. **Vers oordeel met range.** Spawn de reviewer als in stap 4, maar geef in de prompt de diff-range `SNAP_VOOR SNAP_NA` in plaats van de default `HEAD`: omdat er niets gecommit is, zou `HEAD` de hele opgestapelde berg tonen; de twee snapshots isoleren precies déze stap (inclusief nieuwe untracked bestanden). Omdat de snapshot-ná vóór `record-step.sh` valt, bevat die range geen `.claude/steps/**`-churn — de orchestratie-state wordt pas ná de snapshot getikt, dus de reviewer ziet alleen de deliverable. Verwerk het verdict als in stap 4.
+5. **Registreer zonder commit.** `record-step.sh --no-commit <slug> <step-id> "<message>"` — markeert de stap done, tikt plan.md, zet `approved_mode=autonomous`, en commit niet.
+6. **Lees de uitvoer.** `interim_review=due` → draai de tussenbalans (sectie 7) ongecommit-inclusief (geef de doubt-agents de run-start snapshot): bij verdict "niets aanpassen" ga je **automatisch door**; een concreet voorstel is een break-out. `status=done` → de eindreview (sectie 9). Anders → volgende stap.
+
+**Break-out naar attended** — de beurt stopt, er wordt niets gecommit, de gebruiker beslist — bij:
+- een **vastgelopen stap**: niet groen te krijgen zonder de test te verzwakken of buiten de stap te treden (sectie 8);
+- een **gate die rood blijft** na een redelijke fix-poging;
+- een **reviewer-FAIL** (gate, test-quality of een rule) die niet vanzelf oplost;
+- een **doubt-agent die een concreet voorstel doet** in de tussenbalans.
+
+Bij een break-out toon je het gewone "vastgelopen"-rapport (sectie 8) of de tussenbalans (sectie 7) — met wat er ligt en de opties — en staat de beurt weer bij de gebruiker. Het opgestapelde werk blijft ongecommit in de worktree; hervatten kan altijd (sectie 9, hervat-tak). **Nooit groen faken** geldt onverkort: een autonome run die vastloopt rapporteert dat eerlijk en stopt — hij verzwakt nooit een test of slaat een gate over om "door te komen".
 
 ### 7. Tussenbalans (elke 4 goedgekeurde stappen)
 
