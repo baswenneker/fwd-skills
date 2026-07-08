@@ -127,11 +127,11 @@
     {
       "id": "S9",
       "title": "steps-run SKILL.md: eindreview + commit-gate + hervat-proza",
-      "behavior": "eindreview-rapport (het eindbeeld), commit alleen na ok via finalize-autonomous.sh (squash/split-keuze), stop=ongecommit; hervatten bij pending_autonomous_commit=yes biedt doorgaan/afronden en herbouwt nooit een done-stap",
+      "behavior": "eindreview-rapport (het eindbeeld), commit alleen na ok via finalize-autonomous.sh (één commit, message-keuze; splitsen kan niet met accumulate), stop=ongecommit; hervatten bij pending_autonomous_commit=yes biedt doorgaan/afronden, herbouwt nooit een done-stap, en finaliseert opgestapeld werk vóór een volgende attended ok zodat git add -A nooit meerdere stappen in één commit veegt",
       "done_criterion": {
         "type": "command",
-        "value": "grep eindreview-rapport-template + 'finalize-autonomous.sh' + hervat-tak in skills/engineering/fwd:steps-run/SKILL.md",
-        "expected": "alle drie aanwezig"
+        "value": "grep eindreview-rapport-template + finalize-autonomous.sh + hervat-tak + break-out-finalize-guard in skills/engineering/fwd:steps-run/SKILL.md",
+        "expected": "alle vier aanwezig"
       },
       "rule_paths": [],
       "status": "todo",
