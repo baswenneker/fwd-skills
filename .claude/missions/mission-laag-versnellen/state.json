@@ -215,12 +215,48 @@
         "VC-24",
         "VC-25"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "b231aba636a4cbeaf28844e00b3edb200d746290",
+      "started_at": "2026-07-08T08:48:45Z",
+      "completed_at": "2026-07-08T08:48:45Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "SKILL.md stap 3: feature-sizing-regel ~30-45 min per feature met spawn-belasting-onderbouwing en samenvoeg-criterium",
+          "SKILL.md stap 4.5 grill: expliciete toets op te fijn gesneden features met verplichte keuze",
+          "REFERENCE.md: Feature sizing-sectie consistent met SKILL.md"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep -in samenvoeg SKILL.md REFERENCE.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep -n 30 SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Grill-vraag bestond al generiek; uitgebreid met de concrete sizing-drempel i.p.v. een nieuwe vraag, om de nummering niet te verstoren",
+          "Coder committe eerst op main in de hoofd-checkout; orchestrator verplaatste de commit via cherry-pick naar de mission-branch en zette main terug"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen de twee opgegeven bestanden",
+          "geen nieuwe mission-interne codes"
+        ]
+      }
     },
     {
       "id": "F5",
