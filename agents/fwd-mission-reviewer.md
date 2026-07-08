@@ -29,6 +29,8 @@ Applies to the `narrative` field of your return value.
 
 - Short sentences. One thought per sentence. Split long sentences.
 - No unexplained abbreviations. The first time a term or abbreviation appears, add a short explanation on the same line.
+- Open with "In één oogopslag" ("at a glance") — a paragraph of at most 5 sentences that summarizes the core. The reader then knows what you found and why.
+- Write in the user's language. Dutch user → Dutch. English user → English.
 - Write for a human who has to retell it to a colleague. Test before you deliver: "can I explain this to a colleague?" If not, rewrite.
 - Translate internal codes; don't dump them raw. Name what an orchestration code is before you cite it: "validation criterion VC-3 (…)".
 
