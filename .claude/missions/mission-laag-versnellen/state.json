@@ -39,27 +39,24 @@
         "VC-6"
       ],
       "status": "done",
-      "attempts": 1,
-      "commit_sha": "d311d1ce8a65ed77505a7fdd280de2202a59d5db",
+      "attempts": 2,
+      "commit_sha": "0551e9fb5a803df47345a31d471796f48146eb01",
       "started_at": "2026-07-08T08:15:14Z",
-      "completed_at": "2026-07-08T08:15:14Z",
+      "completed_at": "2026-07-08T08:21:34Z",
       "error": null,
       "handoff": {
         "implemented": [
-          "agents/fwd-mission-coder.md: Codecommentaar- en schrijfstijl-norm inline, CONTEXT.md-verwijzingen vervangen, gedragsverbod toegevoegd",
-          "agents/fwd-mission-reviewer.md: Codecommentaar-norm, advisory/concern-definities en schrijfstijl-norm inline, CONTEXT.md-verwijzingen vervangen, gedragsverbod toegevoegd",
-          "agents/fwd-mission-user-tester.md: geen norm-blok nodig, alleen gedragsverbod toegevoegd",
-          "agents/fwd-steps-reviewer.md: Codecommentaar-norm geparafraseerd naar steps-context inline, CONTEXT.md-verwijzing vervangen, gedragsverbod toegevoegd",
-          "agents/fwd-steps-doubt.md: geen norm-blok nodig, alleen gedragsverbod toegevoegd"
+          "remediatie: twee ontbrekende schrijfstijlnormen (In-een-oogopslag-opening en schrijf-in-de-taal-van-de-gebruiker) toegevoegd aan het schrijfstijl-blok van agents/fwd-mission-reviewer.md, consistent met agents/fwd-mission-coder.md",
+          "(eerdere pas) normblokken inline + gedragsverbod in alle 5 agent-definities"
         ],
         "left_undone": [],
         "commands": [
           {
-            "command": "grep -rn CONTEXT.md 5-files",
-            "exit_code": 1
+            "command": "grep -in oogopslag agents/fwd-mission-reviewer.md",
+            "exit_code": 0
           },
           {
-            "command": "grep -l find/ 5-files",
+            "command": "grep -in taal|language agents/fwd-mission-reviewer.md",
             "exit_code": 0
           },
           {
@@ -67,15 +64,11 @@
             "exit_code": 0
           }
         ],
-        "issues_discovered": [
-          "user-tester en doubt gebruiken de comment/advisory/schrijfstijl-normen niet; alleen het gedragsverbod toegevoegd",
-          "Codecommentaar-norm in steps-reviewer geherformuleerd naar plan-interne bookkeeping — parafrase zonder normverlies"
-        ],
+        "issues_discovered": [],
         "procedures_followed": [
           "risky-scan clean",
           "conventional commit",
-          "alleen de 5 bestanden gestaged",
-          "geen nieuwe dependencies/abstracties",
+          "alleen het opgegeven bestand gewijzigd",
           "geen mission-interne codes"
         ]
       }
@@ -258,7 +251,7 @@
     }
   ],
   "circuit_breaker": {
-    "consecutive_failures": 1
+    "consecutive_failures": 0
   },
   "decisions": []
 }
