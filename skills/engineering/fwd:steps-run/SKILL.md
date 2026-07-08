@@ -9,6 +9,8 @@ allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent
 
 Eén stap per beurt, bewijs vóór uitleg, commit pas na akkoord. **Jij (de hoofdsessie) schrijft de code zélf** — er is geen coder-subagent, zodat de uitleg uit eerste hand komt. Het onafhankelijke oordeel komt per stap van `fwd-skills:fwd-steps-reviewer` (read-only, verse context); de tussenbalans elke 4 stappen van `fwd-skills:fwd-steps-doubt`.
 
+**Werken in een worktree.** Het werk gebeurt in een eigen worktree op `.trees/steps/<slug>/` — dezelfde isolatie als missions, maar jij schrijft de code nog steeds zelf. `setup-worktree.sh` (stap 0) zet je hoofd-checkout terug op de base-branch (**meteen vrij voor parallel werk**) en materialiseert de worktree. Vanaf dat moment is het geprinte pad `<WT>` je werkmap: lezen/schrijven in `<WT>/…`, gate-commando's met `cd "<WT>" && …`, en `<WT>` als repo-root aan elke subagent.
+
 **Attended-principe.** De gebruiker zit erbij en beslist op elk gate-moment.
 
 - **Nooit voorbij het gate-moment bouwen.** Na het stap-rapport stopt de beurt — geen "alvast beginnen" aan de volgende stap.
@@ -28,26 +30,39 @@ Eén stap per beurt, bewijs vóór uitleg, commit pas na akkoord. **Jij (de hoof
 
 ## Flow
 
-**Zonder slug** — presenteer de lijst hierboven als nette tabel (slug, voortgang, branch, titel) en stop. De gebruiker kiest.
+**Zonder slug** — presenteer de lijst hierboven als nette tabel (slug, voortgang, branch, worktree, titel) en stop. De gebruiker kiest.
 
 **Met slug** — interpreteer de status-injectie hierboven:
 
-### 0. Preflight
+### 0. Worktree opzetten + preflight
+
+**Eerst de worktree.** Materialiseer (of hervat) de worktree en verhuis het werk erheen:
+
+```
+WT="$(bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <slug>)"
+```
+
+Zet de hoofd-checkout terug op de base-branch (meteen vrij voor parallel werk), maakt/hergebruikt `.trees/steps/<slug>/`, kopieert ongetrackte gitignore'de `.env*` mee en print het absolute pad. **Vanaf nu is `<WT>` je werkmap**: lezen/schrijven in `<WT>/…`, gate-commando's met `cd "<WT>" && …`, en `<WT>` als repo-root aan elke subagent. Faalt het script:
 
 | Signaal | Actie |
 |---|---|
-| `no-plan` (exit 2) | Meld het; toon de kandidaat-branches uit de uitvoer (`rtk git switch <branch>` om te hervatten). Stop. |
+| `no-plan` | Nog geen `steps/<slug>`-branch → eerst `/fwd:steps-plan`. Stop. |
+| `dirty-main` | De hoofd-checkout staat op `steps/<slug>` met ongecommitte wijzigingen die het script niet veilig kan verplaatsen. Meld het exacte commando en stop; de gebruiker commit/stasht zelf. |
+
+**Dan de preflight** (uit de statusregels hierboven; her-draai gerust `status.sh <slug>` nu de worktree bestaat voor een verse `dirty_tree`/`next_*`):
+
+| Signaal | Actie |
+|---|---|
 | `corrupt-state` (exit 3) | Meld het; toon het pad. Stop — niet zelf repareren zonder de gebruiker. |
-| `branch_mismatch=yes` | Schone working tree → `rtk git switch <branch>` en door. Vuile tree → meld het exacte commando en stop; de gebruiker beslist. |
 | `dirty_tree=yes` | Zie *Hervatten met een klaarstaande stap* hieronder. |
 | `status=done` | Alles is af — verwijs naar het eindrapport / de merge-keuze en stop. |
-| `next=none` | Alle stappen done/skipped maar status niet `done` → draai het eindrapport (stap 6). |
+| `next=none` | Alle stappen done/skipped maar status niet `done` → draai het eindrapport (stap 9). |
 
-**Hervatten met een klaarstaande stap.** Een vuile working tree bij de start hoort bij precies één scenario: een eerdere sessie bouwde de eerstvolgende `todo`-stap en stopte vóór het akkoord. Check of de `dirty_files` bij die stap passen. Zo ja: her-draai de gate én de reviewer (de tree kan intussen aangeraakt zijn) en toon het stap-rapport opnieuw, gemarkeerd met "(stond al klaar)". Zo nee: meld eerlijk wat er ligt, geef opties (wegcommitten buiten het plan om / stashen / inspecteren) en stop.
+**Hervatten met een klaarstaande stap.** Een vuile worktree bij de start hoort bij precies één scenario: een eerdere sessie bouwde de eerstvolgende `todo`-stap in de worktree en stopte vóór het akkoord. Check of de `dirty_files` bij die stap passen. Zo ja: her-draai de gate (`cd "<WT>"`) én de reviewer (de tree kan intussen aangeraakt zijn) en toon het stap-rapport opnieuw, gemarkeerd met "(stond al klaar)". Zo nee: meld eerlijk wat er ligt, geef opties (wegcommitten buiten het plan om / stashen / inspecteren) en stop.
 
 ### 1. Brief
 
-Lees uit `.claude/steps/<slug>/`: `plan.md` (DoD, eindbeeld, seams) en de stap uit de status-injectie (`next_*`). **Lees élk rule-bestand uit `next_rules` vóór je één regel code schrijft** — regels zijn bindend en vuren niet vanzelf bij nieuwe bestanden.
+Lees uit `<WT>/.claude/steps/<slug>/`: `plan.md` (DoD, eindbeeld, seams) en de stap uit de status-injectie (`next_*`). **Lees élk rule-bestand uit `next_rules` vóór je één regel code schrijft** — regels zijn bindend en vuren niet vanzelf bij nieuwe bestanden.
 
 ### 2. Rood
 
@@ -81,11 +96,11 @@ Regels bij het klimmen:
 - **Safety floor — nooit wegversimpelen:** inputvalidatie op trust boundaries, error handling die dataverlies voorkomt, security, accessibility-basics, en alles wat de gebruiker expliciet vroeg.
 - **Comments en commit message zelfstandig leesbaar**: leg wat/waarom uit in gewone taal; nooit stap-nummers, de slug of plan-verwijzingen in code, comments, docstrings of commit messages.
 
-Draai daarna de **volledige gate** (`gate=` uit de injectie) tot alles groen is — niet alleen de nieuwe tests; de gate is de regressiedetectie.
+Draai daarna de **volledige gate** in de worktree (`cd "<WT>" && <gate=>` uit de injectie) tot alles groen is — niet alleen de nieuwe tests; de gate is de regressiedetectie.
 
 ### 4. Vers oordeel
 
-Spawn de reviewer via de Agent tool, `subagent_type: fwd-skills:fwd-steps-reviewer`. De prompt bevat **alleen**: het repo-root-pad, de stap-titel + het gedrag, het klaar-criterium, het gate-commando en de rule-paden. **Niet** de diff, niet je code, niet je redenering — de reviewer trekt alles zelf op (`rtk git diff`); dat bespaart tokens en voorkomt doorvertel-bias.
+Spawn de reviewer via de Agent tool, `subagent_type: fwd-skills:fwd-steps-reviewer`. De prompt bevat **alleen**: het worktree-pad `<WT>` (dáár staat de code, dat is z'n repo-root), de stap-titel + het gedrag, het klaar-criterium, het gate-commando en de rule-paden. **Niet** de diff, niet je code, niet je redenering — de reviewer trekt alles zelf op (`rtk git diff`); dat bespaart tokens en voorkomt doorvertel-bias.
 
 Verwerk het JSON-verdict:
 
@@ -123,15 +138,15 @@ Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
 
 ### 6. Gate-protocol (de reactie van de gebruiker)
 
-- **`ok` / `y`** — commit en door:
+- **`ok` / `y`** — commit en door (in de worktree — `record-step.sh` commit met `git add -A` op de plan-branch):
 
   ```
-  echo '{"deferrals":[…]}' | bash "${CLAUDE_SKILL_DIR}/scripts/record-step.sh" <slug> <step-id> "<conventional message>"
+  echo '{"deferrals":[…]}' | ( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/record-step.sh" <slug> <step-id> "<conventional message>" )
   ```
 
   De message beschrijft het gedrag (`feat(auth): wachtwoord-reset e-mail met 1u-expiry`) — zonder stap-codes. Lees de uitvoer:
   - `interim_review=due` → draai de **tussenbalans** (volgende sectie) en stop de beurt.
-  - `status=done` → draai het **eindrapport** (sectie 8) in deze beurt.
+  - `status=done` → draai het **eindrapport** (sectie 9) in deze beurt.
   - anders → begin de volgende stap (terug naar stap 1) en eindig bij háár rapport.
 - **`m` (more)** — uitgebreide uitleg van dezelfde stap: per bestand de kernwijziging mét snippet, de volledige reviewer-bevindingen, overwogen alternatieven en waarom het deze vorm werd. Sluit weer af met de gate-voetregel; **niet committen**.
 - **`stop`** — niets committen. Meld: het werk van de klaarstaande stap staat in de working tree; hervatten kan altijd met `/fwd:steps-run <slug>` (de stap wordt dan her-geverifieerd en opnieuw gepresenteerd).
@@ -142,7 +157,7 @@ Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
 
 ### 7. Tussenbalans (elke 4 goedgekeurde stappen)
 
-Getriggerd door `interim_review=due` uit `record-step.sh`. Spawn **beide doubt-agents parallel** (één bericht, twee Agent-calls, `subagent_type: fwd-skills:fwd-steps-doubt`). Elke prompt bevat alleen: repo-root, de slug, welke stappen zojuist zijn goedgekeurd, en **één** vraag verbatim:
+Getriggerd door `interim_review=due` uit `record-step.sh`. Spawn **beide doubt-agents parallel** (één bericht, twee Agent-calls, `subagent_type: fwd-skills:fwd-steps-doubt`). Elke prompt bevat alleen: het worktree-pad `<WT>` als repo-root, de slug, welke stappen zojuist zijn goedgekeurd, en **één** vraag verbatim:
 
 1. `What are you least confident about right now?`
 2. `What's the biggest thing I'm missing about the situation right now? What don't I realize?`
@@ -186,10 +201,11 @@ Zelf draaien:
 Bewust uitgesteld:
   - <note> — doen zodra <when>     (alle deferrals uit state.json; leeg → "niets")
 
-Hoe verder: mergen / eerst zelf spelen / parkeren met reden — zeg het maar.
+De code staat in de worktree op branch `<branch>` (`<WT>`).
+Hoe verder: mergen (`rtk git switch <base> && rtk git merge <branch>`) / eerst zelf spelen in `<WT>` / parkeren met reden — zeg het maar.
 ```
 
-**Elke "Zelf draaien"-regel is vooraf door jou uitgevoerd en werkend bevonden** — geen ongeteste instructies. De merge-keuze is expliciet aan de gebruiker; deze skill merget nooit zelf.
+**Elke "Zelf draaien"-regel is vooraf door jou uitgevoerd en werkend bevonden** — geen ongeteste instructies; je draaide ze in `<WT>`. De merge-keuze is expliciet aan de gebruiker; deze skill merget nooit zelf.
 
 ## Stijl
 

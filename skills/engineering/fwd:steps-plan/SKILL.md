@@ -7,7 +7,7 @@ allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Wri
 
 # fwd:steps-plan
 
-Zet een doel om in een **stappenplan**: een Definition of Done (DoD) met eindbeeld, afgesproken seams, en een geordende lijst kleine stappen — vastgelegd in `.claude/steps/<slug>/` op een feature-branch, klaar voor `/fwd:steps-run`.
+Zet een doel om in een **stappenplan**: een Definition of Done (DoD) met eindbeeld, afgesproken seams, en een geordende lijst kleine stappen — vastgelegd in `.claude/steps/<slug>/` op een eigen `steps/<slug>`-branch, klaar voor `/fwd:steps-run`. (De uitvoering verhuist bij `/fwd:steps-run` naar een worktree, zodat je hoofd-checkout vrij blijft voor parallel werk; plannen doe je gewoon in je huidige checkout.)
 
 Dit is de **attended** planner: de gebruiker zit erbij en blijft er tijdens de uitvoering bij (één review-moment per stap). Voor onbeheerd werk bestaat `fwd:mission-plan`; voor het afwegen van plan-alternatieven vóór een richtingkeuze bestaat `fwd:plan` — deze skill begint pas als de richting gekozen is.
 
@@ -73,7 +73,7 @@ Print een JSON-array van oplosbare gates (test/typecheck/lint/build). Kies het t
 bash "${CLAUDE_SKILL_DIR}/scripts/init-steps.sh" <slug>
 ```
 
-Slug: kebab-case uit het doel, ≤50 tekens. Het script maakt op `main`/`master` eerst een `steps/<slug>`-branch (elke andere branch wordt hergebruikt), scaffoldt `.claude/steps/<slug>/` in de huidige checkout (géén worktree) en print `branch=`, `base=`, `dir=`.
+Slug: kebab-case uit het doel, ≤50 tekens. Het script takt **altijd** een eigen `steps/<slug>`-branch af van je huidige branch (die wordt de `base`), scaffoldt `.claude/steps/<slug>/` in de huidige checkout (nog géén worktree — die maakt `/fwd:steps-run` straks van deze branch) en print `branch=`, `base=`, `dir=`. Base ≠ branch is met opzet: run zet je hoofd-checkout terug op `base` en geeft `steps/<slug>` aan een worktree.
 
 Schrijf dan met `Write` in die dir:
 
