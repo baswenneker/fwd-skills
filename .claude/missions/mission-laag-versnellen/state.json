@@ -559,10 +559,79 @@
         "F5",
         "F6"
       ],
-      "validation_status": "pending",
-      "validated_at": null,
-      "gate_results": [],
-      "vc_results": []
+      "validation_status": "passed",
+      "validated_at": "2026-07-08T09:05:21Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-16",
+          "passed": true,
+          "evidence": "plan/SKILL.md stap 3 sizing-regel + grill 4.5 toetst te fijn snijden; REFERENCE.md Feature sizing",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-17",
+          "passed": true,
+          "evidence": "fixture: A blocked, B onafhankelijk -> B; alles dep A -> exit 3 blokkade",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-18",
+          "passed": true,
+          "evidence": "lint gated op depends_on-aanwezigheid; v1 identiek; record-feature ongewijzigd",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-19",
+          "passed": true,
+          "evidence": "validate-artifacts faalt exit 1 op onbekende id/vooruit/cykel, benoemt feature",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-20",
+          "passed": true,
+          "evidence": "run/SKILL.md 2.3 reading_list + read-only-this + inline rules <200; plan/SKILL.md 6 genereert reading_list",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-21",
+          "passed": true,
+          "evidence": "run/SKILL.md 2.3 Model/effort by feature size S/M/L, ontbrekend=huidig",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-22",
+          "passed": true,
+          "evidence": "geen sub-worktree/merge/parallel-machinerie; serieel",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-23",
+          "passed": true,
+          "evidence": "geen mission-code in script-comments of commit-messages",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-24",
+          "passed": true,
+          "evidence": "lint-fixtures tegen echt script; faalt op kapot, slaagt op geldig; niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-25",
+          "passed": true,
+          "evidence": "geen nieuwe bestanden/dependency/map; alleen additieve schema-v6-velden",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        }
+      ],
+      "concerns": []
     }
   ],
   "circuit_breaker": {
