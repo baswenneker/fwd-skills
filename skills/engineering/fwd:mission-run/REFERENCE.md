@@ -110,6 +110,19 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       // pre-v6 behavior (the next feature is ready as soon as it isn't itself
       // done/blocked). Example below assumes an earlier feature "F0" exists.
       "depends_on": ["F0"],
+      // reading_list (OPTIONAL, schema v6): the focused set of paths the coder should
+      // read before writing any code — generated at plan time from the feature's
+      // file-by-file table (the files it touches) plus its matched rule_paths. Passed
+      // to the coder subagent verbatim, together with the instruction to read only
+      // this and skip a fresh repo-wide scan. Absent → the coder orients itself from
+      // the VC-IDs and design budget alone, exactly like pre-v6 plans.
+      "reading_list": ["src/import/route.ts", ".claude/rules/git.md"],
+      // size (OPTIONAL, schema v6): S | M | L, estimated at plan time against the
+      // ~30-45-minute feature-sizing rule (see fwd:mission-plan step 3). The runner
+      // uses it only to pick the coder spawn's model/effort (2.3 in SKILL.md) — a
+      // small feature can spawn at a lower effort/lighter model; M/L spawn at the
+      // current default. Absent → identical to pre-v6 behavior (default model/effort).
+      "size": "S",
       "handoff": {                      // structured summary; prose in handoffs/F1.md
         "implemented": ["POST /api/import route", "clipboard parser util"],
         "left_undone": ["multi-file upload — out of scope for this feature"],
@@ -185,6 +198,8 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
   - **`milestones[].concerns`** (`[{location, issue, why_it_matters, category}]`): the reviewer's surviving concerns for that milestone — suspected defects *outside* the contract (category `bug` | `dataverlies` | `security`). Persisted by `record-validation.sh` per validation round: a payload **with** the key replaces the list (empty array clears it), a payload **without** the key leaves the field untouched — older payloads stay valid. Concerns never affect `validation_status` or the circuit breaker; see the *concern* entry in `CONTEXT.md`.
 - **Schema v6 is equally optional and additive.**
   - **`features[].depends_on`** (array of feature ids): declares which earlier features must be `done` before this one is executable. `validate-artifacts.sh` lints it (every id must exist, must point to an earlier feature in the array, and the graph must be acyclic). `pick-next-unit.sh` skips a feature — even one that is neither `done` nor `blocked` — while any entry in its (transitive) `depends_on` chain is not yet `done`, so a single blocked feature only stalls its actual dependents, not the whole remaining queue. This does not introduce parallel execution: the runner still spawns exactly one coder at a time; `depends_on` only changes *which* feature that is. Absent or an empty array behaves exactly like a plan written before this field existed.
+  - **`features[].reading_list`** (array of paths): the focused set of files the coder should read for this feature — generated at plan time from the feature's file-by-file table plus its matched `rule_paths`. Pinned verbatim in the coder spawn prompt (SKILL.md step 2.3) with the instruction to read only this and skip a fresh repo-wide scan. Absent → the coder orients from the VC-IDs and design budget alone, same as any pre-v6 plan.
+  - **`features[].size`** (`"S"` | `"M"` | `"L"`): a plan-time estimate against the feature-sizing rule (`fwd:mission-plan` step 3, ~30–45 minutes of build work). The runner reads it only to choose the coder spawn's model/effort — `S` may spawn at a lower effort or lighter model, `M`/`L` spawn at the current default. It never changes the acceptance bar. Absent → identical to pre-v6 behavior (default model/effort, no adjustment).
 
 ## The handoff report
 

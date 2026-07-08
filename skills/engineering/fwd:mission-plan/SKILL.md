@@ -231,6 +231,12 @@ Then, into `<worktree>/.claude/missions/<slug>/`, write the three artifacts with
 - `validation-contract.md` — Layer A + Layer B from Step 4.
 - `state.json` — fill the skeleton: `gates[]`, `user_testing{}` (inclusief `plan_probe` wanneer de boot-preflight uit 4.7 slaagde — schema v5, additief), ordered `features[]` (each with `vc_ids`, `status: "pending"`), `milestones[]` (with `feature_ids`, `validation_status: "pending"`). Match the schema in `../fwd:mission-run/REFERENCE.md` exactly.
 
+**Genereer per feature `reading_list` en `size` (schema v6, additief).** Dit knijpt de oriëntatie van elke verse coder-spawn af tot precies wat die feature nodig heeft:
+1. `reading_list`: neem per feature de paden uit de file-by-file-tabel (stap 2/3) en voeg de feature's `rule_paths` (indien aanwezig) toe. Dit wordt de gerichte leeslijst die `fwd:mission-run` straks verbatim in de coder-spawn-prompt meegeeft, met de instructie "lees alléén dit; scan de repo niet opnieuw".
+2. `size`: schat elke feature tegen de sizing-regel uit stap 3 (~30–45 minuten bouwwerk) en label hem `S` (duidelijk korter, een samenvoeg-kandidaat die toch apart bleef), `M` (rond de richtlijn) of `L` (aan de bovenkant, bijv. door een harde afhankelijkheids- of milestone-grens). De runner gebruikt dit label alleen om het model/effort van de coder-spawn te kiezen — het verandert de acceptatiecriteria niet.
+
+Beide velden zijn optioneel en additief: een `features[]`-entry zonder `reading_list`/`size` blijft een geldig plan; de runner valt dan terug op het huidige gedrag.
+
 Finally validate and commit the plan:
 
 ```
