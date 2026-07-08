@@ -2,7 +2,7 @@
   "version": 1,
   "slug": "steps-run-autonoom",
   "title": "Autonome modus voor fwd:steps-run",
-  "status": "planned",
+  "status": "in_progress",
   "branch": "steps/steps-run-autonoom",
   "base_branch": "main",
   "created_at": "2026-07-08T13:14:11Z",
@@ -19,17 +19,24 @@
       "id": "S1",
       "title": "Testharnas + gate",
       "behavior": "plain-bash harnas met assert-helpers + wegwerp-git-fixture (mini steps-plan); hiermee bestaat de gate voor S2+",
-      "done_criterion": { "type": "command", "value": "bash skills/engineering/fwd:steps-run/tests/run-tests.sh", "expected": "exit 0 — harnas aanwezig en groen" },
+      "done_criterion": {
+        "type": "command",
+        "value": "bash skills/engineering/fwd:steps-run/tests/run-tests.sh",
+        "expected": "exit 0 — harnas aanwezig en groen"
+      },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T14:15:25Z",
       "deferrals": []
     },
     {
       "id": "S2",
       "title": "record-step.sh --no-commit",
       "behavior": "markeert stap done, tikt plan.md, zet approved_mode=autonomous, commit niet; interim_review vuurt nog elke 4e; attended-modus ongewijzigd",
-      "done_criterion": { "type": "test", "value": "test_record_step_no_commit (in tests/run-tests.sh): na --no-commit is de stap done + plan.md getikt + HEAD onveranderd; attended commit nog wel" },
+      "done_criterion": {
+        "type": "test",
+        "value": "test_record_step_no_commit (in tests/run-tests.sh): na --no-commit is de stap done + plan.md getikt + HEAD onveranderd; attended commit nog wel"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -39,7 +46,10 @@
       "id": "S3",
       "title": "finalize-autonomous.sh (nieuw)",
       "behavior": "commit alle ongecommitte wijzigingen als een commit; status=done als geen todo's resten, anders in_progress (deel-finalize bij break-out)",
-      "done_criterion": { "type": "test", "value": "test_finalize_autonomous (in tests/run-tests.sh): precies 1 nieuwe commit bevat al 't werk; status klopt in beide gevallen" },
+      "done_criterion": {
+        "type": "test",
+        "value": "test_finalize_autonomous (in tests/run-tests.sh): precies 1 nieuwe commit bevat al 't werk; status klopt in beide gevallen"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -49,7 +59,10 @@
       "id": "S4",
       "title": "status.sh afgeleid pending_autonomous_commit",
       "behavior": "yes als tree dirty en laatst-goedgekeurde stap approved_mode=autonomous, anders no (de schone-hervat-detectie)",
-      "done_criterion": { "type": "test", "value": "test_status_pending_autonomous_commit (in tests/run-tests.sh): yes- en no-geval beide correct" },
+      "done_criterion": {
+        "type": "test",
+        "value": "test_status_pending_autonomous_commit (in tests/run-tests.sh): yes- en no-geval beide correct"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -59,7 +72,11 @@
       "id": "S5",
       "title": "steps-run SKILL.md: gate-optie auto",
       "behavior": "auto/autonoom als antwoord in het gate-protocol (§6) + de voetregel in het stap-rapport (§5)",
-      "done_criterion": { "type": "command", "value": "grep -n 'auto' in skills/engineering/fwd:steps-run/SKILL.md (voetregel §5 + gate-bullet §6)", "expected": "auto gevonden in voetregel-template en als gate-antwoord" },
+      "done_criterion": {
+        "type": "command",
+        "value": "grep -n 'auto' in skills/engineering/fwd:steps-run/SKILL.md (voetregel §5 + gate-bullet §6)",
+        "expected": "auto gevonden in voetregel-template en als gate-antwoord"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -69,7 +86,11 @@
       "id": "S6",
       "title": "steps-run SKILL.md: sectie Autonome modus",
       "behavior": "loop zonder stops via --no-commit; reviewer op opgestapelde diff (negeert .claude/steps/**, oordeelt alleen huidige stap); doubt elke 4 auto-door bij 'niets aanpassen' anders break-out; break-out-condities",
-      "done_criterion": { "type": "command", "value": "grep sectiekop 'Autonome modus' + break-out-lijst + '--no-commit' in skills/engineering/fwd:steps-run/SKILL.md", "expected": "alle drie aanwezig" },
+      "done_criterion": {
+        "type": "command",
+        "value": "grep sectiekop 'Autonome modus' + break-out-lijst + '--no-commit' in skills/engineering/fwd:steps-run/SKILL.md",
+        "expected": "alle drie aanwezig"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -79,7 +100,11 @@
       "id": "S7",
       "title": "steps-run SKILL.md: eindreview + commit-gate + hervat-proza",
       "behavior": "eindreview-rapport (het eindbeeld), commit alleen na ok via finalize-autonomous.sh (squash/split-keuze), stop=ongecommit; hervatten bij pending_autonomous_commit=yes biedt doorgaan/afronden en herbouwt nooit een done-stap",
-      "done_criterion": { "type": "command", "value": "grep eindreview-rapport-template + 'finalize-autonomous.sh' + hervat-tak in skills/engineering/fwd:steps-run/SKILL.md", "expected": "alle drie aanwezig" },
+      "done_criterion": {
+        "type": "command",
+        "value": "grep eindreview-rapport-template + 'finalize-autonomous.sh' + hervat-tak in skills/engineering/fwd:steps-run/SKILL.md",
+        "expected": "alle drie aanwezig"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -89,7 +114,11 @@
       "id": "S8",
       "title": "Docs-sync: schema + README",
       "behavior": "steps-plan state.json-schema krijgt approved_mode (default attended) + 1-regel notitie over de autonome auto-afronding; README steps-run-rij noemt auto",
-      "done_criterion": { "type": "command", "value": "grep 'approved_mode' in fwd:steps-plan/SKILL.md-schema + autonome-notitie + 'auto' in README.md steps-run-rij", "expected": "alle drie aanwezig" },
+      "done_criterion": {
+        "type": "command",
+        "value": "grep 'approved_mode' in fwd:steps-plan/SKILL.md-schema + autonome-notitie + 'auto' in README.md steps-run-rij",
+        "expected": "alle drie aanwezig"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
@@ -99,7 +128,11 @@
       "id": "S9",
       "title": "fwd:skill-eval shakedown van steps-run",
       "behavior": "de repo's eigen black-box skill-test als behavioral capstone; grep bewijst alleen dat de tekst er staat, niet dat-ie klopt",
-      "done_criterion": { "type": "command", "value": "/fwd:skill-eval op fwd:steps-run", "expected": "regressievrije pass/fail-tabel" },
+      "done_criterion": {
+        "type": "command",
+        "value": "/fwd:skill-eval op fwd:steps-run",
+        "expected": "regressievrije pass/fail-tabel"
+      },
       "rule_paths": [],
       "status": "todo",
       "approved_at": null,
