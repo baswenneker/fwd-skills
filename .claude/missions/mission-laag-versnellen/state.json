@@ -326,10 +326,73 @@
         "F2",
         "F3"
       ],
-      "validation_status": "pending",
-      "validated_at": null,
-      "gate_results": [],
-      "vc_results": []
+      "validation_status": "passed",
+      "validated_at": "2026-07-08T08:43:39Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-7",
+          "passed": true,
+          "evidence": "record-feature.sh:62-66 zondert untracked handoff-narrative uit; tracked wijziging faalt nog",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-8",
+          "passed": true,
+          "evidence": "record-feature.sh:43-56 valideert vijf velden + rules_applied met veld-specifieke melding",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-9",
+          "passed": true,
+          "evidence": "scribe model haiku, tools zonder Write/Edit; SKILL.md:162 delegeert compileren, orchestrator schrijft/commit",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-10",
+          "passed": true,
+          "evidence": "scribe bevat volledige verificatiepas + verplichte slotregel",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-11",
+          "passed": true,
+          "evidence": "SKILL.md:123 reviewer-prompt met gate_results + HEAD-SHA en her-run-verbod",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-12",
+          "passed": true,
+          "evidence": "scribe velt geen oordeel; expliciet in frontmatter, body en SKILL.md",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-13",
+          "passed": true,
+          "evidence": "geen mission-code in productcode-comments of commit-message",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-14",
+          "passed": true,
+          "evidence": "fixtures roepen echt record-feature.sh aan; sad-path discrimineert, niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-15",
+          "passed": true,
+          "evidence": "alleen toegestane scribe-agent; geen nieuwe dependency/map/abstractie",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        }
+      ],
+      "concerns": []
     },
     {
       "id": "M3",
