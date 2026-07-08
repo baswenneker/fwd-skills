@@ -38,12 +38,47 @@
         "VC-5",
         "VC-6"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "d311d1ce8a65ed77505a7fdd280de2202a59d5db",
+      "started_at": "2026-07-08T08:15:14Z",
+      "completed_at": "2026-07-08T08:15:14Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "agents/fwd-mission-coder.md: Codecommentaar- en schrijfstijl-norm inline, CONTEXT.md-verwijzingen vervangen, gedragsverbod toegevoegd",
+          "agents/fwd-mission-reviewer.md: Codecommentaar-norm, advisory/concern-definities en schrijfstijl-norm inline, CONTEXT.md-verwijzingen vervangen, gedragsverbod toegevoegd",
+          "agents/fwd-mission-user-tester.md: geen norm-blok nodig, alleen gedragsverbod toegevoegd",
+          "agents/fwd-steps-reviewer.md: Codecommentaar-norm geparafraseerd naar steps-context inline, CONTEXT.md-verwijzing vervangen, gedragsverbod toegevoegd",
+          "agents/fwd-steps-doubt.md: geen norm-blok nodig, alleen gedragsverbod toegevoegd"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "grep -rn CONTEXT.md 5-files",
+            "exit_code": 1
+          },
+          {
+            "command": "grep -l find/ 5-files",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "user-tester en doubt gebruiken de comment/advisory/schrijfstijl-normen niet; alleen het gedragsverbod toegevoegd",
+          "Codecommentaar-norm in steps-reviewer geherformuleerd naar plan-interne bookkeeping — parafrase zonder normverlies"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen de 5 bestanden gestaged",
+          "geen nieuwe dependencies/abstracties",
+          "geen mission-interne codes"
+        ]
+      }
     },
     {
       "id": "F2",
