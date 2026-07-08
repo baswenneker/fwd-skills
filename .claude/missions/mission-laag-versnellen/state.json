@@ -631,7 +631,8 @@
           "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
         }
       ],
-      "concerns": []
+      "concerns": [],
+      "walkthrough_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-walkthrough.md"
     }
   ],
   "circuit_breaker": {
