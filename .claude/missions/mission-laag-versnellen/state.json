@@ -354,12 +354,67 @@
         "VC-24",
         "VC-25"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "ec460242da5d99c9778173e5a5d8fa2cc7058630",
+      "started_at": "2026-07-08T09:00:04Z",
+      "completed_at": "2026-07-08T09:00:04Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "fwd:mission-run/SKILL.md 2.3: reading_list-bullet met read-only-this, <200-regels-inline voor rule_paths, Model/effort-by-size-richtlijn",
+          "fwd:mission-run/REFERENCE.md: reading_list en size als additieve schema-v6-velden",
+          "fwd:mission-plan/SKILL.md 6: afleiding reading_list (file-by-file + rules) en size (sizing-regel), additief"
+        ],
+        "left_undone": [
+          "fwd:mission-plan/REFERENCE.md niet gewijzigd — bevat geen state.json feature-schema, alleen markdown-templates"
+        ],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep ~200 run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep read-only-this run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep Model/effort-by-size run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list plan/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list run/REFERENCE.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "mission-plan/REFERENCE.md heeft geen feature-schema-template; bewust ongemoeid, consistent met rule_paths",
+          "model/effort-richtlijn bewust vaag (geen model-ID) om geen nieuwe ongevraagde afspraak te introduceren"
+        ],
+        "procedures_followed": [
+          "branch geverifieerd voor commit",
+          "risky-scan clean",
+          "conventional commit",
+          "alleen gewijzigde bestanden gestaged",
+          "geen nieuwe mission-interne codes"
+        ]
+      }
     }
   ],
   "milestones": [
