@@ -271,12 +271,77 @@
         "VC-24",
         "VC-25"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "7271f407464d2db72eaaa638d753fc30c393d3dc",
+      "started_at": "2026-07-08T08:56:22Z",
+      "completed_at": "2026-07-08T08:56:22Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "pick-next-unit.sh skipt blocked-features en features die transitief van niet-done features afhangen; exit 0 leeg bij alles-done, exit 3 leeg + stderr bij blokkade",
+          "validate-artifacts.sh lint depends_on: onbekende id, vooruit-verwijzing, cykel; benoemt overtreder; tolerant voor plannen zonder veld",
+          "REFERENCE.md: depends_on als additief schema-v6-veld",
+          "SKILL.md 2.1: zin over passeren geblokkeerde features + exit-0/exit-3-onderscheid"
+        ],
+        "left_undone": [
+          "reading_list en size velden horen bij F6, niet hier"
+        ],
+        "commands": [
+          {
+            "command": "bash -n pick-next-unit.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "bash -n validate-artifacts.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "pick-next VC-17a A blocked B onafhankelijk",
+            "exit_code": 0
+          },
+          {
+            "command": "pick-next VC-17b B depends_on A",
+            "exit_code": 3
+          },
+          {
+            "command": "pick-next VC-18 v1 state",
+            "exit_code": 0
+          },
+          {
+            "command": "validate VC-19a onbestaande",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19b vooruit",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19c cykel",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19d geldig",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "skip-blocked-logica geldt universeel, ook voor v1-plannen; VC-18 getest met v1-fixture zonder blocked-status (puur schema-backward-compat)",
+          "cykel impliceert ook een vooruit-verwijzing; VC-19c-fixture triggert beide meldingen, overtreder wordt benoemd"
+        ],
+        "procedures_followed": [
+          "branch geverifieerd voor commit (mission-branch)",
+          "risky-scan clean",
+          "conventional commit",
+          "fixtures in tmp-repo tegen echte scripts",
+          "alleen 4 bestanden gestaged",
+          "geen parallelle machinerie — serieel"
+        ]
+      }
     },
     {
       "id": "F6",
