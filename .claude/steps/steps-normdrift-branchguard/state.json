@@ -2,11 +2,11 @@
   "version": 1,
   "slug": "steps-normdrift-branchguard",
   "title": "steps-laag verharden met lessen uit mission-laag-versnellen",
-  "status": "in_progress",
+  "status": "done",
   "branch": "steps/steps-normdrift-branchguard",
   "base_branch": "main",
   "created_at": "2026-07-08T00:00:00Z",
-  "completed_at": null,
+  "completed_at": "2026-07-08T14:15:04Z",
   "gate_command": "find agents skills scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n",
   "seams": [
     "scripts/check-agent-norms.sh",
@@ -43,16 +43,16 @@
     },
     {
       "id": "S3",
-      "title": "Richten op de echte agents + drift uitlijnen + documenteren",
-      "behavior": "het script draait over de echte agents/ voor beide gedeelde blokken en slaagt; bestaande drift is uitgelijnd en CLAUDE.md benoemt het script",
+      "title": "Gedeelde kern afsplitsen + guard richten + documenteren (Optie A)",
+      "behavior": "twee universele verboden (rtk-pipe, find /) afgesplitst naar een identiek ## Shared tool prohibitions-blok in alle 5 agents; check-agent-norms.sh no-arg bewaakt dat blok; CLAUDE.md benoemt het script",
       "done_criterion": {
         "type": "command",
-        "value": "bash scripts/check-agent-norms.sh -> exit 0 op de echte agents; grep -q check-agent-norms.sh CLAUDE.md -> aanwezig",
-        "expected": "exit 0 op echte agents; check-agent-norms.sh vermeld in CLAUDE.md"
+        "value": "bash scripts/check-agent-norms.sh -> exit 0, ok — Shared tool prohibitions identiek over 5 bestanden; grep -q check-agent-norms.sh CLAUDE.md -> aanwezig",
+        "expected": "exit 0 + ok-melding over 5 bestanden; script vermeld in CLAUDE.md"
       },
       "rule_paths": [],
-      "status": "todo",
-      "approved_at": null,
+      "status": "done",
+      "approved_at": "2026-07-08T14:15:04Z",
       "deferrals": []
     }
   ]

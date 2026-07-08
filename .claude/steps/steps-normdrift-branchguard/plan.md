@@ -20,9 +20,11 @@ Regels: bewust zonder `.claude/rules/` (leeg in deze repo; keuze gebruiker 8 jul
 
 ## Definition of Done
 1. `scripts/check-agent-norms.sh` faalt (exit ≠ 0) zodra twee inline-kopieën van een gedeeld norm-blok uiteenlopen, en slaagt (exit 0) als ze byte-identiek zijn.
-2. Na uitlijnen slaagt datzelfde script op de échte `agents/` — alle kopieën van elk gedeeld blok identiek.
+2. Na uitlijnen slaagt datzelfde script zónder argumenten op de échte `agents/`: het bewaakt één gedeeld blok — `## Shared tool prohibitions` (de rtk-pipe- en `find /`-verboden) — over de 5 agents die het dragen, en die kopieën zijn byte-identiek.
 3. `record-step.sh` weigert te committen (exit ≠ 0 + heldere melding) als de worktree-HEAD niet op de plan-branch (`state.json`'s `.branch`) staat; op de juiste branch commit hij exact als nu.
 4. Gate G1 groen: `bash -n` over alle gewijzigde `*.sh`; geen nieuwe tooling of dependencies.
+
+> **Herijkt bij S3 (8 juli 2026):** de oorspronkelijke aanname — dat `## Behavior prohibitions` en `## Comment hygiene norm` complete hand-kopieën zijn die byte-identiek horen te zijn — bleek fout. Die blokken zijn bewust per rol anders (coder lévert een handoff, validators rapporteren evidence; mission-agents verwijzen naar mission/VC-codes, steps-agents naar plan/step-codes). Alleen twee regels zijn écht universeel: het rtk-pipe-verbod en het `find /`-verbod. Optie A: die twee worden afgesplitst naar een strak identiek `## Shared tool prohibitions`-blok in alle 5 agents; de rol-specifieke regels blijven in `## Behavior prohibitions`. De guard bewaakt alleen het gedeelde blok. `Comment hygiene norm` blijft ongemoeid.
 
 ## Eindbeeld
 ```
@@ -33,11 +35,10 @@ $ echo $?        → 1        # op steps/demo: commit als vanouds, recorded=S1 �
 
 # Les A — norm-drift-check
 $ bash scripts/check-agent-norms.sh
-ok — 'Behavior prohibitions' identiek over 5 agents
-ok — 'Comment hygiene norm' identiek over 2 agents
+ok — 'Shared tool prohibitions' identiek over 5 bestanden
 $ echo $?        → 0
 # na één kopie muteren:
-DRIFT — 'Behavior prohibitions': agents/fwd-steps-doubt.md ≠ agents/fwd-mission-coder.md
+DRIFT — 'Shared tool prohibitions': agents/fwd-steps-doubt.md ≠ agents/fwd-mission-coder.md
   <unified diff van het blok>
 $ echo $?        → 1
 ```
@@ -51,4 +52,4 @@ Geen unit-testframework in deze repo → elk klaar-criterium is een draaibaar fi
 ## Stappen
 - [x] S1 — Branch-guard in `record-step.sh`: het script weigert te committen als de worktree-HEAD niet op `state.json`'s `.branch` staat. Klaar als: fixture-repo met `.branch="steps/demo"`, HEAD op een andere branch → `record-step.sh demo S1 "msg"` exit ≠ 0 + melding met verwachte branch; op `steps/demo` → exit 0, commit gemaakt, `recorded=S1`. Regels: geen
 - [x] S2 — `check-agent-norms.sh`: het drift-mechanisme. Nieuw script dat een genoemd blok (tussen `## <kop>` en de volgende `## `/EOF) uit meerdere bestanden knipt en faalt als ze niet byte-identiek zijn. Klaar als: twee tijdelijke `.md`-fixtures met een `## Behavior prohibitions`-blok → identiek geeft exit 0; één regel gemuteerd geeft exit 1 + unified diff. Regels: geen
-- [ ] S3 — Richten op de echte agents + drift uitlijnen + documenteren: het script draait over de echte `agents/` voor beide gedeelde blokken (`Behavior prohibitions` over 5 agents, `Comment hygiene norm` over 2), bestaande drift wordt uitgelijnd, en CLAUDE.md benoemt het script + wanneer te draaien. Klaar als: `bash scripts/check-agent-norms.sh` → exit 0 op de echte agents; `grep -q check-agent-norms.sh CLAUDE.md` → aanwezig. Regels: geen
+- [x] S3 — Gedeelde kern afsplitsen + guard richten + documenteren (Optie A): de twee universele verboden (rtk-pipe, `find /`) worden uit `## Behavior prohibitions` gelicht naar een strak identiek `## Shared tool prohibitions`-blok in alle 5 agents; de rol-specifieke regels blijven staan. `check-agent-norms.sh` krijgt een no-arg modus die dat blok over de 5 agents bewaakt. CLAUDE.md benoemt het script + wanneer te draaien. Klaar als: `bash scripts/check-agent-norms.sh` → exit 0 op de echte agents; `grep -q check-agent-norms.sh CLAUDE.md` → aanwezig. Regels: geen
