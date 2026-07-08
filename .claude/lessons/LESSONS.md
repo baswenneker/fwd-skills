@@ -72,3 +72,13 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: fwd:steps-* omgebouwd zodat de uitvoering in een worktree draait (op verzoek van Bas, voor parallel werk). `status.sh` moest plannen enumereren over `steps/*`-branches; ik gebruikte `rtk git branch --list 'steps/*' --format='%(refname:short)'`.
 **Observation**: rtk mangelt de output van `git branch` — de `--format` wordt genegeerd en je krijgt de gedecoreerde branch-lijst terug (`* ` / `  steps/x`), waardoor slug-parsing (`${br#steps/}`) faalt en elk plan als "corrupt-of-onleesbaar" verscheen. `list-missions.sh` deed het daarom al met `for-each-ref`.
 **Lesson**: Voor een machinaal leesbare branch-lijst onder rtk: gebruik `rtk git for-each-ref --format='%(refname:short)' 'refs/heads/<prefix>/*'` (schone output), nooit `git branch --list --format`. Steps-ontwerp: worktree ≠ subagent — de hoofdsessie kan prima zelf in `.trees/steps/<slug>/` schrijven; missions gebruiken een coder-subagent voor context-hygiëne bij lang onbeheerd werk, niet vanwege de worktree. Getest via wegwerp-repo (init→plan→setup-worktree→status, plus resume-na-verwijderde-worktree).
+
+### 2026-07-08 | insight | mission-laag-versnellen
+**Context**: F1 verplaatste normblokken uit CONTEXT.md inline naar 5 agent-definities.
+**Observation**: Het hand-gecondenseerde schrijfstijl-blok in fwd-mission-reviewer.md liet twee bronnormen vallen (In-een-oogopslag-opening en taal-van-de-gebruiker); de reviewer ving dit als VC-3-fail.
+**Lesson**: Bij het inline zetten van een norm: vergelijk bullet-voor-bullet tegen de bron en laat geen enkele regel vallen — parafrase mag, weglaten niet. Houd meerdere inline kopieen van dezelfde norm identiek.
+
+### 2026-07-08 | insight | mission-laag-versnellen
+**Context**: fwd-mission-coder kreeg een worktree-pad met de instructie erin te cd'en en te committen.
+**Observation**: Twee coders schreven/committen toch in de hoofd-checkout op main i.p.v. de mission-worktree (F3 zelf hersteld, F4 belandde als losse commit op main en moest met cherry-pick naar de mission-branch worden verplaatst).
+**Lesson**: De orchestrator moet na elke coder-handoff verifieren dat HEAD van de WORKTREE is opgeschoven (niet main); zo niet, cherry-pick de commit naar de mission-branch en reset main. Overweeg de coder-spawn-prompt te verscherpen: verifieer 'rtk git rev-parse --abbrev-ref HEAD' == mission-branch voor de commit.
