@@ -234,7 +234,9 @@ On (re-)invoke — including a fresh `git worktree add` on another machine, or a
 
 ## Subagent naming
 
-Agents are shipped at the plugin root in `agents/` and auto-discovered. They are referenced via `subagent_type` as `fwd-skills:fwd-mission-coder`, `fwd-skills:fwd-mission-reviewer`, `fwd-skills:fwd-mission-user-tester` — `fwd-skills` is the plugin `name` in `.claude-plugin/plugin.json`. If the plugin is ever installed under a different name, these identifiers change; this is the single place that fact is recorded.
+Agents are shipped at the plugin root in `agents/` and auto-discovered. They are referenced via `subagent_type` as `fwd-skills:fwd-mission-coder`, `fwd-skills:fwd-mission-reviewer`, `fwd-skills:fwd-mission-user-tester`, `fwd-skills:fwd-mission-scribe` — `fwd-skills` is the plugin `name` in `.claude-plugin/plugin.json`. If the plugin is ever installed under a different name, these identifiers change; this is the single place that fact is recorded.
+
+`fwd-skills:fwd-mission-scribe` (read-only, `model: haiku`) compiles the milestone walkthrough from facts the orchestrator already decided (`vc_results`, surviving concerns) — it runs the verification pass against the diff and returns text, but never judges: no handoff acceptance, no remediation, no verdicts of its own.
 
 Plugin agents do **not** support `hooks`, `mcpServers`, or `permissionMode` (stripped on load) — the mission agents need none of these. They do support `tools` / `disallowedTools` (used to make the validators write-incapable), `model`, and `isolation`.
 
