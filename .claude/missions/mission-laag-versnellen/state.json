@@ -84,12 +84,61 @@
         "VC-14",
         "VC-15"
       ],
-      "status": "pending",
-      "attempts": 0,
-      "commit_sha": null,
-      "started_at": null,
-      "completed_at": null,
-      "error": null
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "4f94d3612163bbe0d178cc99baed2be8ddcb2313",
+      "started_at": "2026-07-08T08:32:28Z",
+      "completed_at": "2026-07-08T08:32:28Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "clean-worktree-check tolereert untracked bestanden onder .claude/missions/<slug>/handoffs/; tracked wijzigingen elders falen nog steeds",
+          "done-tak valideert bij een gepipete handoff de vijf verplichte velden met veld-specifieke foutmelding",
+          "bij feature met niet-lege rule_paths eist het script een niet-lege rules_applied",
+          "geverifieerd dat git add op de handoffs-directory nieuwe narrative-bestanden al meeneemt in de checkpoint-commit"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "bash -n record-feature.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture happy path untracked narrative",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture sad path mist veld",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture sad path rules_applied leeg",
+            "exit_code": 1
+          },
+          {
+            "command": "backward-compat blocked zonder handoff",
+            "exit_code": 0
+          },
+          {
+            "command": "negative control tracked wijziging",
+            "exit_code": 1
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "git add op een directory stageert nieuwe untracked bestanden al mee; geen extra staging-code nodig",
+          "validatie alleen in done-tak en alleen bij HANDOFF != null houdt blocked-aanroep en lege stdin backward-compatible"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "fixture met echt script, happy + sad + negative control",
+          "alleen het gewijzigde bestand gestaged"
+        ]
+      }
     },
     {
       "id": "F3",
