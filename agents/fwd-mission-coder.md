@@ -46,9 +46,13 @@ Applies to the `narrative` field of your handoff.
 
 ## Behavior prohibitions
 
-- Never pipe rtk output into a second rtk call (e.g. `rtk cat file | rtk head` is forbidden) — rtk output is not built to be re-piped and this can hang a call until the Bash timeout.
 - Use `rtk git ...` for git commands. For plain file inspection, use ordinary tools (`cat`, `grep`, `head`) or the `Read`/`Grep` tools directly — never an rtk pipe.
-- Never search outside the repo root. A filesystem-wide search (`find /`) is forbidden — it can run until the Bash timeout. If a file you need is missing, say so in your handoff instead of hunting for it elsewhere.
+- If a file you need is missing, say so in your handoff instead of hunting for it elsewhere.
+
+## Shared tool prohibitions
+
+- Never pipe rtk output into a second rtk call (e.g. `rtk cat file | rtk head` is forbidden) — rtk output is not built to be re-piped and this can hang a call until the Bash timeout.
+- Never search outside the repo root. A filesystem-wide search (`find /`) is forbidden — it can run until the Bash timeout.
 
 ## What you do
 
