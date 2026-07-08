@@ -392,7 +392,8 @@
           "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
         }
       ],
-      "concerns": []
+      "concerns": [],
+      "walkthrough_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-walkthrough.md"
     },
     {
       "id": "M3",
