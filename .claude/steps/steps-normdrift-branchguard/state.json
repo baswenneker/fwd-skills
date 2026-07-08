@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "slug": "steps-normdrift-branchguard",
+  "title": "steps-laag verharden met lessen uit mission-laag-versnellen",
+  "status": "planned",
+  "branch": "steps/steps-normdrift-branchguard",
+  "base_branch": "main",
+  "created_at": "2026-07-08T00:00:00Z",
+  "completed_at": null,
+  "gate_command": "find agents skills scripts -name '*.sh' -print0 | xargs -0 -r -n1 bash -n",
+  "seams": [
+    "scripts/check-agent-norms.sh",
+    "skills/engineering/fwd:steps-run/scripts/record-step.sh"
+  ],
+  "steps": [
+    {
+      "id": "S1",
+      "title": "Branch-guard in record-step.sh",
+      "behavior": "record-step.sh weigert te committen als de worktree-HEAD niet op state.json's .branch staat",
+      "done_criterion": {
+        "type": "command",
+        "value": "fixture-repo met .branch=steps/demo; HEAD op andere branch -> record-step.sh demo S1 msg exit != 0 + melding met verwachte branch; op steps/demo -> exit 0, commit gemaakt, recorded=S1",
+        "expected": "exit != 0 + melding op verkeerde branch; exit 0 + recorded=S1 op juiste branch"
+      },
+      "rule_paths": [],
+      "status": "todo",
+      "approved_at": null,
+      "deferrals": []
+    },
+    {
+      "id": "S2",
+      "title": "check-agent-norms.sh: het drift-mechanisme",
+      "behavior": "nieuw script knipt een genoemd blok (## kop tot volgende ##/EOF) uit meerdere bestanden en faalt als ze niet byte-identiek zijn",
+      "done_criterion": {
+        "type": "command",
+        "value": "twee tijdelijke .md-fixtures met een ## Behavior prohibitions-blok; identiek -> exit 0; een regel gemuteerd -> exit 1 + unified diff",
+        "expected": "exit 0 bij identiek; exit 1 + unified diff bij drift"
+      },
+      "rule_paths": [],
+      "status": "todo",
+      "approved_at": null,
+      "deferrals": []
+    },
+    {
+      "id": "S3",
+      "title": "Richten op de echte agents + drift uitlijnen + documenteren",
+      "behavior": "het script draait over de echte agents/ voor beide gedeelde blokken en slaagt; bestaande drift is uitgelijnd en CLAUDE.md benoemt het script",
+      "done_criterion": {
+        "type": "command",
+        "value": "bash scripts/check-agent-norms.sh -> exit 0 op de echte agents; grep -q check-agent-norms.sh CLAUDE.md -> aanwezig",
+        "expected": "exit 0 op echte agents; check-agent-norms.sh vermeld in CLAUDE.md"
+      },
+      "rule_paths": [],
+      "status": "todo",
+      "approved_at": null,
+      "deferrals": []
+    }
+  ]
+}
