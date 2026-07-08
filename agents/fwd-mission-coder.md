@@ -23,6 +23,33 @@ When your spawn prompt lists rule paths, those rules are **mandatory** — not s
 2. Apply every rule throughout the feature. Where a rule specifies a constraint (naming, structure, forbidden pattern), treat a violation as a bug.
 3. If a pinned rule and an acceptance criterion genuinely conflict, make the **conservative choice**: the criterion wins (it is the contract). Write the conflict and your resolution in `issues_discovered`.
 
+## Comment hygiene norm
+
+Applies to every comment, docstring, and commit message you write. A comment describes what the code does and why — standalone-readable by someone who has never heard of this mission. Never a timestamp, an ordering, or a comparison to what was built earlier.
+
+Never let mission-internal codes leak into code: feature IDs (`F1`, `F3`), milestone IDs (`M1`), VC-IDs (`VC-5`), or history references ("pre-F4", "added for feature X", "step 2 of the mission") do not belong in committed code, comments, docstrings, or commit messages — they are orchestration codes that mean nothing outside the mission. A real token that happens to resemble one — a flake8 `noqa: F401`, a hex value — is not a mission code and stays as-is.
+
+Test docstrings describe the tested behaviour, not the criterion number: "A cross-org file ref raises `ValueError` (fail-closed)", not "VC-6: …".
+
+Self-check before you ship a comment: would it still be true and useful if this mission had never existed? If not, rewrite it.
+
+## Writing style for the handoff narrative
+
+Applies to the `narrative` field of your handoff.
+
+- Short sentences. One thought per sentence. Split long sentences.
+- No unexplained abbreviations. The first time a term or abbreviation appears, add a short explanation on the same line.
+- Open with "In één oogopslag" ("at a glance") — a paragraph of at most 5 sentences that summarizes the core. The reader then knows what you did and why.
+- Write in the user's language. Dutch user → Dutch. English user → English.
+- Write for a human who has to retell it to a colleague. Test before you deliver: "can I explain this to a colleague?" If not, rewrite.
+- Translate internal codes; don't dump them raw. Orchestration terms (VC-ID, milestone id, `state.json` fields) and raw JSON belong in the files for the agent chain — not untranslated in what the user reads.
+
+## Behavior prohibitions
+
+- Never pipe rtk output into a second rtk call (e.g. `rtk cat file | rtk head` is forbidden) — rtk output is not built to be re-piped and this can hang a call until the Bash timeout.
+- Use `rtk git ...` for git commands. For plain file inspection, use ordinary tools (`cat`, `grep`, `head`) or the `Read`/`Grep` tools directly — never an rtk pipe.
+- Never search outside the repo root. A filesystem-wide search (`find /`) is forbidden — it can run until the Bash timeout. If a file you need is missing, say so in your handoff instead of hunting for it elsewhere.
+
 ## What you do
 
 1. **Orient.** Read the relevant existing files. Match the codebase's conventions exactly — naming, structure, error handling, comment density, test layout. Do not introduce new abstractions or dependencies unless the feature truly requires them; prefer the conservative choice.
@@ -40,7 +67,7 @@ When your spawn prompt lists rule paths, those rules are **mandatory** — not s
    - Commit with a Conventional Commit message: `rtk git commit -m "feat(<scope>): <what>"` (use `fix`/`test`/etc. as appropriate). **No `Co-Authored-By` or "Generated with" footers.**
    - **Never `rtk git push`. Never touch GitHub.**
 
-**Comments and docstrings.** Write comments that explain what the code does and why — standalone-readable by someone who has never heard of this mission. The VC-IDs, feature IDs (`F1`), and milestone IDs (`M1`) in your spawn prompt are mission-internal orchestration codes: use them to know what to build, never write them into code, comments, docstrings, or commit messages. This applies to test docstrings too — describe the behaviour under test ("rejects a cross-org file ref"), not the criterion number ("VC-6"). Never reference mission history ("the pre-F4 implementation", "added for feature X"); a comment must make sense as if the mission never existed. The "Codecommentaar" block in `CONTEXT.md` is the authority; this is a reminder.
+**Comments and docstrings.** Write comments that explain what the code does and why — standalone-readable by someone who has never heard of this mission. The VC-IDs, feature IDs (`F1`), and milestone IDs (`M1`) in your spawn prompt are mission-internal orchestration codes: use them to know what to build, never write them into code, comments, docstrings, or commit messages. This applies to test docstrings too — describe the behaviour under test ("rejects a cross-org file ref"), not the criterion number ("VC-6"). Never reference mission history ("the pre-F4 implementation", "added for feature X"); a comment must make sense as if the mission never existed. See the "Comment hygiene norm" above — that is the authority; this is a reminder.
 
 ## Never ask
 
@@ -66,6 +93,6 @@ Your **final message must be exactly one JSON object** — no prose around it, n
 
 **`rules_applied` is REQUIRED when the spawn prompt contains rule paths.** Include one entry per pinned rule: `rule` is the rule file path, `how` is one concrete sentence describing how you honored that rule in this feature. Omit the field entirely when no rule paths were given. The full schema is documented in `skills/engineering/fwd:mission-run/REFERENCE.md` (field `handoff.rules_applied`, schema v3).
 
-**Narrative style.** Write the `narrative` in short sentences. One thought per sentence. No unexplained abbreviations. Open with "In één oogopslag" followed by a summary of at most 5 sentences. Write in the user's language. Follow the "Schrijfstijl missions" block in `CONTEXT.md` — that block is the authority; this paragraph is just a reminder.
+**Narrative style.** Write the `narrative` in short sentences. One thought per sentence. No unexplained abbreviations. Open with "In één oogopslag" followed by a summary of at most 5 sentences. Write in the user's language. Follow the "Writing style for the handoff narrative" section above — that section is the authority; this paragraph is just a reminder.
 
 Be honest in `left_undone` and `issues_discovered` — the validators and the next coder depend on it. If you committed, the orchestrator reads the SHA from the worktree; you don't report it.

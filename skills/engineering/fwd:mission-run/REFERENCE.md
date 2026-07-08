@@ -99,6 +99,30 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       // The coder subagent receives these paths and reports per-rule application in
       // its handoff (see rules_applied below). Plans without this field remain valid.
       "rule_paths": [".claude/rules/git.md"],
+      // depends_on (OPTIONAL, schema v6): feature ids this feature needs done first.
+      // Must reference an EARLIER feature in the array (no forward references) and
+      // must not form a cycle — validate-artifacts.sh lints both. pick-next-unit.sh
+      // skips a feature whose depends_on chain (direct or transitive) points at a
+      // feature that isn't done yet, so one blocked feature no longer stalls
+      // everything after it — only its actual dependents wait. Execution stays
+      // strictly serial: this field only changes which single feature is picked
+      // next, it never spawns concurrent coders. Absent or empty → identical to
+      // pre-v6 behavior (the next feature is ready as soon as it isn't itself
+      // done/blocked). Example below assumes an earlier feature "F0" exists.
+      "depends_on": ["F0"],
+      // reading_list (OPTIONAL, schema v6): the focused set of paths the coder should
+      // read before writing any code — generated at plan time from the feature's
+      // file-by-file table (the files it touches) plus its matched rule_paths. Passed
+      // to the coder subagent verbatim, together with the instruction to read only
+      // this and skip a fresh repo-wide scan. Absent → the coder orients itself from
+      // the VC-IDs and design budget alone, exactly like pre-v6 plans.
+      "reading_list": ["src/import/route.ts", ".claude/rules/git.md"],
+      // size (OPTIONAL, schema v6): S | M | L, estimated at plan time against the
+      // ~30-45-minute feature-sizing rule (see fwd:mission-plan step 3). The runner
+      // uses it only to pick the coder spawn's model/effort (2.3 in SKILL.md) — a
+      // small feature can spawn at a lower effort/lighter model; M/L spawn at the
+      // current default. Absent → identical to pre-v6 behavior (default model/effort).
+      "size": "S",
       "handoff": {                      // structured summary; prose in handoffs/F1.md
         "implemented": ["POST /api/import route", "clipboard parser util"],
         "left_undone": ["multi-file upload — out of scope for this feature"],
@@ -172,6 +196,10 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 - **Schema v5 is equally optional and additive.**
   - **`user_testing.plan_probe`** (`{ok, at}`): written by `fwd:mission-plan` (step 4.7) after a successful live plan-time boot-preflight (`boot-app.sh --probe` in the main checkout). Proves the boot config worked at least once before execution started. Absent in older plans and in missions without a boot command.
   - **`milestones[].concerns`** (`[{location, issue, why_it_matters, category}]`): the reviewer's surviving concerns for that milestone — suspected defects *outside* the contract (category `bug` | `dataverlies` | `security`). Persisted by `record-validation.sh` per validation round: a payload **with** the key replaces the list (empty array clears it), a payload **without** the key leaves the field untouched — older payloads stay valid. Concerns never affect `validation_status` or the circuit breaker; see the *concern* entry in `CONTEXT.md`.
+- **Schema v6 is equally optional and additive.**
+  - **`features[].depends_on`** (array of feature ids): declares which earlier features must be `done` before this one is executable. `validate-artifacts.sh` lints it (every id must exist, must point to an earlier feature in the array, and the graph must be acyclic). `pick-next-unit.sh` skips a feature — even one that is neither `done` nor `blocked` — while any entry in its (transitive) `depends_on` chain is not yet `done`, so a single blocked feature only stalls its actual dependents, not the whole remaining queue. This does not introduce parallel execution: the runner still spawns exactly one coder at a time; `depends_on` only changes *which* feature that is. Absent or an empty array behaves exactly like a plan written before this field existed.
+  - **`features[].reading_list`** (array of paths): the focused set of files the coder should read for this feature — generated at plan time from the feature's file-by-file table plus its matched `rule_paths`. Pinned verbatim in the coder spawn prompt (SKILL.md step 2.3) with the instruction to read only this and skip a fresh repo-wide scan. Absent → the coder orients from the VC-IDs and design budget alone, same as any pre-v6 plan.
+  - **`features[].size`** (`"S"` | `"M"` | `"L"`): a plan-time estimate against the feature-sizing rule (`fwd:mission-plan` step 3, ~30–45 minutes of build work). The runner reads it only to choose the coder spawn's model/effort — `S` may spawn at a lower effort or lighter model, `M`/`L` spawn at the current default. It never changes the acceptance bar. Absent → identical to pre-v6 behavior (default model/effort, no adjustment).
 
 ## The handoff report
 
@@ -234,7 +262,9 @@ On (re-)invoke — including a fresh `git worktree add` on another machine, or a
 
 ## Subagent naming
 
-Agents are shipped at the plugin root in `agents/` and auto-discovered. They are referenced via `subagent_type` as `fwd-skills:fwd-mission-coder`, `fwd-skills:fwd-mission-reviewer`, `fwd-skills:fwd-mission-user-tester` — `fwd-skills` is the plugin `name` in `.claude-plugin/plugin.json`. If the plugin is ever installed under a different name, these identifiers change; this is the single place that fact is recorded.
+Agents are shipped at the plugin root in `agents/` and auto-discovered. They are referenced via `subagent_type` as `fwd-skills:fwd-mission-coder`, `fwd-skills:fwd-mission-reviewer`, `fwd-skills:fwd-mission-user-tester`, `fwd-skills:fwd-mission-scribe` — `fwd-skills` is the plugin `name` in `.claude-plugin/plugin.json`. If the plugin is ever installed under a different name, these identifiers change; this is the single place that fact is recorded.
+
+`fwd-skills:fwd-mission-scribe` (read-only, `model: haiku`) compiles the milestone walkthrough from facts the orchestrator already decided (`vc_results`, surviving concerns) — it runs the verification pass against the diff and returns text, but never judges: no handoff acceptance, no remediation, no verdicts of its own.
 
 Plugin agents do **not** support `hooks`, `mcpServers`, or `permissionMode` (stripped on load) — the mission agents need none of these. They do support `tools` / `disallowedTools` (used to make the validators write-incapable), `model`, and `isolation`.
 

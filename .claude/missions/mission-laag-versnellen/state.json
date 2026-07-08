@@ -1,0 +1,647 @@
+{
+  "version": 1,
+  "slug": "mission-laag-versnellen",
+  "title": "Mission-laag versnellen",
+  "status": "done",
+  "branch": "mission/mission-laag-versnellen",
+  "worktree": "/Users/bas/Development/HeadingFWD/fwd-skills/.trees/mission/mission-laag-versnellen",
+  "base_branch": "main",
+  "created_at": "2026-07-08T06:52:34Z",
+  "started_at": "2026-07-08T08:09:58Z",
+  "started_at_epoch": 1783498198,
+  "completed_at": "2026-07-08T09:07:41Z",
+  "gates": [
+    {
+      "id": "G1",
+      "name": "shell-syntax",
+      "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+      "expected_exit": 0
+    }
+  ],
+  "user_testing": {
+    "boot_command": null,
+    "ready_probe": null,
+    "smoke_commands": [],
+    "playwright_present": false,
+    "teardown_command": null
+  },
+  "features": [
+    {
+      "id": "F1",
+      "title": "Normblokken inline in alle 5 agent-definities + rtk-pipe- en zoekverbod",
+      "milestone": "M1",
+      "vc_ids": [
+        "VC-1",
+        "VC-2",
+        "VC-3",
+        "VC-4",
+        "VC-5",
+        "VC-6"
+      ],
+      "status": "done",
+      "attempts": 2,
+      "commit_sha": "0551e9fb5a803df47345a31d471796f48146eb01",
+      "started_at": "2026-07-08T08:15:14Z",
+      "completed_at": "2026-07-08T08:21:34Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "remediatie: twee ontbrekende schrijfstijlnormen (In-een-oogopslag-opening en schrijf-in-de-taal-van-de-gebruiker) toegevoegd aan het schrijfstijl-blok van agents/fwd-mission-reviewer.md, consistent met agents/fwd-mission-coder.md",
+          "(eerdere pas) normblokken inline + gedragsverbod in alle 5 agent-definities"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "grep -in oogopslag agents/fwd-mission-reviewer.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep -in taal|language agents/fwd-mission-reviewer.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan.sh",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen het opgegeven bestand gewijzigd",
+          "geen mission-interne codes"
+        ]
+      }
+    },
+    {
+      "id": "F2",
+      "title": "record-feature.sh hardening: untracked narrative accepteren + handoff-JSON-validatie",
+      "milestone": "M2",
+      "vc_ids": [
+        "VC-7",
+        "VC-8",
+        "VC-13",
+        "VC-14",
+        "VC-15"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "4f94d3612163bbe0d178cc99baed2be8ddcb2313",
+      "started_at": "2026-07-08T08:32:28Z",
+      "completed_at": "2026-07-08T08:32:28Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "clean-worktree-check tolereert untracked bestanden onder .claude/missions/<slug>/handoffs/; tracked wijzigingen elders falen nog steeds",
+          "done-tak valideert bij een gepipete handoff de vijf verplichte velden met veld-specifieke foutmelding",
+          "bij feature met niet-lege rule_paths eist het script een niet-lege rules_applied",
+          "geverifieerd dat git add op de handoffs-directory nieuwe narrative-bestanden al meeneemt in de checkpoint-commit"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "bash -n record-feature.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture happy path untracked narrative",
+            "exit_code": 0
+          },
+          {
+            "command": "fixture sad path mist veld",
+            "exit_code": 1
+          },
+          {
+            "command": "fixture sad path rules_applied leeg",
+            "exit_code": 1
+          },
+          {
+            "command": "backward-compat blocked zonder handoff",
+            "exit_code": 0
+          },
+          {
+            "command": "negative control tracked wijziging",
+            "exit_code": 1
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "git add op een directory stageert nieuwe untracked bestanden al mee; geen extra staging-code nodig",
+          "validatie alleen in done-tak en alleen bij HANDOFF != null houdt blocked-aanroep en lege stdin backward-compatible"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "fixture met echt script, happy + sad + negative control",
+          "alleen het gewijzigde bestand gestaged"
+        ]
+      }
+    },
+    {
+      "id": "F3",
+      "title": "Scribe-agent (Haiku) compileert walkthrough + gate-dedup in reviewer-prompt",
+      "milestone": "M2",
+      "vc_ids": [
+        "VC-9",
+        "VC-10",
+        "VC-11",
+        "VC-12",
+        "VC-13",
+        "VC-14",
+        "VC-15"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "8d22f9170a7a46be9a2604e7cee5e58dae25bce9",
+      "started_at": "2026-07-08T08:40:03Z",
+      "completed_at": "2026-07-08T08:40:03Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "agents/fwd-mission-scribe.md nieuw: model haiku, tools Read/Glob/Grep/Bash zonder Write/Edit, volledige verificatiepas + verplichte slotregel, expliciet geen oordeelsvorming",
+          "SKILL.md 2.5: walkthrough-compilatie gedelegeerd aan scribe, orchestrator schrijft/commit",
+          "SKILL.md 2.5 Scrutiny: reviewer-prompt krijgt gate_results + HEAD-SHA met her-run-verbod op gelijke SHA",
+          "REFERENCE.md: scribe in subagent-naming",
+          "CLAUDE.md: scribe in Agents-sectie"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep model: haiku scribe",
+            "exit_code": 0
+          },
+          {
+            "command": "grep tools Write|Edit scribe",
+            "exit_code": 1
+          },
+          {
+            "command": "grep Verificatie: scribe",
+            "exit_code": 0
+          },
+          {
+            "command": "grep unchanged-from-gate-run SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Bestanden eerst per ongeluk naar de hoofd-checkout geschreven; hersteld via git checkout, hoofd-checkout weer clean, edits opnieuw in de worktree toegepast"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen de vier opgegeven bestanden gestaged",
+          "geen mission-interne codes in commit-message of nieuwe producttekst"
+        ]
+      }
+    },
+    {
+      "id": "F4",
+      "title": "Feature-sizing-planregel in fwd:mission-plan (30-45 min bouwwerk, samenvoeg-toets)",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-16",
+        "VC-23",
+        "VC-24",
+        "VC-25"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "b231aba636a4cbeaf28844e00b3edb200d746290",
+      "started_at": "2026-07-08T08:48:45Z",
+      "completed_at": "2026-07-08T08:48:45Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "SKILL.md stap 3: feature-sizing-regel ~30-45 min per feature met spawn-belasting-onderbouwing en samenvoeg-criterium",
+          "SKILL.md stap 4.5 grill: expliciete toets op te fijn gesneden features met verplichte keuze",
+          "REFERENCE.md: Feature sizing-sectie consistent met SKILL.md"
+        ],
+        "left_undone": [],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep -in samenvoeg SKILL.md REFERENCE.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep -n 30 SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "Grill-vraag bestond al generiek; uitgebreid met de concrete sizing-drempel i.p.v. een nieuwe vraag, om de nummering niet te verstoren",
+          "Coder committe eerst op main in de hoofd-checkout; orchestrator verplaatste de commit via cherry-pick naar de mission-branch en zette main terug"
+        ],
+        "procedures_followed": [
+          "risky-scan clean",
+          "conventional commit",
+          "alleen de twee opgegeven bestanden",
+          "geen nieuwe mission-interne codes"
+        ]
+      }
+    },
+    {
+      "id": "F5",
+      "title": "Schema v6: depends_on + pick-next-unit passeert geblokkeerde features + plan-lint",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-17",
+        "VC-18",
+        "VC-19",
+        "VC-22",
+        "VC-23",
+        "VC-24",
+        "VC-25"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "7271f407464d2db72eaaa638d753fc30c393d3dc",
+      "started_at": "2026-07-08T08:56:22Z",
+      "completed_at": "2026-07-08T08:56:22Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "pick-next-unit.sh skipt blocked-features en features die transitief van niet-done features afhangen; exit 0 leeg bij alles-done, exit 3 leeg + stderr bij blokkade",
+          "validate-artifacts.sh lint depends_on: onbekende id, vooruit-verwijzing, cykel; benoemt overtreder; tolerant voor plannen zonder veld",
+          "REFERENCE.md: depends_on als additief schema-v6-veld",
+          "SKILL.md 2.1: zin over passeren geblokkeerde features + exit-0/exit-3-onderscheid"
+        ],
+        "left_undone": [
+          "reading_list en size velden horen bij F6, niet hier"
+        ],
+        "commands": [
+          {
+            "command": "bash -n pick-next-unit.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "bash -n validate-artifacts.sh",
+            "exit_code": 0
+          },
+          {
+            "command": "pick-next VC-17a A blocked B onafhankelijk",
+            "exit_code": 0
+          },
+          {
+            "command": "pick-next VC-17b B depends_on A",
+            "exit_code": 3
+          },
+          {
+            "command": "pick-next VC-18 v1 state",
+            "exit_code": 0
+          },
+          {
+            "command": "validate VC-19a onbestaande",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19b vooruit",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19c cykel",
+            "exit_code": 1
+          },
+          {
+            "command": "validate VC-19d geldig",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "skip-blocked-logica geldt universeel, ook voor v1-plannen; VC-18 getest met v1-fixture zonder blocked-status (puur schema-backward-compat)",
+          "cykel impliceert ook een vooruit-verwijzing; VC-19c-fixture triggert beide meldingen, overtreder wordt benoemd"
+        ],
+        "procedures_followed": [
+          "branch geverifieerd voor commit (mission-branch)",
+          "risky-scan clean",
+          "conventional commit",
+          "fixtures in tmp-repo tegen echte scripts",
+          "alleen 4 bestanden gestaged",
+          "geen parallelle machinerie — serieel"
+        ]
+      }
+    },
+    {
+      "id": "F6",
+      "title": "Coder-dieet: reading_list + rules inline in spawn-prompt + model/effort naar size",
+      "milestone": "M3",
+      "vc_ids": [
+        "VC-20",
+        "VC-21",
+        "VC-23",
+        "VC-24",
+        "VC-25"
+      ],
+      "status": "done",
+      "attempts": 1,
+      "commit_sha": "ec460242da5d99c9778173e5a5d8fa2cc7058630",
+      "started_at": "2026-07-08T09:00:04Z",
+      "completed_at": "2026-07-08T09:00:04Z",
+      "error": null,
+      "handoff": {
+        "implemented": [
+          "fwd:mission-run/SKILL.md 2.3: reading_list-bullet met read-only-this, <200-regels-inline voor rule_paths, Model/effort-by-size-richtlijn",
+          "fwd:mission-run/REFERENCE.md: reading_list en size als additieve schema-v6-velden",
+          "fwd:mission-plan/SKILL.md 6: afleiding reading_list (file-by-file + rules) en size (sizing-regel), additief"
+        ],
+        "left_undone": [
+          "fwd:mission-plan/REFERENCE.md niet gewijzigd — bevat geen state.json feature-schema, alleen markdown-templates"
+        ],
+        "commands": [
+          {
+            "command": "find skills agents -name '*.sh' | xargs bash -n",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep ~200 run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep read-only-this run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep Model/effort-by-size run/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list plan/SKILL.md",
+            "exit_code": 0
+          },
+          {
+            "command": "grep reading_list run/REFERENCE.md",
+            "exit_code": 0
+          },
+          {
+            "command": "risky-scan",
+            "exit_code": 0
+          }
+        ],
+        "issues_discovered": [
+          "mission-plan/REFERENCE.md heeft geen feature-schema-template; bewust ongemoeid, consistent met rule_paths",
+          "model/effort-richtlijn bewust vaag (geen model-ID) om geen nieuwe ongevraagde afspraak te introduceren"
+        ],
+        "procedures_followed": [
+          "branch geverifieerd voor commit",
+          "risky-scan clean",
+          "conventional commit",
+          "alleen gewijzigde bestanden gestaged",
+          "geen nieuwe mission-interne codes"
+        ]
+      }
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Agent-definities zelfvoorzienend",
+      "feature_ids": [
+        "F1"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-07-08T08:25:22Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-1",
+          "passed": true,
+          "evidence": "geen CONTEXT.md-refs; normkernen inline waar nodig",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-2",
+          "passed": true,
+          "evidence": "gedragsverbod drie bullets in alle 5, find / verboden",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-3",
+          "passed": true,
+          "evidence": "norm-drift verholpen 0551e9f; reviewer schrijfstijl-blok volledig; geen andere drift",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-4",
+          "passed": true,
+          "evidence": "commit messages schoon; mission-tokens alleen als voorbeeld in normtekst",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-5",
+          "passed": true,
+          "evidence": "grep-bewijs draait echte bestanden, niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        },
+        {
+          "id": "VC-6",
+          "passed": true,
+          "evidence": "alleen 5 agent-bestanden, geen budget-overschrijding",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-review.md"
+        }
+      ],
+      "concerns": [],
+      "walkthrough_path": ".claude/missions/mission-laag-versnellen/handoffs/M1-walkthrough.md"
+    },
+    {
+      "id": "M2",
+      "title": "Run-machinerie goedkoper",
+      "feature_ids": [
+        "F2",
+        "F3"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-07-08T08:43:39Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-7",
+          "passed": true,
+          "evidence": "record-feature.sh:62-66 zondert untracked handoff-narrative uit; tracked wijziging faalt nog",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-8",
+          "passed": true,
+          "evidence": "record-feature.sh:43-56 valideert vijf velden + rules_applied met veld-specifieke melding",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-9",
+          "passed": true,
+          "evidence": "scribe model haiku, tools zonder Write/Edit; SKILL.md:162 delegeert compileren, orchestrator schrijft/commit",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-10",
+          "passed": true,
+          "evidence": "scribe bevat volledige verificatiepas + verplichte slotregel",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-11",
+          "passed": true,
+          "evidence": "SKILL.md:123 reviewer-prompt met gate_results + HEAD-SHA en her-run-verbod",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-12",
+          "passed": true,
+          "evidence": "scribe velt geen oordeel; expliciet in frontmatter, body en SKILL.md",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-13",
+          "passed": true,
+          "evidence": "geen mission-code in productcode-comments of commit-message",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-14",
+          "passed": true,
+          "evidence": "fixtures roepen echt record-feature.sh aan; sad-path discrimineert, niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        },
+        {
+          "id": "VC-15",
+          "passed": true,
+          "evidence": "alleen toegestane scribe-agent; geen nieuwe dependency/map/abstractie",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-review.md"
+        }
+      ],
+      "concerns": [],
+      "walkthrough_path": ".claude/missions/mission-laag-versnellen/handoffs/M2-walkthrough.md"
+    },
+    {
+      "id": "M3",
+      "title": "Plan-laag: minder spawns, slimmere spawns",
+      "feature_ids": [
+        "F4",
+        "F5",
+        "F6"
+      ],
+      "validation_status": "passed",
+      "validated_at": "2026-07-08T09:05:21Z",
+      "gate_results": [
+        {
+          "id": "G1",
+          "command": "find skills agents -name '*.sh' -print0 | xargs -0 -n1 bash -n",
+          "exit_code": 0,
+          "passed": true
+        }
+      ],
+      "vc_results": [
+        {
+          "id": "VC-16",
+          "passed": true,
+          "evidence": "plan/SKILL.md stap 3 sizing-regel + grill 4.5 toetst te fijn snijden; REFERENCE.md Feature sizing",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-17",
+          "passed": true,
+          "evidence": "fixture: A blocked, B onafhankelijk -> B; alles dep A -> exit 3 blokkade",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-18",
+          "passed": true,
+          "evidence": "lint gated op depends_on-aanwezigheid; v1 identiek; record-feature ongewijzigd",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-19",
+          "passed": true,
+          "evidence": "validate-artifacts faalt exit 1 op onbekende id/vooruit/cykel, benoemt feature",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-20",
+          "passed": true,
+          "evidence": "run/SKILL.md 2.3 reading_list + read-only-this + inline rules <200; plan/SKILL.md 6 genereert reading_list",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-21",
+          "passed": true,
+          "evidence": "run/SKILL.md 2.3 Model/effort by feature size S/M/L, ontbrekend=huidig",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-22",
+          "passed": true,
+          "evidence": "geen sub-worktree/merge/parallel-machinerie; serieel",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-23",
+          "passed": true,
+          "evidence": "geen mission-code in script-comments of commit-messages",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-24",
+          "passed": true,
+          "evidence": "lint-fixtures tegen echt script; faalt op kapot, slaagt op geldig; niet tautologisch",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        },
+        {
+          "id": "VC-25",
+          "passed": true,
+          "evidence": "geen nieuwe bestanden/dependency/map; alleen additieve schema-v6-velden",
+          "report_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-review.md"
+        }
+      ],
+      "concerns": [],
+      "walkthrough_path": ".claude/missions/mission-laag-versnellen/handoffs/M3-walkthrough.md"
+    }
+  ],
+  "circuit_breaker": {
+    "consecutive_failures": 0
+  },
+  "decisions": [],
+  "cold_start_proof": {
+    "ok": true,
+    "at": "2026-07-08T00:00:00Z",
+    "note": "non-bootable skills-plugin; fresh gate + structural + script re-execution"
+  }
+}
