@@ -89,7 +89,7 @@ Then repeat until `pick-next-unit.sh` reports no work.
 bash "${CLAUDE_SKILL_DIR}/scripts/pick-next-unit.sh" <slug>
 ```
 
-Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first feature with `status != done`. Empty output → all features done → go to step 3. `closes_milestone` is the milestone id if completing this feature finishes its milestone (triggers validation in 2.5).
+Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first feature with `status != done`, skipping any feature that is `blocked` or that (transitively, via `depends_on`) depends on a feature that isn't `done` yet — one blocked feature no longer stalls features that don't depend on it, and execution stays strictly serial throughout. Empty output with exit `0` → all features done → go to step 3. Empty output with exit `3` and a message on stderr → features remain but every one is stuck behind a blocked/undone dependency — stop and report the blockage instead of finalizing. `closes_milestone` is the milestone id if completing this feature finishes its milestone (triggers validation in 2.5).
 
 **2.2 — Brief yourself.** From the worktree's `.claude/missions/<slug>/`, read the feature's acceptance criteria: its `vc_ids` mapped to the assertions in `validation-contract.md`, plus the relevant `mission.md` context. The previous feature's code is already present (inherited via git).
 

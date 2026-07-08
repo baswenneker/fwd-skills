@@ -99,6 +99,17 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
       // The coder subagent receives these paths and reports per-rule application in
       // its handoff (see rules_applied below). Plans without this field remain valid.
       "rule_paths": [".claude/rules/git.md"],
+      // depends_on (OPTIONAL, schema v6): feature ids this feature needs done first.
+      // Must reference an EARLIER feature in the array (no forward references) and
+      // must not form a cycle — validate-artifacts.sh lints both. pick-next-unit.sh
+      // skips a feature whose depends_on chain (direct or transitive) points at a
+      // feature that isn't done yet, so one blocked feature no longer stalls
+      // everything after it — only its actual dependents wait. Execution stays
+      // strictly serial: this field only changes which single feature is picked
+      // next, it never spawns concurrent coders. Absent or empty → identical to
+      // pre-v6 behavior (the next feature is ready as soon as it isn't itself
+      // done/blocked). Example below assumes an earlier feature "F0" exists.
+      "depends_on": ["F0"],
       "handoff": {                      // structured summary; prose in handoffs/F1.md
         "implemented": ["POST /api/import route", "clipboard parser util"],
         "left_undone": ["multi-file upload — out of scope for this feature"],
@@ -172,6 +183,8 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 - **Schema v5 is equally optional and additive.**
   - **`user_testing.plan_probe`** (`{ok, at}`): written by `fwd:mission-plan` (step 4.7) after a successful live plan-time boot-preflight (`boot-app.sh --probe` in the main checkout). Proves the boot config worked at least once before execution started. Absent in older plans and in missions without a boot command.
   - **`milestones[].concerns`** (`[{location, issue, why_it_matters, category}]`): the reviewer's surviving concerns for that milestone — suspected defects *outside* the contract (category `bug` | `dataverlies` | `security`). Persisted by `record-validation.sh` per validation round: a payload **with** the key replaces the list (empty array clears it), a payload **without** the key leaves the field untouched — older payloads stay valid. Concerns never affect `validation_status` or the circuit breaker; see the *concern* entry in `CONTEXT.md`.
+- **Schema v6 is equally optional and additive.**
+  - **`features[].depends_on`** (array of feature ids): declares which earlier features must be `done` before this one is executable. `validate-artifacts.sh` lints it (every id must exist, must point to an earlier feature in the array, and the graph must be acyclic). `pick-next-unit.sh` skips a feature — even one that is neither `done` nor `blocked` — while any entry in its (transitive) `depends_on` chain is not yet `done`, so a single blocked feature only stalls its actual dependents, not the whole remaining queue. This does not introduce parallel execution: the runner still spawns exactly one coder at a time; `depends_on` only changes *which* feature that is. Absent or an empty array behaves exactly like a plan written before this field existed.
 
 ## The handoff report
 

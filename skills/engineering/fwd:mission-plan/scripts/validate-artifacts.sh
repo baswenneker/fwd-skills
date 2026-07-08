@@ -162,6 +162,46 @@ if [[ -f "$STATE" ]] && jq -e '.' "$STATE" >/dev/null 2>&1 \
 fi
 # ── end rules-manifest check ─────────────────────────────────────────────────
 
+# ── depends_on lint (schema v6, additive) ────────────────────────────────────
+# Tolerant for plans without the field: only runs when at least one feature
+# actually carries depends_on. Enforces three things so pick-next-unit.sh can
+# trust the graph without doing its own validation: every referenced id exists,
+# every reference points backward (to a feature earlier in the array — no
+# forward references), and there are no cycles.
+if [[ -f "$STATE" ]] && jq -e '.' "$STATE" >/dev/null 2>&1 \
+   && jq -e '[.features[]?.depends_on? // [] | .[]] | length > 0' "$STATE" >/dev/null 2>&1; then
+
+  DEP_ERRS="$(jq -r '
+    [.features[]?.id] as $ids
+    | (.features | to_entries | map({key: .value.id, value: .key}) | from_entries) as $index
+    | (.features | map({key: .id, value: (.depends_on // [])}) | from_entries) as $deps
+
+    | def cycle_from(fid; visited):
+        (($deps[fid] // [])[]) as $d
+        | if (visited | index($d)) then $d
+          else cycle_from($d; visited + [$d])
+          end;
+
+    ( [ .features[]? | . as $f | ($f.depends_on // [])[]
+        | select((. as $d | $ids | index($d)) | not)
+        | "plan-lint: feature \($f.id) heeft depends_on naar onbekende feature \(.)" ]
+      + [ .features[]? | . as $f | ($f.depends_on // [])[]
+          | select((. as $d | $ids | index($d)) != null)
+          | select($index[.] >= $index[$f.id])
+          | "plan-lint: feature \($f.id) heeft depends_on naar \(.), maar dat is geen eerdere feature (vooruit-verwijzing)" ]
+      + ( [ .features[]?.id ] | unique | map(
+            . as $start
+            | (try cycle_from($start; [$start]) catch null)
+          ) | map(select(. != null)) | if length > 0 then ["plan-lint: cykel in depends_on gedetecteerd (via feature \(.[0]))"] else [] end )
+    )[]
+  ' "$STATE" 2>/dev/null || true)"
+  while IFS= read -r e; do
+    [[ -n "$e" ]] || continue
+    errs+=("$e")
+  done <<<"$DEP_ERRS"
+fi
+# ── end depends_on lint ───────────────────────────────────────────────────────
+
 if [[ ${#errs[@]} -gt 0 ]]; then
   echo "invalid mission artifacts for $SLUG:" >&2
   for e in "${errs[@]}"; do echo "  - $e" >&2; done
