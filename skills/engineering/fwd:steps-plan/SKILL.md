@@ -35,7 +35,7 @@ Bepaal het budget in deze volgorde — nooit interactief ernaar vragen:
 2. Anders: expliciet aantal in de doeltekst ("in 5 stappen" → 5; "bepaal zelf" / "jij bepaalt" → `auto`).
 3. Anders: **3** (default — fundament / kern / afronding).
 
-`auto` = fijnmazig: één gedraging per stap, de 10-25-korrel uit stap 3. `1` = alles in één keer, één gate-moment. Ongeldig getal (0, negatief) → behandelen als afwezig (default 3) en dat in één zin melden.
+`auto` = fijnmazig: één gedraging per stap, de 10-25-korrel uit stap 3. `1` = alles in één keer, één gate-moment. Ongeldig getal (0, negatief) → negeer het token en val door naar regel 2 en 3 (doeltekst, anders default 3); meld dat in één zin.
 
 ### 1. Context (licht)
 
@@ -64,7 +64,7 @@ Eén gecombineerd voorstel:
 
 Snijden: verdeel op bouwvolgorde (tracer bullets — elke stap bouwt voort op de vorige, afhankelijkheden eerder in de lijst) over precies het budget; default 3 ≈ fundament / kern / afronding. Bij `auto`: 1 gedrag ≈ 1-3 tests ≈ een diff die in ±5 minuten te reviewen is; middelgrote klus ≈ 10-25 stappen. Bij een vast budget schaalt de review-inspanning per gate mee met de bundel — dat is de afspraak die de gebruiker met het getal maakt.
 
-**Tegenvoorstel, nooit stille wijziging.** Plan op het budget. Duidelijke mismatch (triviale klus die het budget opvult, forse klus die erin geperst wordt) → één zin tegenvoorstel bij dit voorstel; het getoonde plan volgt het gevraagde budget. De gebruiker beslist.
+**Tegenvoorstel, nooit stille wijziging.** Plan op het budget. Duidelijke mismatch (triviale klus die het budget opvult, forse klus die erin geperst wordt) → één zin tegenvoorstel ónder het voorstel. **Render het tegenvoorstel nooit als de getoonde stappenlijst**: de lijst die je toont heeft altijd precies het gevraagde budget; pas na expliciet akkoord van de gebruiker op het tegenvoorstel snijd je opnieuw.
 
 Draai vóór het tonen de **zelf-lint** en verwerk de uitkomst stilzwijgend (meld alleen wat je erdoor hebt aangepast — het stappen-aantal wijzigt de lint nooit stilzwijgend):
 
