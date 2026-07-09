@@ -7,37 +7,33 @@ allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Age
 
 # Plan
 
-De dialoog met de gebruiker verloopt in drie zichtbare stappen — de flow-regels tonen "stap 1/2/3 van 3": (1) Definition of Done, (2) verdiepende vragen, (3) plan + verdict. Na de plan-keuze legt de skill stil een licht contract vast (Step 5). Losse modus: `/fwd:plan check [<slug>]` toetst een eerder vastgelegd contract achteraf (zie *Check-modus* onderaan).
+Drie zichtbare stappen — de flow-regels tonen "stap 1/2/3 van 3": (1) Definition of Done, (2) verdiepende vragen, (3) plan + verdict. Na de plan-keuze legt de skill stil een licht contract vast (Step 5). Losse modus: `/fwd:plan check [<slug>]` toetst een eerder vastgelegd contract achteraf (zie *Check-modus* onderaan).
 
 **Hard constraints:**
 
 - **`AskUserQuestion` is toegestaan en gewenst** voor alle numbered-choice vragen in 2b/2c. De DoD (Definition of Done) in 2a is **géén `AskUserQuestion`** maar een plain-text voorstel met numbered bullets — gebruiker bevestigt met "ok" of geeft aanpassingen aan. Render de DoD-bullets en stop de turn; vuur de `AskUserQuestion`-bundle van 2b/2c pas af **nadat** de gebruiker akkoord heeft gegeven.
-- **Subagents alleen als de gebruiker er expliciet om vraagt.** Default: blijf in main turn — subagents kunnen geen vervolgvragen stellen en verstoppen context. Bij "use subagents" / "spawn agents to research X" of vergelijkbaar mag `Agent`. Anders zelf doen.
-- **`Write` mag uitsluitend contractbestanden onder `.claude/plan-contracts/` raken** — aanmaken in Step 5, bijwerken (met de toets-uitslag) in de check-modus. Nooit code, nooit een pad daarbuiten. Verder eindigt de skill met een aanbeveling; implementatie is een aparte stap.
+- **Subagents alleen als de gebruiker er expliciet om vraagt** ("use subagents", "spawn agents to research X"). Default: main turn — subagents kunnen geen vervolgvragen stellen en verstoppen context.
+- **`Write` mag uitsluitend contractbestanden onder `.claude/plan-contracts/` raken** — aanmaken in Step 5, bijwerken (toets-uitslag) in de check-modus. Nooit code, nooit een pad daarbuiten. Verder eindigt de skill met een aanbeveling; implementatie is een aparte stap.
 - **Roep nooit `ExitPlanMode` aan** — ook niet als de sessie in Claude Code plan mode draait en de harness om plan-goedkeuring vraagt; haal de tool ook niet via `ToolSearch` op. Het DoD-akkoord plus het verdict-block is het énige goedkeuringsmoment van deze skill; een tweede goedkeuring erbovenop laat de sessie stranden op een afgewezen tool-call. Dit geldt de hele skill-run, ook ná het verdict.
 
 ## Step 1 — Gather context
 
-Lees genoeg om te plannen, niet om te implementeren. Tools: `Read`, `Glob`, `Grep`, `Bash` (read-only), `WebFetch`, `WebSearch`.
+Lees genoeg om te plannen, niet om te implementeren. Alleen lezen (`Bash` read-only).
 
 1. Herformuleer het verzoek in eigen woorden — wat verandert er werkelijk?
-2. 2-4 gerichte Glob/Grep zoekacties op termen uit het verzoek.
-3. Lees 2-4 sleutel-bestanden om bestaande patronen te leren (naming, structuur, conventies).
-4. Skim `CLAUDE.md`, `CONTEXT.md`, eventuele `docs/adr/` ADRs, **en alle rule-bestanden onder `.claude/rules/`** (architecture, structure, conventions, stack, testing, `guidelines-<lang>`). Deze dicteren de conventies die elk plan moet respecteren — comments, docstrings, typing, naming, testing patterns.
-5. Bij library/framework: zoek actuele docs op (Context7 MCP indien beschikbaar, anders WebSearch).
-6. Vorm tijdens het lezen een beeld van de scope. Dit bepaalt wélke continue-check-optie (2c) de `(Recommended)`-tag krijgt — kleine scope (hooguit een paar bestanden, low risk, geen architectuurkeuze) → "Plan met 1"; anders → "Plan met 3". De gebruiker kiest nog steeds zelf; de default is alleen proportioneel.
-
-Houd het licht — genoeg om te plannen, niet om te implementeren.
+2. 2-4 gerichte Glob/Grep-zoekacties op termen uit het verzoek.
+3. Lees 2-4 sleutelbestanden voor bestaande patronen (naming, structuur, conventies).
+4. Skim `CLAUDE.md`, `CONTEXT.md`, eventuele `docs/adr/` ADRs, **en alle rule-bestanden onder `.claude/rules/`** — die dicteren de conventies die elk plan respecteert (comments, docstrings, typing, naming, testing patterns).
+5. Library/framework → actuele docs (Context7 MCP indien beschikbaar, anders WebSearch).
+6. Vorm een scope-beeld. Dit bepaalt welke continue-check-optie (2c) de `(Recommended)`-tag krijgt — kleine scope (hooguit een paar bestanden, low risk, geen architectuurkeuze) → "Plan met 1"; anders → "Plan met 3". De gebruiker kiest zelf; de default is alleen proportioneel.
 
 ## Step 2 — Vragen
 
-**Doel:** scherp krijgen wat onhelder is, niet padding. Eerst de DoD vastpinnen (2a, voorstel in een box), dan 0-3 inhoudelijke keuzes + continue-check (2b/2c). Gedreven door échte ambiguïteit uit Step 1.
+Doel: scherp krijgen wat onhelder is, niet padding. Eerst de DoD vastpinnen (2a), dan 0-3 inhoudelijke keuzes + continue-check (2b/2c) — gedreven door échte ambiguïteit uit Step 1.
 
 ### 2a — Definition of Done (propose & pin, vóór de vragen)
 
-Render eerst — vóór elke `AskUserQuestion` — een **confident voorstel** voor de DoD, gebouwd uit échte vondsten in Step 1 (issue-tekst, bestaande tests, contracten). Geen open vraag, geen hedging ("ik vermoed", "denk ik").
-
-Format — numbered bullets, géén box-drawing, géén `AskUserQuestion`. Open met de flow-regel zodat de gebruiker altijd ziet waar hij in het proces zit:
+Render eerst — vóór elke `AskUserQuestion` — een **confident voorstel** voor de DoD, gebouwd uit échte Step 1-vondsten (issue-tekst, bestaande tests, contracten). Geen open vraag, geen hedging ("ik vermoed", "denk ik"). Format — numbered bullets, géén box-drawing, géén `AskUserQuestion`; open met de flow-regel zodat de gebruiker ziet waar hij in het proces zit:
 
 ```
 *fwd:plan — stap 1 van 3: Definition of Done (daarna: vragen → plan + verdict)*
@@ -54,26 +50,24 @@ Definition of Done (DoD) — voorstel:
 Ok of geef aan wat je aan wil passen.
 ```
 
-**Stop de turn na het renderen van de bullets.** Wacht op de plain-text reactie van de gebruiker (ok / correctie) vóórdat je de `AskUserQuestion`-bundle van 2b/2c aanroept. Bundel DoD en `AskUserQuestion` niet in dezelfde turn — dat blokkeert de gebruiker (DoD-akkoord botst met openstaande radio-buttons).
+**Stop de turn na het renderen van de bullets.** Wacht op de plain-text reactie (ok / correctie) vóórdat je de `AskUserQuestion`-bundle van 2b/2c aanroept. Bundel DoD en `AskUserQuestion` niet in dezelfde turn — dat blokkeert de gebruiker (DoD-akkoord botst met openstaande radio-buttons).
 
 Regels:
 
 - 2-5 criteria. Concreet en observeerbaar (gedrag, tests, contracten). Geen vage doelen.
-- **Elk criterium krijgt een bewijsregel**: "— bewijs: `<commando>` → `<verwachte observatie>`". Zo is bij oplevering afvinkbaar hoe "werkend" gedemonstreerd wordt. Vereist het bewijs een key of omgeving die er nu niet is, markeer dat expliciet ("— bewijs: **live**, vereist `<X>`"); een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft.
+- **Elk criterium krijgt een bewijsregel**: "— bewijs: `<commando>` → `<verwachte observatie>`" — bij oplevering afvinkbaar hoe "werkend" gedemonstreerd wordt. Bewijs vereist een key/omgeving die er nu niet is → expliciet markeren ("— bewijs: **live**, vereist `<X>`"). Een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft — geldt overal waar bewijs beoordeeld wordt (Tests-bullet in Step 3, check-modus).
 - **Minstens één criterium beschrijft faalgedrag** (foute input, ontbrekende data, error-pad) — niet alleen de bekende weg.
 - Bouw uit échte Step 1-vondsten. Verzin geen criteria.
-- Bij correctie: render de aangepaste DoD opnieuw als numbered bullets, dán door naar 2b.
-- Als Step 1 te dun was om iets te voorstellen: zeg dat expliciet ("ik mis context X om de DoD scherp te krijgen — kun je Y wijzen?") en wacht. Niet bluffen.
+- Correctie → aangepaste DoD opnieuw renderen als numbered bullets, dán door naar 2b.
+- Step 1 te dun om iets voor te stellen → zeg dat expliciet ("ik mis context X — kun je Y wijzen?") en wacht. Niet bluffen.
 
 ### 2b — Numbered-choice vragen (via één `AskUserQuestion` bundle)
 
-Alleen voor échte ambiguïteit. Skip vragen waarvan het antwoord het plan niet zou veranderen.
+Render vóór de bundle één flow-regel: `*fwd:plan — stap 2 van 3: verdiepende vragen*`.
 
-Render vóór het afvuren van de bundle één flow-regel: `*fwd:plan — stap 2 van 3: verdiepende vragen*`.
-
-- **0-3 inhoudelijke vragen.** Niet padden — als er niets onduidelijk is, geen inhoudelijke vragen.
-- Gebruik **één enkele `AskUserQuestion` call** met meerdere `questions` items in de bundle, niet meerdere losse calls.
-- De **continue-check (zie 2c)** wordt het laatste item in dezelfde bundle.
+- **0-3 inhoudelijke vragen** — alleen voor échte ambiguïteit; skip vragen waarvan het antwoord het plan niet zou veranderen. Niet padden.
+- **Eén enkele `AskUserQuestion`-call** met meerdere `questions`-items — niet meerdere losse calls.
+- De **continue-check (2c)** is het laatste item in dezelfde bundle.
 
 ### 2c — Continue-check (verplicht slot van de bundle)
 
@@ -93,7 +87,7 @@ options:
     description: "Step 2 herhaalt met nieuwe vragen"
 ```
 
-**Proportionele default.** Zet de `(Recommended)`-tag in het label op de optie die past bij het scope-beeld uit Step 1 (punt 6): op **"Plan met 1 enkelvoudig"** wanneer de scope klein is — richtlijn: hooguit een paar bestanden, low risk, geen architectuurkeuze; anders op **"Plan met 3 alternatieven"**. Geen harde telling (voorbeeldgetallen ankeren — zie LESSONS 2026-06-09), maar een richtlijn. Benoem de reden kort in de option-description van de aangeraden optie (bijv. "scope is klein: 2 bestanden, low risk"). De gebruiker kan altijd alsnog het andere pad kiezen.
+**Proportionele default.** Zet de `(Recommended)`-tag op de optie die past bij het scope-beeld uit Step 1 (punt 6): "Plan met 1 enkelvoudig" bij kleine scope, anders "Plan met 3 alternatieven". Richtlijn, geen harde telling (voorbeeldgetallen ankeren — zie LESSONS 2026-06-09). Benoem de reden kort in de option-description van de aangeraden optie (bijv. "scope is klein: 2 bestanden, low risk").
 
 Op basis van de keuze:
 
@@ -108,17 +102,17 @@ Op basis van de keuze:
 Open met de flow-regel: `*fwd:plan — stap 3 van 3: plan + verdict*`. Output-volgorde in één response:
 
 1. **The Question** — 1 regel die het echte probleem framet (niet de artefact-vraag).
-2. **Mental Model** — kies adaptief de vorm die het hardst landt voor deze content:
-   - *ASCII-diagram* — voor structurele content (call graph, architectuur, request lifecycle). 8-15 regels max, `┌─┐│└─┘ → ↓ ─→`, geen decoratie.
-   - *Analogie* — voor abstracte concepten ("denk aan dit als X"). 2-4 regels, brug naar bekend domein.
-   - *Before/after* — voor refactor of migratie. 2-4 regels, oude shape → nieuwe shape.
-   - *Causal narrative* — voor bug of degradatie. 2-4 regels, X → Y → crash.
-   - *First principles* — als geen van bovenstaande past. 1-2 zinnen die de essentie vatten.
+2. **Mental Model** — de vorm die het hardst landt voor deze content:
+   - *ASCII-diagram* — structureel (call graph, architectuur, request lifecycle). 8-15 regels max, `┌─┐│└─┘ → ↓ ─→`, geen decoratie.
+   - *Analogie* — abstract concept. 2-4 regels, brug naar bekend domein.
+   - *Before/after* — refactor of migratie. 2-4 regels, oude shape → nieuwe shape.
+   - *Causal narrative* — bug of degradatie. 2-4 regels, X → Y → crash.
+   - *First principles* — als niets past. 1-2 zinnen die de essentie vatten.
 
-   Als geen vorm landt: schrijf `no model added — <reden>` en ga door. Forceer geen vorm.
+   Landt geen vorm: schrijf `no model added — <reden>` en ga door. Forceer geen vorm.
 
-3. **Plan-blokken** — 1 of 3 onder elkaar (volgens 2c keuze). Volgorde in 3-plan modus: Minimal → Uitgebreid → Pragmatisch.
-4. **Verdict-block** — altijd direct na de plan-blokken (zie Step 4). Geen `verdict` commando nodig; de afweging staat standaard onderaan.
+3. **Plan-blokken** — 1 of 3 onder elkaar (volgens 2c-keuze). Volgorde in 3-plan modus: Minimal → Uitgebreid → Pragmatisch.
+4. **Verdict-block** — altijd direct na de plan-blokken (Step 4). Geen `verdict`-commando nodig; de afweging staat standaard onderaan.
 
 ### Plan-blok shape (per plan)
 
@@ -145,32 +139,26 @@ Gebruik box-drawing characters voor visuele differentiatie:
 | `path/to/feature.test.ts` | nieuw | [tests voor welk gedrag] |
 ```
 
-Het aanbevolen plan krijgt `(Recommended)` direct in de header, tussen plan-naam en de sluitende rand van de box:
-
-```
-╭─ Plan B — Uitgebreid (Recommended) ───╮
-│ Files: <N> │ Risk: <low|med|high> │ Effort: <uur|dagen> │
-╰───────────────────────────────────────╯
-```
+Het aanbevolen plan krijgt `(Recommended)` direct in de box-header, tussen plan-naam en de sluitende rand (bijv. `╭─ Plan B — Uitgebreid (Recommended) ───╮`).
 
 ### De drie plannen (3-plan modus)
 
-Maak drie plannen met distincte trade-offs:
+Drie distincte trade-offs:
 
 - **Minimal** — kleinste wijziging. Hergebruik bestaande code; geen nieuwe abstracties. Lage risk, kleine diff.
-- **Uitgebreid (extensive)** — architectonisch ideaal. Nieuwe abstracties waar het loont; schone scheiding; testbaar. De "doe het goed" versie.
-- **Pragmatisch (pragmatic)** — middenweg. Investeer waar het rendement levert, neem shortcuts waar de cost laag is.
+- **Uitgebreid (extensive)** — architectonisch ideaal. Nieuwe abstracties waar het loont; schone scheiding; testbaar. De "doe het goed"-versie.
+- **Pragmatisch (pragmatic)** — middenweg. Investeer waar het rendement levert, shortcuts waar de cost laag is.
 
 ### Hard regels per plan
 
 - Alleen bestaande paden uit Step 1; geen verzonnen bestanden.
-- `Change` kolom is één van: `nieuw` / `gewijzigd` / `verwijderd`.
+- `Change`-kolom is één van: `nieuw` / `gewijzigd` / `verwijderd`.
 - Spec-strip op één regel binnen de box: `Files: <N> │ Risk: <low|medium|high> │ Effort: <ruwe schatting in uur of dagen>`.
-- Elk plan staat op zichzelf — gebruiker moet één plan in isolatie kunnen lezen en begrijpen.
+- Elk plan staat op zichzelf — in isolatie leesbaar en begrijpelijk.
 
 ### 1-plan modus
 
-In 1-plan modus: één plan-blok zonder `(Recommended)`-tag (er is geen alternatief). Ga direct van Mental Model naar het plan, sluit met de aanbeveling-regel voor 1-plan modus. Bij kleine scope mag het Mental Model vervallen (`no model added — scope is klein`) en volstaan 2-3 Details-bullets; DoD, Tests-bullet, Wijzigingen-tabel en verdict blijven verplicht.
+Eén plan-blok zonder `(Recommended)`-tag (er is geen alternatief). Direct van Mental Model naar het plan, sluit met de aanbeveling-regel. Bij kleine scope mag het Mental Model vervallen (`no model added — scope is klein`) en volstaan 2-3 Details-bullets; DoD, Tests-bullet, Wijzigingen-tabel en verdict blijven verplicht.
 
 ## Step 4 — Verdict (altijd, direct na de plannen)
 
@@ -190,19 +178,18 @@ Regels:
 
 - **Kies een winnaar.** "Hangt af van je voorkeur" is geen verdict.
 - Verbind aan échte antwoorden + échte codebase, niet aan abstracte principes.
-- Als de juiste keuze écht afhangt van iets dat alleen de gebruiker weet ("ga je dit over 6 maanden uitbreiden?"), benoem die fork en geef een conditioneel advies.
-
-In 1-plan modus: verdict-block is een korte verantwoording (2-3 zinnen) waarom dit plan het juiste is — geen vergelijking.
+- Hangt de juiste keuze écht af van iets dat alleen de gebruiker weet ("ga je dit over 6 maanden uitbreiden?"): benoem die fork, geef conditioneel advies.
+- 1-plan modus: het verdict is een korte verantwoording (2-3 zinnen) waarom dit plan het juiste is — geen vergelijking.
 
 Sluit het verdict-block af met één regel: *"Zeg welk plan je kiest (of 'ok' voor de aanbeveling) — dan leg ik het vast als contract."* Dit is de overgang naar Step 5; render géén `AskUserQuestion` en géén `ExitPlanMode` — de plain-text keuze van de gebruiker is genoeg.
 
 ## Step 5 — Contract vastleggen (na de plan-keuze)
 
-Zodra de gebruiker een plan kiest (of "ok" voor de aanbeveling zegt), schrijf je één licht contract met de `Write`-tool naar **`.claude/plan-contracts/<slug>.md`** en stop je daarna. Dit is de mini-variant van mission-plan's validation-contract — zonder scripts of subagents. De `<slug>` is kebab-case uit het doel (bijv. "CSV-import toevoegen" → `csv-import`).
+Plan gekozen (of "ok" op de aanbeveling) → schrijf één licht contract (`Write`) naar **`.claude/plan-contracts/<slug>.md`**, stop daarna. Mini-variant van mission-plan's validation-contract, zonder scripts of subagents. Slug: kebab-case uit het doel ("CSV-import toevoegen" → `csv-import`).
 
-**Nooit stil overschrijven.** Bestaat `.claude/plan-contracts/<slug>.md` al, kies dan het laagste getal N ≥ 2 waarvoor `<slug>-N.md` nog niet bestaat (loop over de bestaande varianten met `ls .claude/plan-contracts/<slug>*.md`), schrijf daarheen en meld het gekozen pad in de chat.
+**Nooit stil overschrijven.** Bestaat `<slug>.md` al: kies het laagste getal N ≥ 2 waarvoor `<slug>-N.md` nog niet bestaat (`ls .claude/plan-contracts/<slug>*.md`), schrijf daarheen, meld het gekozen pad in de chat.
 
-**Basis-commit vastleggen.** Draai vóór het schrijven `rtk git rev-parse --short HEAD` en zet die SHA in het contract als "Basis-commit". De check-modus toetst de diff later tegen exact dat punt — een deterministisch nulpunt.
+**Basis-commit vastleggen.** Vóór het schrijven: `rtk git rev-parse --short HEAD` → als "Basis-commit" in het contract — het deterministische nulpunt waar de check-modus de diff later tegen toetst.
 
 Contract-inhoud (in de taal van de gebruiker):
 
@@ -243,24 +230,11 @@ Na het schrijven: meld het pad en de basis-commit, en **stop**. Niet implementer
 
 Toetst een eerder vastgelegd contract achteraf. **Ingang met disambiguatie** — kaap geen normaal plan-doel dat toevallig met "check" begint (bijv. `check the login flow`):
 
-- Argument is exact `check` (niets erachter) → check-modus, **zonder slug** (lijst-tak hieronder).
+- Argument is exact `check` (niets erachter) → check-modus, **zonder slug**.
 - Argument is `check <token>` én `.claude/plan-contracts/<token>.md` (of een `<token>-N.md`-variant) bestaat → check-modus met slug `<token>`.
-- In **alle andere** gevallen (`check <token>` waar geen contract voor bestaat, of meer woorden) → dit is een gewoon plan-doel; draai Step 1-5 normaal met het volledige argument als doel.
+- In **alle andere** gevallen (`check <token>` zonder bestaand contract, of meer woorden) → gewoon plan-doel; draai Step 1-5 normaal met het volledige argument als doel.
 
-**Zonder slug** (`/fwd:plan check`): lijst de contracten in `.claude/plan-contracts/` (`ls`) en stop. De gebruiker kiest er één.
-
-**Met slug** (`/fwd:plan check <slug>`): lees het contract. Bestaan er gesuffixte varianten (`<slug>-2.md`, …), kies dan de nieuwste (hoogste N) of vraag de gebruiker welke — toets nooit stilzwijgend het verouderde `<slug>.md` als er een nieuwer contract naast ligt. Toets dan:
-
-1. **Diff-toets.** Bouw de lijst geraakte bestanden uit twee bronnen (rtk vervuilt output — filter dus):
-   - Tracked wijzigingen sinds de basis-commit: `rtk git diff --name-only <basis-commit> -- . ':(exclude).claude/plan-contracts' 2>/dev/null | grep -vE '^(ok|Changes:|[[:space:]]*)$'` — de `:(exclude)`-pathspec houdt het contract zelf eruit; de `grep` verwijdert rtk's `ok`-sentinel, de `Changes:`-trailer en lege regels (geen bestanden).
-   - Nieuwe (untracked) bestanden: `rtk git status --porcelain --untracked-files=all 2>/dev/null | grep -vx 'ok' | grep '^??' | sed 's/^?? //' | grep -v '^\.claude/plan-contracts/'` — `--untracked-files=all` somt untracked bestanden per stuk op (anders collapst een nieuwe map tot één regel en glipt het contract erdoor).
-
-   Leg de vereniging van beide naast de Wijzigingen-tabel en meld per regel: geraakt-en-verwacht (ok), geraakt-maar-niet-in-tabel (afwijking), in-tabel-maar-niet-geraakt (ontbreekt).
-2. **Bewijs-toets.** Draai per DoD-criterium de bewijsregel zélf en noteer de observatie. Een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft. Vereist het bewijs een key/omgeving die er niet is ("live, vereist `<KEY>`"), dan is dat criterium **niet toetsbaar** — niet "gehaald".
-3. **Verdict per criterium** — dezelfde drieslag als de mission-verdicts: **gehaald** / **niet gehaald** / **niet toetsbaar** (met reden).
-4. **Contract bijwerken** (dit is het tweede schrijf-moment naar hetzelfde contractbestand): voeg onderaan het contract een sectie "Toets-uitslag — `<datum>`" toe met de diff-afwijkingen en het verdict per criterium. Rapporteer hetzelfde in de chat.
-
-**Niet-gehaald = rapporteren, nooit fixen.** Een toetser die repareert, toetst zijn eigen werk. De check-modus wijzigt alleen het contractbestand, nooit code.
+De procedure (lijst-tak, diff-toets met de rtk-filterpipelines, bewijs-toets, verdict-drieslag gehaald/niet gehaald/niet toetsbaar, contract bijwerken met de toets-uitslag) staat in [REFERENCE.md](REFERENCE.md). Kernregel blijft: **niet-gehaald = rapporteren, nooit fixen** — de check-modus wijzigt alleen het contractbestand, nooit code.
 
 ## Style
 
