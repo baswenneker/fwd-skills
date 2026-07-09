@@ -12,14 +12,11 @@ allowed-tools: Read, Bash, Glob, Grep, WebFetch
 
 # Jip-en-janneketaal
 
-Rewrite a referenced text into plain, readable language — complete sentences, no abbreviation soup, no unexplained jargon. One pass. Output in chat only.
-
-Not `/fwd:explain` — that explains layer by layer; it does not rewrite.
-Not `/fwd:caveman` — that compresses aggressively with abbreviations; this goes the opposite direction.
+Rewrite a referenced text into plain, readable language — complete sentences, no abbreviation soup, no unexplained jargon. One pass. Output in chat only. (Not `/fwd:explain` — explains layer by layer, doesn't rewrite; not `/fwd:caveman` — compresses with abbreviations, the opposite direction.)
 
 ## Step 1 — Resolve the target
 
-**Never prompt for confirmation — just dive in.** If the wrong target was grabbed, the user will say so.
+**Never prompt for confirmation — just dive in.** Wrong target → the user will say so.
 
 Detect the input type from `$ARGUMENTS`. Order matters — first match wins:
 
