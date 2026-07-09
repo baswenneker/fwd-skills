@@ -6,7 +6,7 @@ Uitvoeringsdetail dat niet in elke sessie geladen hoeft: de check-modus-procedur
 
 **Zonder slug** (`/fwd:plan check`): lijst de contracten in `.claude/plan-contracts/` (`ls`) en stop. De gebruiker kiest er één.
 
-**Met slug** (`/fwd:plan check <slug>`): lees het contract. Bestaan er gesuffixte varianten (`<slug>-2.md`, …): kies de nieuwste (hoogste N) of vraag de gebruiker welke — toets nooit stilzwijgend het verouderde `<slug>.md` als er een nieuwer contract naast ligt. Toets dan:
+**Met slug** (`/fwd:plan check <slug>`): lees het contract. Bestaan er gesuffixte varianten (`<slug>-2.md`, …): kies de nieuwste (hoogste N) of vraag de gebruiker welke — toets nooit stilzwijgend het verouderde `<slug>.md` als er een nieuwer contract naast ligt. (Randgeval: na het opvullen van een suffix-gat kan het hoogste N ouder zijn — check bij twijfel de "Vastgelegd:"-datum.) Toets dan:
 
 1. **Diff-toets.** Bouw de lijst geraakte bestanden uit twee bronnen (rtk vervuilt output — filter dus):
    - Tracked wijzigingen sinds de basis-commit: `rtk git diff --name-only <basis-commit> -- . ':(exclude).claude/plan-contracts' 2>/dev/null | grep -vE '^(ok|Changes:|[[:space:]]*)$'` — de `:(exclude)`-pathspec houdt het contract zelf eruit; de `grep` verwijdert rtk's `ok`-sentinel, de `Changes:`-trailer en lege regels (geen bestanden).

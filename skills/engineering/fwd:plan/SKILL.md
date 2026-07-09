@@ -55,7 +55,7 @@ Ok of geef aan wat je aan wil passen.
 Regels:
 
 - 2-5 criteria. Concreet en observeerbaar (gedrag, tests, contracten). Geen vage doelen.
-- **Elk criterium krijgt een bewijsregel**: "— bewijs: `<commando>` → `<verwachte observatie>`" — bij oplevering afvinkbaar hoe "werkend" gedemonstreerd wordt. Bewijs vereist een key/omgeving die er nu niet is → expliciet markeren ("— bewijs: **live**, vereist `<X>`"). Een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft — geldt overal waar bewijs beoordeeld wordt (Tests-bullet in Step 3, check-modus).
+- **Elk criterium krijgt een bewijsregel** — geen enkele uitgezonderd: "— bewijs: `<commando>` → `<verwachte observatie>`" — bij oplevering afvinkbaar hoe "werkend" gedemonstreerd wordt. Hangt het bewijs af van een latere keuze (2b) → kies het meest waarschijnlijke bewijs en pas het daarna aan; nooit "hangt af van stap 2" als bewijsregel. Bewijs vereist een key/omgeving die er nu niet is → expliciet markeren ("— bewijs: **live**, vereist `<X>`"). Een geskipte testmarker of gemockt pad telt níet als bewijs voor een criterium dat echt gedrag belooft — geldt overal waar bewijs beoordeeld wordt (Tests-bullet in Step 3, check-modus).
 - **Minstens één criterium beschrijft faalgedrag** (foute input, ontbrekende data, error-pad) — niet alleen de bekende weg.
 - Bouw uit échte Step 1-vondsten. Verzin geen criteria.
 - Correctie → aangepaste DoD opnieuw renderen als numbered bullets, dán door naar 2b.
