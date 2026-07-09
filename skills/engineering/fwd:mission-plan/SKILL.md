@@ -9,7 +9,7 @@ allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Wri
 
 Turn a software goal into an executable **mission**: a PRD, a validation contract, and an ordered feature/milestone plan — committed on a `mission/<slug>` branch and ready for `/fwd:mission-run`.
 
-This is the **interactive** half of the `fwd:mission-*` layer. Factory's insight: *the planning phase matters most, and the validation contract defines what "done" means before any code is written.* So this skill is deliberately conversational — get the contract right here and execution becomes mechanical.
+The **interactive** half of the `fwd:mission-*` layer — deliberately conversational, because the validation contract defines what "done" means before any code is written: get the contract right here and execution becomes mechanical.
 
 **Interactive-mode principle.** Unlike `/fwd:mission-run` (which runs unattended and never prompts), this skill **should** ask. `AskUserQuestion` is allowed and encouraged for discrete choices. Iterate the PRD and contract in plain text until the user approves.
 
@@ -89,7 +89,7 @@ Once the PRD holds, propose an **ordered** feature list grouped into **milestone
 - Each feature maps to the acceptance criteria (VC-IDs) it must satisfy.
 - A milestone is a meaningful checkpoint where the validators run. Smaller milestones = more frequent validation = a more stable foundation for long missions.
 
-**Feature-sizing.** Eén feature is **~30–45 minuten bouwwerk**. Reden: elke verse coder-spawn betaalt vaste kosten die niets met bouwen te maken hebben — oriëntatie (plan, contract, regels en codebase herlezen) én afronding (tests draaien, risky-scan, commit schrijven). Een gemeten missie liet zien dat 9 kleine features samen ~80 minuten oriëntatie en ~63 minuten afronding kostten tegenover maar ~46 minuten echt bouwen — te fijn snijden vermenigvuldigt overhead zonder bouwwaarde toe te voegen. Is een voorgestelde feature duidelijk korter dan ~30 minuten, dan is die een **samenvoeg-kandidaat** met een verwante buur (zelfde bestanden, zelfde laag, of een directe afhankelijkheid) — samenvoegen is de default, tenzij een harde reden dat verbiedt (een afhankelijkheidsgrens die serieel niet anders kan, of een milestone-grens die apart validatie vereist).
+**Feature-sizing.** Eén feature is **~30–45 minuten bouwwerk**. Reden: elke verse coder-spawn betaalt vaste kosten die niets met bouwen te maken hebben — oriëntatie (plan, contract, regels en codebase herlezen) én afronding (tests draaien, risky-scan, commit schrijven); te fijn snijden vermenigvuldigt die overhead zonder bouwwaarde toe te voegen. Duidelijk korter dan ~30 minuten → **samenvoeg-kandidaat** met een verwante buur (zelfde bestanden, zelfde laag, of een directe afhankelijkheid); samenvoegen is de default, tenzij een harde reden dat verbiedt (een afhankelijkheidsgrens die serieel niet anders kan, of een milestone-grens die apart validatie vereist).
 
 **Order features so each builds on the ones before it.** Features execute serially in array order, each inheriting its predecessors' code via git, so sequence is the only ordering signal — place a feature after everything it depends on. Present as a numbered tree, e.g.:
 
@@ -162,7 +162,7 @@ Dezelfde verplichte keuze geldt bij een **lege gates-array** uit `discover-gates
 
 Toets het plan op vijf vragen vóórdat de gebruiker het goedkeurt. Presenteer bevindingen als plain text; verwerk ze in het plan als er actie op volgt.
 
-1. **Kunnen features samengevoegd?** Zijn er features die samen kleiner en begrijpelijker zijn dan apart? Elke onnodige feature-grens is extra orchestratie-overhead. Toets hier expliciet de feature-sizing-richtlijn uit stap 3 (~30–45 minuten bouwwerk per feature): schat per feature de bouwtijd, en merk elke feature die duidelijk onder de richtlijn zit aan als samenvoeg-kandidaat. Dwing een bewuste keuze af — samenvoegen met een verwante buur, of vastleggen welke harde reden (afhankelijkheids- of milestone-grens) het apart houden rechtvaardigt.
+1. **Kunnen features samengevoegd?** Features die samen kleiner en begrijpelijker zijn dan apart → samenvoegen; elke onnodige feature-grens is orchestratie-overhead. Toets expliciet de sizing-richtlijn uit stap 3 (~30–45 min bouwwerk): schat per feature de bouwtijd, merk alles duidelijk eronder aan als samenvoeg-kandidaat, en dwing een bewuste keuze af — samenvoegen met een verwante buur, of vastleggen welke harde reden (afhankelijkheids- of milestone-grens) apart houden rechtvaardigt.
 2. **Welke component is speculatief?** Een component is speculatief als hij op aannames berust die nog niet door stap 1 (codebase-onderzoek) zijn bevestigd. Markeer speculatieve componenten expliciet.
 3. **Wat is het eenvoudigste ontwerp dat het contract haalt?** Controleer of het voorgestelde ontwerp de goedkoopste weg is naar alle VC-IDs — niet meer, niet minder.
 4. **Heeft elke user-facing input minimaal één sad-path-VC?** Denk aan: leeg, malformed, quotes/apostrof, te groot, gelijktijdig gebruik. Genereer scenario's met de premortem-denkwijze: "het is al misgegaan — hoe?".
