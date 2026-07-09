@@ -65,17 +65,17 @@ Zet de hoofd-checkout terug op de base-branch (meteen vrij voor parallel werk), 
 
 ### 1. Brief
 
-Lees uit `<WT>/.claude/steps/<slug>/`: `plan.md` (DoD, eindbeeld, seams) en de stap uit de status-injectie (`next_*`). **Lees élk rule-bestand uit `next_rules` vóór je één regel code schrijft** — regels zijn bindend en vuren niet vanzelf bij nieuwe bestanden.
+Lees uit `<WT>/.claude/steps/<slug>/`: `plan.md` (DoD, eindbeeld, seams — én de sub-bullets van deze stap: een stap kan meerdere gedragingen bundelen, elk met eigen bewijs) en de stap uit de status-injectie (`next_*`). **Lees élk rule-bestand uit `next_rules` vóór je één regel code schrijft** — regels zijn bindend en vuren niet vanzelf bij nieuwe bestanden.
 
 ### 2. Rood
 
-Schrijf de falende test(s) voor het gedrag van deze stap — 1-3 tests, uitsluitend op de in `plan.md` afgesproken seams. Draai ze gericht; **leg de letterlijke falende uitvoer vast** voor het rapport. Testkwaliteit:
+Werk **per gedraging** van de stap: schrijf de falende test(s) voor díe gedraging — 1-3 tests per gedraging, uitsluitend op de in `plan.md` afgesproken seams — draai ze gericht, **leg de letterlijke falende uitvoer vast** voor het rapport, en maak groen (stap 3) vóór je aan de volgende gedraging begint. Testkwaliteit:
 
 - Verwachte waarden komen uit een onafhankelijke bron (de spec, het eindbeeld, een uitgewerkt voorbeeld) — nooit narekenen zoals de productiecode het doet (schijntest).
 - Publieke interface, geen interne details — de test overleeft een refactor.
 - Alleen de tests van déze stap — geen tests vooruit schrijven voor latere stappen.
 
-Bij `next_criterion_type=command` (vooraf zo gemarkeerd in het plan): sla rood over en noteer dat in het rapport; het bewijs is straks het commando met zijn verwachte resultaat.
+Bij commando-bewijs (vooraf zo gemarkeerd in het plan: `next_criterion_type=command`, of een sub-bullet met `commando → verwacht`): sla rood over voor precies díe gedraging en noteer dat in het rapport; het bewijs is straks het commando met zijn verwachte resultaat.
 
 ### 3. Groen — de ponytail-discipline
 
@@ -99,11 +99,11 @@ Regels bij het klimmen:
 - **Safety floor — nooit wegversimpelen:** inputvalidatie op trust boundaries, error handling die dataverlies voorkomt, security, accessibility-basics, en alles wat de gebruiker expliciet vroeg.
 - **Comments en commit message zelfstandig leesbaar**: leg wat/waarom uit in gewone taal; nooit stap-nummers, de slug of plan-verwijzingen in code, comments, docstrings of commit messages.
 
-Draai daarna de **volledige gate** in de worktree (`cd "<WT>" && <gate=>` uit de injectie) tot alles groen is — niet alleen de nieuwe tests; de gate is de regressiedetectie.
+De **volledige gate** draait één keer per stap, ná de laatste gedraging, in de worktree (`cd "<WT>" && <gate=>` uit de injectie) tot alles groen is — niet alleen de nieuwe tests; de gate is de regressiedetectie. Tussendoor volstaan per gedraging de gerichte tests uit stap 2.
 
 ### 4. Vers oordeel
 
-Spawn de reviewer via de Agent tool, `subagent_type: fwd-skills:fwd-steps-reviewer`. De prompt bevat **alleen**: het worktree-pad `<WT>` (dáár staat de code, dat is z'n repo-root), de stap-titel + het gedrag, het klaar-criterium, het gate-commando en de rule-paden. **Niet** de diff, niet je code, niet je redenering — de reviewer trekt alles zelf op (`rtk git diff`); dat bespaart tokens en voorkomt doorvertel-bias.
+Spawn de reviewer via de Agent tool, `subagent_type: fwd-skills:fwd-steps-reviewer`. De prompt bevat **alleen**: het worktree-pad `<WT>` (dáár staat de code, dat is z'n repo-root), de stap-titel + álle gedragingen van de stap (bij een bundel: de sub-bullets), per gedraging het klaar-criterium, het gate-commando en de rule-paden. **Niet** de diff, niet je code, niet je redenering — de reviewer trekt alles zelf op (`rtk git diff`); dat bespaart tokens en voorkomt doorvertel-bias.
 
 Verwerk het JSON-verdict:
 
@@ -119,12 +119,14 @@ Render exact dit sjabloon (±15 regels, Nederlands, technische termen Engels, ge
 ```
 ── Stap <N>/<M> — <titel> ──────────────────────────────
 
-Wat kan er nu:  <het gedrag in 1-2 zinnen gewone taal>
+Wat kan er nu:  <het gedrag in 1-2 zinnen gewone taal — bundel: kort lijstje,
+                één regel per gedraging>
 
 Waarom zo:      <kernkeuze(s); benoem hergebruik; indien van toepassing:
                 "bewust simpel gehouden: <wat> — uitbreiden zodra <wanneer>">
 
-Bewijs:         rood  ✗ <letterlijke falende testregel van vóór de implementatie>
+Bewijs:         rood  ✗ <letterlijke falende testregel van vóór de implementatie —
+                bundel: één voorbeeld + "zo voor alle <n> gedragingen">
                 groen ✓ <n> nieuwe test(s); gate <X/X> groen (reviewer herdraaide hem)
 
 Review (vers):  rules <✓ | ✗: wat> · over-engineering: <geen | <n> vondsten, toegepast/open>

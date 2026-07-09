@@ -66,6 +66,10 @@ De publieke interface waarop tests mikken (functie-, endpoint- of CLI-niveau), v
 
 Het vaste rapport (±15 regels) na elke stap van een steps-run: wat kan er nu, waarom zo, bewijs (rood→groen + gate), vers reviewer-oordeel, bestanden, één zelf-zien-commando en de teller "Stap N/M".
 
+### stappenbudget
+
+Het aantal gate-momenten waarin `fwd:steps-plan` een klus snijdt. Eerste token van het argument (`/fwd:steps-plan 5 <doel>`): een getal = precies zoveel stappen, `auto` = fijnmazig (één gedraging per stap), default 3. Een stap bundelt dan meerdere gedragingen (sub-bullets in plan.md): rood→groen per gedraging, maar stap-rapport, reviewer, commit en gate één keer per stap. Bij een duidelijke mismatch doet de planner een tegenvoorstel in één zin — nooit een stilzwijgende wijziging van het aantal.
+
 ### tussenbalans
 
 De tussentijdse review na elke 4 goedgekeurde stappen van een steps-run: twee doubt-subagents beantwoorden elk één vraag ("waar zijn we het minst zeker over?" / "wat is de grootste blinde vlek?") in caveman-stijl met bewijs-verwijzingen; de orchestrator consolideert in helder Nederlands mét verdict.

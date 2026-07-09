@@ -1,7 +1,7 @@
 ---
 name: fwd:steps-plan
-description: Plan een klus als een reeks kleine, toetsbare stappen voor attended uitvoering met /fwd:steps-run — de lichte tegenhanger van fwd:mission-plan. Scope het doel kort, pin een Definition of Done mét concreet eindbeeld (input→output-voorbeeld of ASCII-mockup), spreek de testplekken (seams) af, en lever een genummerde stappenlijst waarin elke stap één aantoonbaar gedrag is met een machinaal toetsbaar klaar-criterium. Use when the user zegt "plan dit in stappen", "maak een stappenplan", "steps-plan", of invokes /fwd:steps-plan. Niet voor onbeheerd/overnight werk — dat is fwd:mission-plan.
-argument-hint: <het doel, of leeg om interactief te scopen>
+description: Plan een klus als een reeks kleine, toetsbare stappen voor attended uitvoering met /fwd:steps-run — de lichte tegenhanger van fwd:mission-plan. Scope het doel kort, pin een Definition of Done mét concreet eindbeeld (input→output-voorbeeld of ASCII-mockup), spreek de testplekken (seams) af, en lever een genummerde stappenlijst binnen een stappenbudget — een getal als eerste argument-token = precies zoveel stappen (gate-momenten), `auto` = fijnmazig met één aantoonbaar gedrag per stap, default 3; een stap bundelt dan meerdere gedragingen, elk met een machinaal toetsbaar klaar-criterium. Use when the user zegt "plan dit in stappen", "maak een stappenplan", "steps-plan", of invokes /fwd:steps-plan. Niet voor onbeheerd/overnight werk — dat is fwd:mission-plan.
+argument-hint: "[<N>|auto] <het doel, of leeg om interactief te scopen>"
 allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Write
 ---
 
@@ -21,9 +21,21 @@ De beschikbare `.claude/rules/` worden bij het laden van de skill automatisch ge
 
 !`bash "${CLAUDE_SKILL_DIR}/scripts/list-rules.sh"`
 
-Meldt de inventaris **geen regels**, stel dan één bewuste keuze voor (`AskUserQuestion`): (a) eerst `/fwd:rules-audit` draaien — aanbevolen, want de reviewer toetst straks per stap tegen deze regels; of (b) expliciet zonder regels verder (vastleggen in `plan.md`). Stilzwijgend doorgaan is geen optie.
+Meldt de inventaris **geen regels**, stel dan één bewuste keuze voor (`AskUserQuestion`): (a) eerst `/fwd:rules-audit` draaien — aanbevolen, want de reviewer toetst straks per stap tegen deze regels; of (b) expliciet zonder regels verder — leg dat vast als één cursieve regel direct onder de headerregel van `plan.md` (*Regels: bewust zonder — geen `.claude/rules/` aanwezig.*). Stilzwijgend doorgaan is geen optie.
 
 ## Flow
+
+### 0. Stappenbudget (parse, nooit vragen)
+
+Budget = aantal **gate-momenten**, niet aantal gedragingen. Per stap één keer: stap-rapport, verse reviewer, gate, commit. Binnen een stap meerdere gedragingen mogelijk; rood→groen blijft per gedraging (steps-run).
+
+Bepaal het budget in deze volgorde — nooit interactief ernaar vragen:
+
+1. Eerste token van het argument is een geheel getal of `auto` → dat is het budget; de rest is het doel.
+2. Anders: expliciet aantal in de doeltekst ("in 5 stappen" → 5; "bepaal zelf" / "jij bepaalt" → `auto`).
+3. Anders: **3** (default — fundament / kern / afronding).
+
+`auto` = fijnmazig: één gedraging per stap, de 10-25-korrel uit stap 3. `1` = alles in één keer, één gate-moment. Ongeldig getal (0, negatief) → behandelen als afwezig (default 3) en dat in één zin melden.
 
 ### 1. Context (licht)
 
@@ -44,17 +56,20 @@ Eén gecombineerd voorstel:
 
 **Seams** — de publieke interfaces waarop de tests gaan mikken (functie-/endpoint-/CLI-niveau). Tests komen alléén op afgesproken seams; nooit op interne details.
 
-**Stappenlijst** — genummerd (`S1`, `S2`, …), per stap:
-- **Titel + gedrag**: één klein, aantoonbaar gedrag ("na deze stap kan het systeem X").
-- **Klaar-criterium**: de test(s) die het gedrag bewijzen (1-3, op een afgesproken seam), óf — alleen als unit-testen echt niet kan (config, wiring, cosmetiek) — een draaibaar commando met verwacht resultaat, expliciet gemarkeerd.
+**Stappenlijst** — de kop vermeldt budget + herkomst, bijv. `Stappenlijst (budget: 3 — default; zeg 'auto' voor fijnmazig)` of `(budget: 5 — argument)`. Genummerd (`S1`, `S2`, …), per stap:
+- **Titel + deelresultaat**: wat er na deze stap aantoonbaar bij kan, in één zin.
+- **Gedragingen**: de aantoonbare gedragingen die de stap bundelt — bij meer dan één als ingesprongen sub-bullets (template hieronder), elk met eigen bewijs. Bij `auto` één gedraging per stap, geen sub-bullets nodig.
+- **Klaar-criterium**: per gedraging de test(s) die het bewijzen (1-3, op een afgesproken seam), óf — alleen als unit-testen echt niet kan (config, wiring, cosmetiek) — een draaibaar commando met verwacht resultaat, expliciet gemarkeerd.
 - **Regels**: de rule-bestanden waarvan de `paths:`-globs de verwachte bestanden van deze stap raken (een regelbestand zonder `paths:` is repo-breed en geldt altijd).
 
-Korrel: 1 gedrag ≈ 1-3 tests ≈ een diff die in ±5 minuten te reviewen is. Middelgrote klus ≈ 10-25 stappen. Volgorde = bouwvolgorde: elke stap bouwt voort op de vorige (tracer bullets), afhankelijkheden staan eerder in de lijst.
+Snijden: verdeel op bouwvolgorde (tracer bullets — elke stap bouwt voort op de vorige, afhankelijkheden eerder in de lijst) over precies het budget; default 3 ≈ fundament / kern / afronding. Bij `auto`: 1 gedrag ≈ 1-3 tests ≈ een diff die in ±5 minuten te reviewen is; middelgrote klus ≈ 10-25 stappen. Bij een vast budget schaalt de review-inspanning per gate mee met de bundel — dat is de afspraak die de gebruiker met het getal maakt.
 
-Draai vóór het tonen de **zelf-lint** en verwerk de uitkomst stilzwijgend (meld alleen wat je erdoor hebt aangepast):
+**Tegenvoorstel, nooit stille wijziging.** Plan op het budget. Duidelijke mismatch (triviale klus die het budget opvult, forse klus die erin geperst wordt) → één zin tegenvoorstel bij dit voorstel; het getoonde plan volgt het gevraagde budget. De gebruiker beslist.
+
+Draai vóór het tonen de **zelf-lint** en verwerk de uitkomst stilzwijgend (meld alleen wat je erdoor hebt aangepast — het stappen-aantal wijzigt de lint nooit stilzwijgend):
 
 - Is elk klaar-criterium machinaal toetsbaar? Géén criteria die een handmatige UI-klik of menselijk smaakoordeel vereisen.
-- Verdient elke stap zijn bestaansrecht (Lazy Ladder trede 1: moet dit bestaan?) — stappen die samen kleiner en begrijpelijker zijn dan apart: samenvoegen.
+- Verdient elke gedraging haar bestaansrecht (Lazy Ladder trede 1: moet dit bestaan?) — speculatieve gedragingen schrappen; bij `auto` bovendien: stappen die samen kleiner en begrijpelijker zijn dan apart → samenvoegen.
 - Dekt de lijst de hele DoD, en raakt elke test alleen afgesproken seams?
 
 Laat de gebruiker in plain text herordenen, splitsen of schrappen.
@@ -86,7 +101,7 @@ Commit beide (alleen deze twee bestanden):
 rtk git add .claude/steps/<slug> && rtk git commit -m "chore(steps): plan <slug> (<M> stappen)"
 ```
 
-Sluit af met exact deze regels:
+Sluit af met exact deze regels (enkelvoud bij M=1: schrijf `1 stap`, nooit `1 stappen` — geldt ook voor de commit message hierboven):
 
 > Stappenplan staat op branch `<branch>`: **<M> stappen**.
 > Start met: `/fwd:steps-run <slug>`
@@ -98,7 +113,7 @@ Sluit af met exact deze regels:
 ```markdown
 # Stappenplan: <titel>
 
-*Doel: <één zin>. Branch: `<branch>`. Gate: `<gate-commando>`.*
+*Doel: <één zin>. Branch: `<branch>`. Gate: `<gate-commando>`. Stappenbudget: <bijv. "3 (default)", "5" of "auto">.*
 
 ## Definition of Done
 1. <criterium>
@@ -110,9 +125,13 @@ Sluit af met exact deze regels:
 - `<publieke interface>` — <wat hier getest wordt>
 
 ## Stappen
-- [ ] S1 — <titel>: <gedrag>. Klaar als: <test(s) | commando → verwacht>. Regels: <paden | geen>
+- [ ] S1 — <titel>: <deelresultaat in één zin>. Klaar als: <test(s) | commando → verwacht>. Regels: <paden | geen>
+  - <gedrag A> → <test a>
+  - <gedrag B> → <commando → verwacht>
 - [ ] S2 — …
 ```
+
+De checkbox-regel blijft **één regel** — steps-run's `record-step.sh` vinkt hem machinaal af. Gedragingen van een bundel als ingesprongen sub-bullets zónder checkbox, elk `<gedrag> → <bewijs>`. Eén gedraging (zoals bij `auto`) → geen sub-bullets.
 
 ### state.json (schema v1)
 
@@ -144,7 +163,7 @@ Sluit af met exact deze regels:
 }
 ```
 
-`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `approved_mode` (`attended` | `autonomous`, default `attended`) legt vast hoe de stap is goedgekeurd — steps-run kent naast het per-stap `ok` ook een autonome `auto`-afronding die alle resterende stappen zonder tussenstops afmaakt en pas na één eindreview commit. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen.
+`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `approved_mode` (`attended` | `autonomous`, default `attended`) legt vast hoe de stap is goedgekeurd — steps-run kent naast het per-stap `ok` ook een autonome `auto`-afronding die alle resterende stappen zonder tussenstops afmaakt en pas na één eindreview commit. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen. Een gebundelde stap met gemengd bewijs (tests én commando's) houdt `done_criterion.type: "test"`; `value` benoemt dan ook de command-bewezen delen, en de sub-bullets in plan.md dragen per gedraging het precieze bewijs. steps-run's rood-overslaan bij commando-bewijs geldt per gedraging, niet per stap.
 
 ## Stijl
 

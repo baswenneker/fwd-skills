@@ -82,3 +82,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: fwd-mission-coder kreeg een worktree-pad met de instructie erin te cd'en en te committen.
 **Observation**: Twee coders schreven/committen toch in de hoofd-checkout op main i.p.v. de mission-worktree (F3 zelf hersteld, F4 belandde als losse commit op main en moest met cherry-pick naar de mission-branch worden verplaatst).
 **Lesson**: De orchestrator moet na elke coder-handoff verifieren dat HEAD van de WORKTREE is opgeschoven (niet main); zo niet, cherry-pick de commit naar de mission-branch en reset main. Overweeg de coder-spawn-prompt te verscherpen: verifieer 'rtk git rev-parse --abbrev-ref HEAD' == mission-branch voor de commit.
+
+### 2026-07-09 | insight | fwd:steps-plan (discover-gates)
+**Context**: End-to-end verificatie van het stappenbudget: vier parallelle wegwerp-repo-runs (default/5/auto/1), elk een Node/bash-repo met een `tests/`-map maar zonder Python.
+**Observation**: Alle vier de runs kregen valse gates terug: `discover-gates.sh` regel 45 behandelt `-d tests` als Python-signaal en bood `python3 -m pytest -q`, `ruff check .`, `mypy .` aan — strijdig met de script-header "Only emits commands that actually resolve". De plain-text gate-bevestiging in de flow ving het op, maar een letterlijke uitvoerder die "kies het testcommando als gate" blind volgt pint een altijd-falende gate.
+**Lesson**: `-d tests` is geen taal-signaal. Laat de Python-tak alleen vuren op échte Python-markers (pyproject.toml/setup.py/pytest.ini of *.py aanwezig), of verifieer elke kandidaat-gate met een droge run vóór hij "oplosbaar" heet. Bugfix bewust uitgesteld (buiten scope stappenbudget-wijziging); dit is de reproductie.
