@@ -7,13 +7,13 @@ allowed-tools: Read, Bash, Glob, Grep, WebFetch
 
 # Explain
 
-Take anything heavy and build a mental model on demand: a one-screen frame (problem + mental model + map) first, then one chunk at a time when the user asks. The mental-model form adapts to the content; mechanical chunking does not replace pedagogical scaffolding. The chunk shape changes per input type (phases for a plan, sections for a code file, files for a diff) — the layered structure stays the same.
+Take anything heavy, build a mental model on demand: a one-screen frame (problem + mental model + map) first, then one chunk at a time when the user asks. The mental-model form adapts to the content; mechanical chunking does not replace pedagogical scaffolding. Chunk shape changes per input type (phases for a plan, sections for a code file, files for a diff) — the layered structure stays the same.
 
 Opposite of `/fwd:plan` and `/fwd:write-doc` — those *create*, this one *explains*.
 
 ## Step 1 — Resolve the target
 
-**Never prompt for confirmation — just dive in.** If you grabbed the wrong target the user will tell you.
+**Never prompt for confirmation — just dive in.** Wrong target → the user will tell you.
 
 Detect the input type from `$ARGUMENTS`. Order matters — first match wins:
 
@@ -29,23 +29,23 @@ Detect the input type from `$ARGUMENTS`. Order matters — first match wins:
 | multi-line text containing `at .* (.*:\d+)` style frames | stack trace | take inline |
 | anything else (free-form phrase) | concept search in this codebase | `Grep` for keywords, read top 3 hits |
 
-If nothing resolves: `Couldn't resolve <arg>. Pass a path, glob, "diff", URL, "pr <N>", or paste the content.` and stop.
+Nothing resolves → `Couldn't resolve <arg>. Pass a path, glob, "diff", URL, "pr <N>", or paste the content.` and stop.
 
 ### Empty `$ARGUMENTS` — find the freshest thing in conversation
 
-Scan the conversation for the most recent **explainable block**. Definition: any of —
+Scan the conversation for the most recent **explainable block** — any of:
 
 - An `ExitPlanMode` tool call's `plan` parameter
 - A pasted markdown / code / log block in a user message, length > 30 lines
 - A long assistant message containing structural markers (`## `, `Phase \d+`, code fences, etc.), length > 30 lines
 
-Pick most-recent by message order. Tie-break inside one message: longest qualifying block wins. No type preference, no confirmation.
+Most-recent by message order; tie-break inside one message: longest qualifying block wins. No type preference, no confirmation.
 
-If nothing meets the bar: `Nothing to explain in this conversation. Pass a target.` and stop.
+Nothing meets the bar → `Nothing to explain in this conversation. Pass a target.` and stop.
 
 ## Step 2 — Classify and parse (silent)
 
-Once content is loaded, classify it. The class picks the chunk model:
+Classify the loaded content. The class picks the chunk model:
 
 | Class | Chunk noun | What to extract per chunk |
 |---|---|---|
@@ -57,36 +57,25 @@ Once content is loaded, classify it. The class picks the chunk model:
 | Concept | Reference | top files/symbols matching the phrase; one-line role per item |
 | Other | Section | structural split (headers, blank lines); 5–8 chunks |
 
-**Always extract, regardless of class:**
-
-- **The Question** — what problem does this solve, or what question does it answer? 1 sentence, plain language. Frame the *problem*, not the artifact. ("How do I run code outside React's render cycle without breaking it?" beats "What does useEffect do?")
-- **Mental Model** — the bridge that lets a reader hold this in their head. Pick the form that lands hardest:
-  - Concrete + structural (architecture, flow, request lifecycle) → ASCII diagram
-  - Abstract concept (hook, principle, design pattern) → analogy ("Think of it as X")
-  - Migration / diff / refactor → contrast (before → after)
-  - Bug / stack trace → causal narrative (X → Y → crash)
-  - Nothing fits → first principles (1–2 sentences capturing the essence)
-- **Not** *(optional)* — what this is NOT, to sharpen boundaries. Only include when the line is naturally sharp (often: concepts, APIs). Skip if forced.
-
-Do **not** write any of this to the user yet. Hold it for Step 3.
+Always extract, regardless of class — hold everything for Step 3, render nothing yet: **The Question**, the **Mental Model**, and the optional **Not** (definitions and forms in Step 3).
 
 ## Step 3 — Render Layer 1 (Big Picture). Stop after.
 
-Output five blocks, in order. Whole response under 40 lines.
+Five blocks, in order. Whole response under 40 lines.
 
-**A. The Question** — 1 line. Frame the *problem*, not the artifact. Plain language, no jargon dump.
+**A. The Question** — 1 line, plain language. Frame the *problem*, not the artifact: "How do I run code outside React's render cycle without breaking it?" beats "What does useEffect do?".
 
-**B. Mental Model** — pick the form that lands hardest for this content. Free judgment, no rigid table — let the heuristics from Step 2 guide you:
+**B. Mental Model** — the bridge that lets a reader hold this in their head. Pick the form that lands hardest — free judgment, no rigid mapping:
 
-- *Diagram* — for concrete, structural content (flow, layers, call graph). 8–15 lines max, `┌─┐│└─┘ → ↓ ─→`, no decoration. Patterns that fit well: layer cascade, before/after, sequence, tree, box-and-arrow, timeline.
-- *Analogy* — for abstract concepts. 2–4 lines, "Think of it as X" — bridge to a familiar domain.
-- *Before/after* — for migrations / diffs / refactors. 2–4 lines, old shape → new shape.
-- *Causal narrative* — for bugs / stack traces. 2–4 lines, X → Y → crash.
-- *First principles* — for content that none of the above fit. 1–2 sentences capturing the essence.
+- *Diagram* — concrete, structural content (flow, layers, call graph, request lifecycle). 8–15 lines max, `┌─┐│└─┘ → ↓ ─→`, no decoration. Fitting patterns: layer cascade, before/after, sequence, tree, box-and-arrow, timeline.
+- *Analogie* — abstract concepts (hook, principle, design pattern). 2–4 lines, "Think of it as X" — bridge to a familiar domain.
+- *Before/after* — migrations / diffs / refactors. 2–4 lines, old shape → new shape.
+- *Causal narrative* — bugs / stack traces. 2–4 lines, X → Y → crash.
+- *First principles* — when nothing above fits. 1–2 sentences capturing the essence.
 
-If no form lands, write `no model added — <reason>` and move on. If the source already contains a useful diagram, re-use it instead of inventing one.
+Diagrams are one of five forms, not the default. No form lands → write `no model added — <reason>` and move on; never force one. Source already contains a useful diagram → re-use it (don't reinvent good art).
 
-**C. Not** *(optional)* — 1–2 lines, only if the boundary is naturally sharp. Skip silently if forced — never invent contrast to fill the slot.
+**C. Not** *(optional)* — 1–2 lines, only when the boundary is naturally sharp (often: concepts, APIs). Skip silently if forced — never invent contrast to fill the slot.
 
 **D. Map** — one numbered line per chunk, prefixed with the noun:
 
@@ -113,7 +102,7 @@ Stop. Do not preview chunk 1.
 
 ## Step 4 — Layer 2 (one chunk per follow-up)
 
-When the user replies `next`, `<#>`, `back`, or a chunk name, render that chunk only:
+On `next`, `<#>`, `back`, or a chunk name: render that chunk only:
 
 ```
 ## <Noun> <N> — <name>      [<N>/<total>]
@@ -131,7 +120,7 @@ Top items (top 5; reply "more" for all):
 next | back | <#> | more | full | done
 ```
 
-Under 25 lines. If item count > 5, show 5 and note that `more` reveals the rest. The `[<N>/<total>]` footer lets you re-orient if context gets tight.
+Under 25 lines. Item count > 5 → show 5, note that `more` reveals the rest. The `[<N>/<total>]` footer re-orients when context gets tight.
 
 ## Step 5 — Layer 3 (on-demand)
 
@@ -145,9 +134,5 @@ Under 25 lines. If item count > 5, show 5 and note that `more` reveals the rest.
 - Plain English. No filler ("Let's", "Now we will", "Great question"). Direct.
 - No emoji.
 - Bullets and one-liners over paragraphs.
-- Mental Model is not always a diagram. Pick analogy, contrast, narrative, or first principles when those land harder. Diagrams are one of five forms, not the default.
-- Contrast ("Not") is opt-in. Only include when the boundary is naturally sharp — never invent contrast.
-- The Question frames the *problem*, not the artifact. "What does useEffect do?" is weak; "How do I run code outside React's render cycle without breaking it?" is the right shape.
 - Never dump the original verbatim unless the user asks for `full`.
-- If the source already contains a useful diagram, re-use it (don't reinvent good art); otherwise draw your own when a diagram is the right form.
-- Match depth to context — if the user clearly knows the domain, skip the basics.
+- Match depth to context — user clearly knows the domain → skip the basics.
