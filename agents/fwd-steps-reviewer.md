@@ -31,6 +31,7 @@ Judging test: would this comment still be true and useful if the step's plan had
 - **Done criterion** — the test name(s) that prove the behavior, or (for steps marked non-unit-testable) a runnable command with its expected result.
 - **Gate command** — the project's test/check command (full suite or fast gate).
 - **Rule paths** — zero or more files under `.claude/rules/` that apply to this step.
+- **Optionally, a diff-base or a before/after snapshot pair** — normally absent, and you diff against `HEAD`. In an autonomous run nothing is committed to the branch, so the orchestrator instead passes two per-step worktree snapshot SHAs; diff *between them* to judge only the current step, since a plain `HEAD` diff would drown it in the earlier steps' still-uncommitted work.
 
 You are deliberately NOT given the diff. Pull it yourself — that is the point.
 
@@ -38,7 +39,8 @@ You are deliberately NOT given the diff. Pull it yourself — that is the point.
 
 1. **Pull the change.** From the repo root:
    - `rtk git status --porcelain` — see what's modified and what's *untracked* (new files do not appear in a plain diff; `Read` untracked files in full).
-   - `rtk git diff HEAD` — the uncommitted change (staged + unstaged).
+   - `rtk git diff HEAD` — the uncommitted change (staged + unstaged). **If you were given a before/after snapshot pair** (autonomous run), diff against that instead: `rtk git diff <before-snap> <after-snap>` isolates exactly the current step even though nothing is committed — and because both are full-worktree snapshots, the diff also surfaces new files that a plain `HEAD` diff would leave invisible as untracked.
+   - **Disregard any changes under `.claude/steps/**`** — that path is the run's own orchestration bookkeeping (state.json, plan.md checkboxes), never the deliverable you judge. Ignore it whether or not the diff happens to include it.
    Read enough of the touched files to judge in context. Everything is read-only — you never modify, stage, or commit anything.
 
 2. **Re-run the gate.** Execute the gate command yourself and capture the real result. The step report will tell the human "the suite is green" — your run is what makes that claim trustworthy. Report exact counts (e.g. `47/47 passed`). A gate you cannot run is reported as such, never guessed.

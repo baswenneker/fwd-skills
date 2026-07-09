@@ -1,6 +1,6 @@
 ---
 name: fwd:steps-run
-description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een stap-rapport van ±15 regels met "Stap N/M"-teller — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
+description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een stap-rapport van ±15 regels met "Stap N/M"-teller — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, auto = autonoom afmaken, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
 argument-hint: "[<slug>] — zonder argument: lijst alle stappenplannen"
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent
 ---
@@ -54,11 +54,14 @@ Zet de hoofd-checkout terug op de base-branch (meteen vrij voor parallel werk), 
 | Signaal | Actie |
 |---|---|
 | `corrupt-state` (exit 3) | Meld het; toon het pad. Stop — niet zelf repareren zonder de gebruiker. |
-| `dirty_tree=yes` | Zie *Hervatten met een klaarstaande stap* hieronder. |
+| `pending_autonomous_commit=yes` | Een autonome run brak af met opgestapeld, ongecommit werk. Zie *Hervatten van een onderbroken autonome run* hieronder. |
+| `dirty_tree=yes` (en `pending_autonomous_commit=no`) | Zie *Hervatten met een klaarstaande stap* hieronder. |
 | `status=done` | Alles is af — verwijs naar het eindrapport / de merge-keuze en stop. |
 | `next=none` | Alle stappen done/skipped maar status niet `done` → draai het eindrapport (stap 9). |
 
-**Hervatten met een klaarstaande stap.** Een vuile worktree bij de start hoort bij precies één scenario: een eerdere sessie bouwde de eerstvolgende `todo`-stap in de worktree en stopte vóór het akkoord. Check of de `dirty_files` bij die stap passen. Zo ja: her-draai de gate (`cd "<WT>"`) én de reviewer (de tree kan intussen aangeraakt zijn) en toon het stap-rapport opnieuw, gemarkeerd met "(stond al klaar)". Zo nee: meld eerlijk wat er ligt, geef opties (wegcommitten buiten het plan om / stashen / inspecteren) en stop.
+**Hervatten met een klaarstaande stap.** Een vuile worktree met `pending_autonomous_commit=no` hoort bij één scenario: een eerdere sessie bouwde de eerstvolgende `todo`-stap in de worktree en stopte vóór het akkoord. Check of de `dirty_files` bij die stap passen. Zo ja: her-draai de gate (`cd "<WT>"`) én de reviewer (de tree kan intussen aangeraakt zijn) en toon het stap-rapport opnieuw, gemarkeerd met "(stond al klaar)". Zo nee: meld eerlijk wat er ligt, geef opties (wegcommitten buiten het plan om / stashen / inspecteren) en stop.
+
+**Hervatten van een onderbroken autonome run.** Meldt `status.sh` `pending_autonomous_commit=yes`, dan ligt er opgestapeld, ongecommit werk van een autonome run (`auto`) die naar attended brak. De done-maar-ongecommitte stappen staan al op `done` in `state.json` (via `--no-commit`) — **herbouw ze nooit**. Bied twee wegen: **afronden** → draai meteen de autonome eindreview (sectie 9a) over het opgestapelde werk; na `ok` landt het als één commit via `finalize-autonomous.sh`. **Doorgaan** → hervat de autonome loop (sectie 6a) vanaf de eerstvolgende `todo`-stap. **Break-out-finalize-guard:** committeer dit opgestapelde werk nooit via het gewone attended `record-step.sh` van een losse stap — dat doet `git add -A` en zou álle opgestapelde stappen in één stap-commit vegen met de verkeerde message. Vóór een attended `ok` op een nieuwe stap moet het opgestapelde autonome werk eerst gefinaliseerd zijn.
 
 ### 1. Brief
 
@@ -131,7 +134,7 @@ Bestanden:      <pad> (+<regels>) · <pad> (+<regels>)
 Zelf zien:      <één copy-paste commando>
 
 Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
-── ok = commit & door · m = meer detail · stop = pauze · of typ correctie/vraag ──
+── ok = commit & door · auto = autonoom afmaken · m = meer detail · stop = pauze · of typ correctie/vraag ──
 ```
 
 **Stop hier.** De volgende beurt is aan de gebruiker.
@@ -148,12 +151,34 @@ Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
   - `interim_review=due` → draai de **tussenbalans** (volgende sectie) en stop de beurt.
   - `status=done` → draai het **eindrapport** (sectie 9) in deze beurt.
   - anders → begin de volgende stap (terug naar stap 1) en eindig bij háár rapport.
+- **`auto` / `autonoom`** (geldig overal waar `ok` mag) — rond de resterende stappen autonoom af: geen stop per stap, maar wél per stap dezelfde rood → groen → volledige gate → verse reviewer, en de doubt-tussenbalans elke 4. Er wordt niets gecommit tot de eindreview aan het eind. De loop, de break-out-condities en het commit-gate staan in **Autonome modus** hieronder.
 - **`m` (more)** — uitgebreide uitleg van dezelfde stap: per bestand de kernwijziging mét snippet, de volledige reviewer-bevindingen, overwogen alternatieven en waarom het deze vorm werd. Sluit weer af met de gate-voetregel; **niet committen**.
 - **`stop`** — niets committen. Meld: het werk van de klaarstaande stap staat in de working tree; hervatten kan altijd met `/fwd:steps-run <slug>` (de stap wordt dan her-geverifieerd en opnieuw gepresenteerd).
 - **Vrije tekst** — classificeer:
   - *Correctie* → toepassen, gate én reviewer opnieuw, kort delta-rapport (alleen wat veranderde + vers oordeel), opnieuw wachten.
   - *Vraag* → beantwoorden zonder iets te wijzigen; meld dat de stap nog klaarstaat voor `ok`.
   - *Planwijziging* ("voeg een stap toe", "schrap S12", "splits S9") → werk `plan.md` + `state.json` bij; de teller herrekent zichzelf (afgeleid uit de statussen). Ligt er geen onafgeronde stap-code in de tree → commit de planwijziging direct (`chore(steps): plan bijgesteld — <wat>`); anders gaat hij mee met de eerstvolgende `ok`-commit. Meld de nieuwe telling expliciet.
+
+### 6a. Autonome modus (`auto`)
+
+Antwoordt de gebruiker `auto` (of `autonoom`) op een gate, dan maak je de resterende stappen af **zónder de beurt per stap te stoppen**. Elke stap krijgt exact dezelfde rigor als attended — brief, rood, groen, volledige gate én het verse oordeel — alleen stopt de beurt niet bij het stap-rapport en wordt er **niets op de branch gecommit tot de eindreview**. Het werk stapelt ongecommit op in de worktree.
+
+**De loop, per resterende stap:**
+
+1. **Snapshot vóór.** `SNAP_VOOR="$( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/snapshot-worktree.sh" <slug> )"` — legt de huidige (opgestapelde) worktree vast als isolatie-ref, zonder iets te muteren.
+2. **Bouw de stap** — brief, rood, groen, en de volledige gate in de worktree — precies als de attended stappen 1–3.
+3. **Snapshot ná.** `SNAP_NA="$( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/snapshot-worktree.sh" <slug> )"`.
+4. **Vers oordeel met range.** Spawn de reviewer als in stap 4, maar geef in de prompt de diff-range `SNAP_VOOR SNAP_NA` in plaats van de default `HEAD`: omdat er niets gecommit is, zou `HEAD` de hele opgestapelde berg tonen; de twee snapshots isoleren precies déze stap (inclusief nieuwe untracked bestanden). Omdat de snapshot-ná vóór `record-step.sh` valt, bevat die range geen `.claude/steps/**`-churn — de orchestratie-state wordt pas ná de snapshot getikt, dus de reviewer ziet alleen de deliverable. Verwerk het verdict als in stap 4.
+5. **Registreer zonder commit.** `record-step.sh --no-commit <slug> <step-id> "<message>"` — markeert de stap done, tikt plan.md, zet `approved_mode=autonomous`, en commit niet.
+6. **Lees de uitvoer.** `interim_review=due` → draai de tussenbalans (sectie 7); de doubt-agents diffen zelf ongecommit-inclusief tegen de base-branch (zie hun instructies), dus je hoeft geen snapshot mee te geven. Bij verdict "niets aanpassen" ga je **automatisch door**; een concreet voorstel is een break-out. `status=done` → de eindreview (sectie 9a). Anders → volgende stap.
+
+**Break-out naar attended** — de beurt stopt, er wordt niets gecommit, de gebruiker beslist — bij:
+- een **vastgelopen stap**: niet groen te krijgen zonder de test te verzwakken of buiten de stap te treden (sectie 8);
+- een **gate die rood blijft** na een redelijke fix-poging;
+- een **reviewer-FAIL** (gate, test-quality of een rule) die niet vanzelf oplost;
+- een **doubt-agent die een concreet voorstel doet** in de tussenbalans.
+
+Bij een break-out toon je het gewone "vastgelopen"-rapport (sectie 8) of de tussenbalans (sectie 7) — met wat er ligt en de opties — en staat de beurt weer bij de gebruiker. Het opgestapelde werk blijft ongecommit in de worktree; hervatten kan altijd (sectie 0, *Hervatten van een onderbroken autonome run*). **Nooit groen faken** geldt onverkort: een autonome run die vastloopt rapporteert dat eerlijk en stopt — hij verzwakt nooit een test of slaat een gate over om "door te komen".
 
 ### 7. Tussenbalans (elke 4 goedgekeurde stappen)
 
@@ -206,6 +231,34 @@ Hoe verder: mergen (`rtk git switch <base> && rtk git merge <branch>`) / eerst z
 ```
 
 **Elke "Zelf draaien"-regel is vooraf door jou uitgevoerd en werkend bevonden** — geen ongeteste instructies; je draaide ze in `<WT>`. De merge-keuze is expliciet aan de gebruiker; deze skill merget nooit zelf.
+
+### 9a. Autonome eindreview + commit-gate
+
+Bereikt een autonome run de laatste stap (`status=done` uit `record-step.sh --no-commit`), of rond je een onderbroken run af, dan is er nog **niets gecommit**. Toon eerst de eindreview — het opgetelde beeld (het eindbeeld uit `plan.md`) — en commit pas na `ok`:
+
+```
+── Autonome run klaar: stap <a>→<b>/<M> zonder tussenstop ────────
+
+Gebouwd (nog niets gecommit):
+  <id>  <titel>            +<x>/-<y>   <bestanden>
+  … (één regel per autonome stap)
+  Totaal: <n> stappen · +<X>/-<Y> · <k> bestanden
+
+Gate:            <X/X> groen (na elke stap herdraaid)
+Reviewer:        <n>/<n> stappen schoon
+Doubt (na <id>): <verdict — "niets aanpassen" of wat er speelde>
+Deferrals:       <alle deferrals uit state.json; leeg → "niets">
+Open punt(en):   <reviewer-punten die open bleven, of "geen">
+
+Zelf zien:       cd <WT> && rtk git diff <base>   ·   <gate-commando>
+
+── ok = commit alles (1 commit) & klaar · message aanpassen? zeg 't · stop = niets committen ──
+```
+
+- **`ok`** → `finalize-autonomous.sh <slug> "<message>"` maakt er **één commit** van al 't opgestapelde werk. De gebruiker mag de message bijsturen; per-stap splitsen kan niet (de `--no-commit`-accumulatie liet geen commit-grenzen na). Lees de uitvoer: `status=done` → draai het gewone eindrapport (sectie 9); `status=in_progress` (deel-finalize na een eerdere break-out) → meld wat gecommit is en dat de resterende stappen nog open staan.
+- **`stop`** → niets committen; het opgestapelde werk blijft in de worktree. Hervatten kan altijd met `/fwd:steps-run <slug>` (zie *Hervatten van een onderbroken autonome run*, sectie 0).
+
+Brak de run halverwege uit (vastgelopen stap / gate rood / reviewer-FAIL / doubt-voorstel), dan verschijnt in plaats van deze eindreview het gewone "vastgelopen"-rapport (sectie 8) of de tussenbalans (sectie 7), en staat de beurt bij de gebruiker — het opgestapelde werk blijft ongecommit tot je later afrondt.
 
 ## Stijl
 
