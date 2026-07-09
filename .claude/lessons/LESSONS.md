@@ -92,3 +92,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Baseline-skill-eval van de steps-run-scriptsurface (181 deterministische checks) vóór de tekstcompactie.
 **Observation**: `record-step.sh` (attended-tak, regel 75) en `finalize-autonomous.sh` (regel 31) vervuilen hun gedocumenteerde key=value-stdout met één rtk-samenvattingsregel ("ok 3 files changed, …") doordat `rtk git add -A` daar niet naar stderr is omgeleid; `snapshot-worktree.sh` doet het wél goed (`>&2`). Functioneel onschadelijk, maar strikte stdout-parsers breken. 179/181 checks verder groen.
 **Lesson**: In fwd-skills-scripts hoort élke rtk-git-aanroep die niet zelf het contract-antwoord is naar stderr (`>&2`). Fix is 2× één redirect; bewust uitgesteld (compactie-sessie raakt geen scripts). Herdraaibare checkset: scratchpad eval-steps-run/e1..e13.sh van 2026-07-09.
+
+### 2026-07-09 | insight | fwd:git-commit (pre-flight risky-scan)
+**Context**: A/B-instrumenttest van fwd:skill-eval tegen fwd:git-commit; de B-run ontwierp een subdir-probe die de A-run als "not tested" had gelaten.
+**Observation**: `pre-flight.sh` leest `rtk git status --porcelain` zónder `-uall`; een untracked directory wordt dan samengevat als `?? dir/`, waardoor een risky file erin (`config/.env.production` in een nieuwe map) alle naam-checks passeert én door `git add -A` gestaged wordt (reproduceerbaar: alleen die file in een nieuwe map → `ok` + gestaged).
+**Lesson**: Porcelain-parsers die per bestand oordelen hebben `-uall`/`--untracked-files=all` nodig — zelfde val die fwd:plan's check-modus al documenteert (map-collapse). Fix-kandidaat voor pre-flight.sh: `--porcelain -uall`; bewust uitgesteld (sessie-scope raakte geen scripts), reproductie in de B-run-matrix van 2026-07-09.

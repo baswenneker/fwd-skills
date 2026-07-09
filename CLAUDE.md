@@ -73,6 +73,8 @@ Most skills here originate in [baswenneker/fwd-claude-code](https://github.com/b
 
 Do not back-port edits made here into `fwd-claude-code` automatically — that repo is the upstream source of truth for the canonical skill content; this repo is the slimmed-down distribution.
 
+**Deliberately diverged from upstream (2026-07-09):** `fwd:steps-plan`, `fwd:steps-run`, `fwd:plan` (plus its new `REFERENCE.md`), `fwd:skill-eval`, `fwd:explain`, `fwd:jip-janneke`, and the `fwd:mission-*` files (both SKILL.md's and both REFERENCE.md's) carry the stappenbudget feature and/or a deliberate vol-caveman text compaction that upstream does not have. Mirroring these skills means **manual merging, never copy-over** — a routine sync would silently revert the stappenbudget and the compaction.
+
 ## Conventions
 
 - **Skill names follow `fwd:<field-or-context>-<name>`** (e.g. `fwd:git-commit`, `fwd:rules-audit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `rules`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — colon and all.
