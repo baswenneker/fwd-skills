@@ -2,8 +2,6 @@
   "name": "fwd-skills",
   "skills": [
     "./skills/engineering/fwd:git-commit",
-    "./skills/engineering/fwd:issue-create",
-    "./skills/engineering/fwd:issue-fix",
     "./skills/engineering/fwd:mission-plan",
     "./skills/engineering/fwd:mission-run",
     "./skills/engineering/fwd:plan",

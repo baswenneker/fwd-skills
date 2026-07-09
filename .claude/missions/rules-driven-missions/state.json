@@ -744,7 +744,7 @@
     {
       "timestamp": "2026-06-11T10:05:20Z",
       "situation": "Language for the new fwd:rules-audit SKILL.md was unspecified in the contract",
-      "action": "Write it in Dutch — precedent fwd:plan/fwd:issue-create (interactive user-facing skills are Dutch), mission docs are Dutch, style rule prescribes the user's language",
+      "action": "Write it in Dutch — precedent fwd:plan (interactive user-facing skills are Dutch), mission docs are Dutch, style rule prescribes the user's language",
       "feature": "F1"
     }
   ]

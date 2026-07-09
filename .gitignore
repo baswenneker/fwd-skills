@@ -8,14 +8,11 @@ node_modules/
 .playwright-mcp/
 repo-structure.md
 
-.claude/skills/fwd:issue-fix
-
 # fwd:setup:gitignore:start (managed by /fwd:setup — do not edit manually)
-# fwd:issue-fix runtime: worktree dir + JSON state ledger.
-# Without these gitignored, preflight rejects every tick on a clean repo
-# because the state file it just wrote shows up as untracked.
+# fwd:mission-run / fwd:steps-run worktrees. Without .trees/ gitignored,
+# preflight rejects every tick on a clean repo because the worktree it
+# just created shows up as untracked.
 .trees/
-.claude/issue-loop/
 
 # Claude Code /loop scheduling state. Recreated on every ScheduleWakeup,
 # so it permanently dirties the tree unless ignored.

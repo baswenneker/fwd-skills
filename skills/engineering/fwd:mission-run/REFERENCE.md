@@ -2,7 +2,7 @@
 
 The canonical data contract for the `fwd:mission-*` family: the mission topology, the `state.json` schema, the handoff report shape, the validation contract, and the execution/resume semantics. `fwd:mission-plan` writes these artifacts; `fwd:mission-run` reads and advances them. This file is the **source of truth** — when in doubt, this wins.
 
-Modelled on Factory.ai's "Missions" (orchestrator → workers → adversarial validators, validation contract written before any code, serial execution). Built on the same machinery as [`fwd:issue-fix`](../fwd:issue-fix/REFERENCE.md) — atomic JSON state, worktrees, circuit breaker, stale-lock recovery — but with one decisive difference (see *Why state is committed*).
+Modelled on Factory.ai's "Missions" (orchestrator → workers → adversarial validators, validation contract written before any code, serial execution). Built on atomic JSON state, worktrees, a circuit breaker and stale-lock recovery — with one decisive difference: state is committed, not gitignored (see *Why state is committed*).
 
 ## Topology: a mission is a branch
 
@@ -21,11 +21,11 @@ mission/<slug>                      ← the unit of work AND the unit of state
 
 `fwd:mission-plan` creates the branch + worktree and commits the initial artifacts (`status: planned`). `fwd:mission-run` reuses that worktree (or recreates it from the branch on a fresh clone) and drives execution, **committing the updated `state.json` + `handoffs/` after every feature and every milestone**.
 
-### Why state is committed (and `fwd:issue-fix` ignores its state)
+### Why state is committed
 
-`fwd:issue-fix` gitignores `.claude/issue-loop/state.json` on purpose: it's a *stealth, overnight* tool whose whole point is that collaborators can't tell work was automated, and it runs in the main checkout over loose issues. Local-and-ignored fits.
+Missions commit their state on purpose — that's what makes a mission resumable from a fresh clone or worktree instead of only on the machine that started it.
 
-A mission is the opposite: **your attributed work, on its own branch, that must be resumable from a fresh worktree / clone / teammate** ("coherent over days, not minutes"). Gitignored files don't exist on a branch — so `git worktree add .trees/mission/<slug> mission/<slug>` on another machine would have **no state**, making resume impossible and risking re-running already-committed features. Therefore the checkpoint *is* a commit: HEAD's `state.json` always matches HEAD's code, and resume anywhere is `git worktree add` → read HEAD state → continue.
+A mission is **your attributed work, on its own branch, that must be resumable from a fresh worktree / clone / teammate** ("coherent over days, not minutes"). Gitignored files don't exist on a branch — so `git worktree add .trees/mission/<slug> mission/<slug>` on another machine would have **no state**, making resume impossible and risking re-running already-committed features. Therefore the checkpoint *is* a commit: HEAD's `state.json` always matches HEAD's code, and resume anywhere is `git worktree add` → read HEAD state → continue.
 
 The only gitignored thing is the `.env*` copy at the worktree root (under the already-ignored `.trees/`): a secret, never committed, re-copied on each fresh tree.
 
@@ -180,11 +180,11 @@ Location: `.claude/missions/<slug>/state.json` (inside the worktree, committed o
 
 ### Field notes
 
-- **`features[]` is ordered**, not keyed (unlike issue-fix's `issues{}`): features have a deterministic sequence and inherit each other via git. Resume = the first feature with `status != "done"`. The runner always executes features in array order.
+- **`features[]` is ordered**, not keyed: features have a deterministic sequence and inherit each other via git. Resume = the first feature with `status != "done"`. The runner always executes features in array order.
 - **`commit_sha` is the checkpoint.** Resume re-derives position from `status` + `commit_sha`; committed work is never replayed. If a feature is `in_progress` but its commit already exists on the branch (crash between commit and record), adopt it — mark `done`, don't re-spawn.
 - **`vc_results[].passed` is tri-state:** `true` / `false` / `null`. `null` = not-run, skipped, or unverifiable (a validator that structurally could not see the evidence — external repo, missing key, unreachable feature). A re-run never mistakes a skip for a pass, and **a `null` never rolls up into `done`**: `finalize.sh` blocks until a human accepts it via `FWD_MISSION_ACCEPT_UNVERIFIED` (recorded as `unverified_waiver`).
 - **`gates` vs `gate_results`:** `gates` is the definition (from planning); `milestones[].gate_results` is the per-boundary outcome. Same split for `user_testing` (definition) vs `vc_results` (outcome).
-- **`circuit_breaker` + `decisions[]`** are byte-compatible with issue-fix, so `log-decision.sh` is a near-verbatim crib.
+- **`circuit_breaker` + `decisions[]`** are updated atomically by `log-decision.sh` (write-temp-then-rename, like every state write).
 - **Schema v3 fields are optional and additive.** Plans without `rules_manifest`, `features[].rule_paths`, `milestones[].walkthrough_path`, or `handoff.rules_applied` (older plans) remain valid everywhere — the runner and all scripts. No renames, no removals; nothing breaks on absent fields.
   - **`rules_manifest`** (top-level `[{path, sha256}]`): freezes rule-file content at plan/materialization time. `validate-artifacts.sh` re-hashes each entry and fails if a file is missing or has drifted. Absent or null → no check (v1/v2 behavior unchanged).
   - **`features[].rule_paths`** (array of paths): rule files that apply to this feature, computed at plan time from the feature's file-by-file scope × rule `paths:` globs. Passed to the coder subagent as its rule context.
@@ -442,5 +442,4 @@ Kies één van de drie routes:
 ## Sources
 
 - Factory.ai Missions — orchestrator / worker / validator, validation contract, serial execution ([docs.factory.ai/cli/features/missions](https://docs.factory.ai/cli/features/missions))
-- [`fwd:issue-fix`](../fwd:issue-fix/REFERENCE.md) — state machinery, worktrees, circuit breaker, stale-lock recovery this builds on
 - [CC#28041](https://github.com/anthropics/claude-code/issues/28041) — `.claude/` not copied to worktree (symlink workaround)
