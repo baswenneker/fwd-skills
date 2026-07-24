@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Materialise (or resume) the steps worktree and transfer the work into it.
-# Planning happened in the main checkout on the steps/<slug> branch; this frees that
-# branch — switching the main checkout back to base — and hands it to a worktree at
-# .trees/steps/<slug>, so the main checkout is free for parallel work. Reuses an
-# existing worktree; recreates it from the branch on a fresh clone. Copies untracked
-# .env* in so the gate can boot (only when they are gitignored — steps commits every
-# step with `git add -A`, so an un-ignored secret would land in a commit).
+# Ensure the steps worktree exists and is bootable, then echo its path.
+# Normally fwd:steps-plan already created the worktree (.trees/steps/<slug>) alongside the
+# branch, so this just reuses it — the main checkout was never moved. Fallbacks: recreate
+# the worktree from the branch on a fresh clone (or if it was removed); and, as a safety net
+# for an OLD in-place plan (or a manual switch) that left the main checkout sitting on
+# steps/<slug>, free it by switching the main checkout back to base so the branch can be
+# handed to a worktree. Copies untracked .env* in so the gate can boot (only when they are
+# gitignored — steps commits every step with `git add -A`, so an un-ignored secret would
+# land in a commit).
 # Resolves the MAIN repo root itself, so it works from the main checkout OR from inside
 # a worktree. Read-only on the branch content; never commits.
 # Args: <slug>
@@ -23,9 +25,10 @@ BRANCH="steps/$SLUG"
 ( cd "$REPO_ROOT" && rtk git show-ref --verify --quiet "refs/heads/$BRANCH" ) \
   || { echo "no-plan: no $BRANCH branch — plan first with /fwd:steps-plan" >&2; exit 1; }
 
-# If the MAIN checkout is on the branch (fresh plan -> run), free it by switching back to
-# base. Requires a clean tree — the plan commit left it clean; anything dirty is the
-# user's, so we stop rather than move it.
+# Safety net: if the MAIN checkout is itself on the branch — an OLD in-place plan mid-flight,
+# or a manual switch (the new plan flow never moves the main checkout) — free it by switching
+# back to base. Requires a clean tree — anything dirty is the user's, so we stop rather than
+# move it.
 MAIN_BRANCH="$( cd "$REPO_ROOT" && rtk git rev-parse --abbrev-ref HEAD )"
 if [[ "$MAIN_BRANCH" == "$BRANCH" ]]; then
   # Only tracked modifications block the switch-back; untracked scratch/.env files ride

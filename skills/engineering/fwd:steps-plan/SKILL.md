@@ -7,7 +7,7 @@ allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Wri
 
 # fwd:steps-plan
 
-Zet een doel om in een **stappenplan**: een Definition of Done (DoD) met eindbeeld, afgesproken seams, en een geordende lijst kleine stappen — vastgelegd in `.claude/steps/<slug>/` op een eigen `steps/<slug>`-branch, klaar voor `/fwd:steps-run`. (De uitvoering verhuist bij `/fwd:steps-run` naar een worktree, zodat je hoofd-checkout vrij blijft voor parallel werk; plannen doe je gewoon in je huidige checkout.)
+Zet een doel om in een **stappenplan**: een Definition of Done (DoD) met eindbeeld, afgesproken seams, en een geordende lijst kleine stappen — vastgelegd in `.claude/steps/<slug>/` op een eigen `steps/<slug>`-branch mét eigen worktree (`.trees/steps/<slug>/`), klaar voor `/fwd:steps-run`. (Het plan wordt meteen in die worktree gemaakt — net als bij missions — zónder je hoofd-checkout te switchen, zodat die vrij blijft voor parallel werk in andere terminals. `/fwd:steps-run` hergebruikt straks diezelfde worktree.)
 
 Dit is de **attended** planner: de gebruiker zit erbij en blijft er tijdens de uitvoering bij (één review-moment per stap). Voor onbeheerd werk bestaat `fwd:mission-plan`; voor het afwegen van plan-alternatieven vóór een richtingkeuze bestaat `fwd:plan` — deze skill begint pas als de richting gekozen is.
 
@@ -88,22 +88,22 @@ Print een JSON-array van oplosbare gates (test/typecheck/lint/build). Kies het t
 bash "${CLAUDE_SKILL_DIR}/scripts/init-steps.sh" <slug>
 ```
 
-Slug: kebab-case uit het doel, ≤50 tekens. Het script takt **altijd** een eigen `steps/<slug>`-branch af van je huidige branch (die wordt de `base`), scaffoldt `.claude/steps/<slug>/` in de huidige checkout (nog géén worktree — die maakt `/fwd:steps-run` straks van deze branch) en print `branch=`, `base=`, `dir=`. Base ≠ branch is met opzet: run zet je hoofd-checkout terug op `base` en geeft `steps/<slug>` aan een worktree.
+Slug: kebab-case uit het doel, ≤50 tekens. Het script takt een eigen `steps/<slug>`-branch af van je huidige branch (die wordt de `base`) én maakt meteen de worktree `.trees/steps/<slug>/` — je hoofd-checkout wordt nooit geswitcht (ongecommitte wijzigingen daar blijven staan en reizen niet mee). Het scaffoldt `.claude/steps/<slug>/` ín die worktree en print `branch=`, `base=`, `worktree=` en `dir=` (`dir` wijst in de worktree). `/fwd:steps-run` hergebruikt straks deze worktree.
 
 Schrijf dan met `Write` in die dir:
 
 - **`plan.md`** — leesbaar voor mensen, volgens het template hieronder.
 - **`state.json`** — machine-state, volgens het schema hieronder. Sanity-check na het schrijven: `jq -e '.steps | length > 0' <dir>/state.json`.
 
-Commit beide (alleen deze twee bestanden):
+Commit beide (alleen deze twee bestanden) **in de worktree** — gebruik het `worktree=`-pad uit de scriptuitvoer:
 
 ```
-rtk git add .claude/steps/<slug> && rtk git commit -m "chore(steps): plan <slug> (<M> stappen)"
+( cd "<worktree>" && rtk git add .claude/steps/<slug> && rtk git commit -m "chore(steps): plan <slug> (<M> stappen)" )
 ```
 
 Sluit af met exact deze regels (enkelvoud bij M=1: schrijf `1 stap`, nooit `1 stappen` — geldt ook voor de commit message hierboven):
 
-> Stappenplan staat op branch `<branch>`: **<M> stappen**.
+> Stappenplan staat op branch `<branch>` (worktree `<worktree>`): **<M> stappen**.
 > Start met: `/fwd:steps-run <slug>`
 
 ## Templates

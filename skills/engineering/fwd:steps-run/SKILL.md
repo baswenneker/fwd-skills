@@ -40,12 +40,12 @@ Eén stap per beurt, bewijs vóór uitleg, commit pas na akkoord. **Jij (hoofdse
 WT="$(bash "${CLAUDE_SKILL_DIR}/scripts/setup-worktree.sh" <slug>)"
 ```
 
-Zet de hoofd-checkout terug op de base-branch (meteen vrij voor parallel werk), maakt/hergebruikt `.trees/steps/<slug>/`, kopieert ongetrackte gitignore'de `.env*` mee, print het absolute pad. **Vanaf nu is `<WT>` je werkmap**: lezen/schrijven in `<WT>/…`, gates via `cd "<WT>" && …`, `<WT>` als repo-root aan elke subagent. Faalt het script:
+Hergebruikt de worktree die `/fwd:steps-plan` al maakte (`.trees/steps/<slug>/`) — of maakt 'm opnieuw op een verse clone; je hoofd-checkout is al vrij en wordt niet geraakt. Kopieert ongetrackte gitignore'de `.env*` mee, print het absolute pad. **Vanaf nu is `<WT>` je werkmap**: lezen/schrijven in `<WT>/…`, gates via `cd "<WT>" && …`, `<WT>` als repo-root aan elke subagent. Faalt het script:
 
 | Signaal | Actie |
 |---|---|
 | `no-plan` | Geen `steps/<slug>`-branch → eerst `/fwd:steps-plan`. Stop. |
-| `dirty-main` | Hoofd-checkout op `steps/<slug>` met ongecommitte wijzigingen — het script kan ze niet veilig verplaatsen. Meld het exacte commando, stop; de gebruiker commit/stasht zelf. |
+| `dirty-main` | Zeldzaam (alleen bij een oud in-place plan of een handmatige switch): de hoofd-checkout staat zélf op `steps/<slug>` met ongecommitte wijzigingen — het script kan ze niet veilig verplaatsen. Meld het exacte commando, stop; de gebruiker commit/stasht zelf. |
 
 **Dan de preflight** (statusregels hierboven; her-draai `status.sh <slug>` nu de worktree bestaat — verse `dirty_tree`/`next_*`):
 
