@@ -1,7 +1,7 @@
 ---
 name: fwd:plan
-description: Plan een implementatie — verzamel codebase-context, presenteer eerst een DoD-voorstel met numbered bullets (akkoord of corrigeer in plain text, géén AskUserQuestion), stel daarna 0-3 verdiepende keuzes via AskUserQuestion, en presenteer 1 of 3 plannen in visueel distincte boxen met spec-strip + TL;DR + Wijzigingen-tabel. Sluit af met (Recommended)-tag op het beste plan en een verdict-block, en legt na de plan-keuze een licht contract vast in `.claude/plan-contracts/<slug>.md`. `/fwd:plan check [<slug>]` toetst achteraf de diff en de DoD-bewijsregels tegen dat contract. Use when user wants to plan a feature, refactor, or change met meerdere opties op tafel, of invokes /fwd:plan.
-argument-hint: "<wat te plannen> — of: check [<slug>] om een contract achteraf te toetsen"
+description: "Plan een feature, refactor of wijziging met DoD, 1-3 plannen en een verdict. Use when user invokes /fwd:plan of een implementatie wil plannen"
+argument-hint: "goal of the plan or refer to a file with a plan"
 allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Agent, Write
 ---
 

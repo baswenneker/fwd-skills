@@ -40,10 +40,17 @@ if [[ $# -gt 0 ]]; then
 fi
 
 # No arguments: the repo's own shared blocks. Run from the repo root (scripts/..).
+# Two independent checks — combine their exit codes so a drift in one block can't hide
+# a drift in the other (a bare `set -e` would abort at the first non-zero return).
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+STATUS=0
 check_block "Shared tool prohibitions" \
   agents/fwd-mission-coder.md \
   agents/fwd-mission-reviewer.md \
   agents/fwd-mission-user-tester.md \
   agents/fwd-steps-doubt.md \
-  agents/fwd-steps-reviewer.md
+  agents/fwd-steps-reviewer.md || STATUS=1
+check_block "Shared Codex handoff" \
+  "skills/engineering/fwd:codex-review-plan/SKILL.md" \
+  "skills/engineering/fwd:codex-review-implementation/SKILL.md" || STATUS=1
+exit $STATUS
