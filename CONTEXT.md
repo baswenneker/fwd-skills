@@ -64,7 +64,7 @@ De publieke interface waarop tests mikken (functie-, endpoint- of CLI-niveau), v
 
 ### stap-rapport
 
-Het vaste rapport (±15 regels) na elke stap van een steps-run: wat kan er nu, waarom zo, bewijs (rood→groen + gate), vers reviewer-oordeel, bestanden, één zelf-zien-commando en de teller "Stap N/M".
+Het vaste beslis-eerst rapport (±25 regels) na elke stap van een steps-run, met de teller "Stap N/M". Volgorde: in één zin wat er nu kan; de open punten die het akkoord raken (deferrals + open reviewer-vondsten) bovenaan; veranderd per map, genummerd in gewone taal; waarom je dit kunt vertrouwen (rood→groen, gate, vers reviewer-oordeel). Titels staan boven de tekst, nooit ernaast.
 
 ### stappenbudget
 

@@ -75,7 +75,7 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 
 **Deliberately diverged from upstream (2026-07-09):** `fwd:steps-plan`, `fwd:steps-run`, `fwd:plan` (plus its new `REFERENCE.md`), `fwd:skill-eval`, `fwd:explain`, `fwd:jip-janneke`, and the `fwd:mission-*` files (both SKILL.md's and both REFERENCE.md's) carry the stappenbudget feature and/or a deliberate vol-caveman text compaction that upstream does not have. Mirroring these skills means **manual merging, never copy-over** — a routine sync would silently revert the stappenbudget and the compaction.
 
-**Also diverged (2026-07-24):** `fwd:steps-plan` now creates the worktree at **plan** time (mirroring `fwd:mission-plan`'s `init-mission.sh`) instead of `git switch -c`-ing the shared checkout, and `fwd:steps-run` merely reuses it. This touches `init-steps.sh`, `setup-worktree.sh`, and both steps `SKILL.md`s. A routine sync must not restore the old plan-in-place `git switch -c` flow.
+**Also diverged (2026-07-24):** `fwd:steps-plan` now creates the worktree at **plan** time (mirroring `fwd:mission-plan`'s `init-mission.sh`) instead of `git switch -c`-ing the shared checkout, and `fwd:steps-run` merely reuses it. This touches `init-steps.sh`, `setup-worktree.sh`, and both steps `SKILL.md`s. A routine sync must not restore the old plan-in-place `git switch -c` flow. Same date: the step report in `fwd:steps-run` (section 5) was redesigned to a decision-first template (open points on top, changes grouped per folder, titles above text — chosen by Bas after the first real run) and the tussenbalans template (section 7) lost its side-by-side label columns; a sync must not bring back the old ±15-line two-column report.
 
 ## Conventions
 

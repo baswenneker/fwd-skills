@@ -1,6 +1,6 @@
 ---
 name: fwd:steps-run
-description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een stap-rapport van ±15 regels met "Stap N/M"-teller — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, auto = autonoom afmaken, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
+description: Voer een stappenplan van /fwd:steps-plan uit — attended, precies één stap per beurt. Per stap; falende test eerst (rood), minimale implementatie langs de Lazy Ladder (groen), volledige gate, vers oordeel door een read-only reviewer-subagent, en een beslis-eerst stap-rapport van ±25 regels met "Stap N/M"-teller (open punten bovenaan, veranderd per map, titels boven de tekst) — daarna stopt de beurt en beslist de gebruiker (ok = commit & door, auto = autonoom afmaken, m = meer detail, stop = pauze, vrije tekst = correctie/vraag/planwijziging). Elke 4 goedgekeurde stappen een tussenbalans door twee doubt-subagents. Use when the user runs /fwd:steps-run <slug>, zegt "volgende stap", "ga door met het stappenplan", of "hervat <slug>". Zonder argument: lijst alle stappenplannen. Niet voor onbeheerd werk — dat is fwd:mission-run.
 argument-hint: "[<slug>] — zonder argument: lijst alle stappenplannen"
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, Agent
 ---
@@ -20,7 +20,7 @@ Eén stap per beurt, bewijs vóór uitleg, commit pas na akkoord. **Jij (hoofdse
 
 - **Bash-scripts** — deterministische state, git, exit codes. Draai ze; vertrouw hun uitvoer.
 - **Jij** — code schrijven, tests schrijven, uitleggen, wegen wat de reviewer vindt.
-- **Subagents** — het onafhankelijke oordeel. Jij vult het "Review (vers)"-blok nooit zelf in; zonder reviewer-run geen stap-rapport.
+- **Subagents** — het onafhankelijke oordeel. Jij vult het reviewer-oordeel in het stap-rapport nooit zelf in; zonder reviewer-run geen stap-rapport.
 
 ## Status (sessiestart)
 
@@ -112,28 +112,37 @@ Verwerk het JSON-verdict:
 
 ### 5. Stap-rapport → stop de beurt
 
-Render exact dit sjabloon (±15 regels, Nederlands, technische termen Engels, geen code-snippets — die zitten achter `m`):
+Render exact dit sjabloon (±25 regels, Nederlands, technische termen Engels, titels bóven de tekst — nooit ernaast — en geen code-snippets: die zitten achter `m`):
 
 ```
 ── Stap <N>/<M> — <titel> ──────────────────────────────
 
-Wat kan er nu:  <het gedrag in 1-2 zinnen gewone taal — bundel: kort lijstje,
-                één regel per gedraging>
+In één zin: <wat er nu kan en wat er bewust nog niet is — het gedrag in
+gewone taal, geen opsomming van onderdelen>
 
-Waarom zo:      <kernkeuze(s); benoem hergebruik; indien van toepassing:
-                "bewust simpel gehouden: <wat> — uitbreiden zodra <wanneer>">
+Vóór je ok geeft — dit vraagt je oordeel:
+• <één bullet per open punt: elke bewuste deferral ("<wat> — bewust
+  uitgesteld, oppakken zodra <wanneer>") en elke open reviewer-vondst
+  ("<vondst> — <in één regel waarom open>; ok = zo laten");
+  geen open punten → één regel "geen: niets uitgesteld, reviewer zonder
+  bezwaren", zonder bullets>
 
-Bewijs:         rood  ✗ <letterlijke falende testregel van vóór de implementatie —
-                bundel: één voorbeeld + "zo voor alle <n> gedragingen">
-                groen ✓ <n> nieuwe test(s); gate <X/X> groen (reviewer herdraaide hem)
+Veranderd (per map)
+1. <map>/ — <wat er nieuw of anders is en wat het doet, in gewone taal;
+   noem per map het aantal bestanden>
+2. <max 4 genummerde punten: groepeer bestanden per map, losse
+   root-bestanden samen onder "root"; toegepaste reviewer-vondsten
+   horen hier gewoon tussen>
 
-Review (vers):  rules <✓ | ✗: wat> · over-engineering: <geen | <n> vondsten, toegepast/open>
-                <de narrative-zin van de reviewer>
+Waarom je dit kunt vertrouwen
+<2-4 zinnen: eerst rood — de letterlijke falende testregel (bundel: één
+voorbeeld + "zo voor alle <n> gedragingen"; commando-bewijs: "commando →
+verwacht resultaat" i.p.v. rood) — daarna <n> nieuwe tests en gate <X/X>
+groen, en dat de reviewer de gate zelf herdraaide en testkwaliteit en
+rules keurde; sluit af met de narrative-zin van de reviewer tussen
+aanhalingstekens>
 
-Bestanden:      <pad> (+<regels>) · <pad> (+<regels>)
-Zelf zien:      <één copy-paste commando>
-
-Volgende:       stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
+Volgende:   stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
 ── ok = commit & door · auto = autonoom afmaken · m = meer detail · stop = pauze · of typ correctie/vraag ──
 ```
 
@@ -189,12 +198,15 @@ De agents antwoorden caveman-stijl (ultrakort, met bewijs-verwijzingen). **Jij c
 ```
 ── Tussenbalans na stap <N>/<M> ────────────────────────
 
-Minst zeker over:      <2-3 volle zinnen, met concrete verwijzing>
+Minst zeker over
+<2-3 volle zinnen, met concrete verwijzing>
 
-Grootste blinde vlek:  <2-3 volle zinnen, met concrete verwijzing>
+Grootste blinde vlek
+<2-3 volle zinnen, met concrete verwijzing>
 
-Verdict:               <wat dit betekent en wat ik voorstel — of waarom
-                       er niets hoeft te veranderen>
+Verdict
+<wat dit betekent en wat ik voorstel — of waarom er niets hoeft te
+veranderen>
 
 ── ok = door met stap <N+1>/<M> · of typ wat je hiervan vindt ──
 ```
