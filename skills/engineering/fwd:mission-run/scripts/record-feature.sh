@@ -55,14 +55,15 @@ case "$OUTCOME" in
       fi
     fi
     # Clean worktree, ignoring the copied .env*, boot artifacts (expected, untracked),
-    # and a brand-new narrative file dropped under this mission's handoffs directory
-    # (the orchestrator writes it just before calling this script, so it is always
-    # untracked at this point — it gets folded into the checkpoint commit below).
-    # A *tracked* file with uncommitted changes anywhere else still fails the check.
+    # and ANY change under this mission's metadata dir — the state.json that a
+    # mid-feature log-decision.sh leaves tracked-dirty, plus the freshly written
+    # handoff narrative. The checkpoint commit below folds that whole dir in anyway,
+    # so refusing it here would only force the orchestrator into a separate commit.
+    # A *tracked* file with uncommitted changes OUTSIDE that dir still fails the check.
     DIRTY="$(rtk git status --porcelain \
       | grep -vx 'ok' \
       | grep -vE '(\.env(\.[^/]+)?|\.mission-boot\.(pid|log))$' \
-      | grep -vE "^\\?\\? \\.claude/missions/$SLUG/handoffs/" \
+      | grep -vE "^.. \\.claude/missions/$SLUG/" \
       || true)"
     if [[ -n "$DIRTY" ]]; then
       echo "worktree has uncommitted changes — coder must commit before record:" >&2
@@ -79,7 +80,10 @@ case "$OUTCOME" in
       [[ -n "$n" ]] || continue
       if (( n > PREV_N )); then PREV_N="$n"; PREV="$sha"; fi
     done < <(jq -r '.features[].commit_sha // empty' "$STATE")
-    [[ -z "$PREV" ]] && PREV="$BASE"
+    # No feature recorded a commit yet: anchor on the actual branch-off point, not
+    # the base branch *tip*. The base may have advanced after we forked, and diffing
+    # against its moved tip would count the base's own commits as "the coder's code".
+    [[ -z "$PREV" ]] && PREV="$(rtk git merge-base "$BASE" HEAD 2>/dev/null || echo "$BASE")"
     # Require a real CODE commit since PREV — exclude the mission metadata dir, so the
     # previous feature's metadata-only "checkpoint" commit can't be mistaken for the
     # coder's work (which would false-pass a coder that committed nothing).
@@ -88,7 +92,11 @@ case "$OUTCOME" in
       echo "no new code commit since $PREV — coder did not implement the feature" >&2
       exit 1
     fi
-    SHA="$(rtk git rev-parse HEAD)"
+    # commit_sha must point at real code: take the newest commit in range that touches
+    # something outside the metadata dir, so a trailing metadata-only checkpoint commit
+    # (e.g. an apart-committed state.json) never becomes the recorded feature SHA.
+    SHA="$(rtk git log -1 --format=%H "$PREV..HEAD" -- . ":(exclude).claude/missions/$SLUG" 2>/dev/null || true)"
+    [[ -z "$SHA" ]] && SHA="$(rtk git rev-parse HEAD)"
     jq --arg f "$FID" --arg s "$SHA" --arg t "$NOW" --argjson h "$HANDOFF" '
       (.features[] | select(.id == $f)) |= (
         .status = "done" | .commit_sha = $s | .completed_at = $t

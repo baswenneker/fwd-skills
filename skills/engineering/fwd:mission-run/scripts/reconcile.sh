@@ -2,7 +2,7 @@
 # Resume reconciliation — run once at loop start (after setup-worktree).
 # Handles the crash window between a coder commit and record-feature.sh:
 #  - if real (non-metadata) code was committed since the last recorded feature
-#    SHA and a not-done feature exists, ADOPT that feature as done at HEAD;
+#    SHA and a not-done feature exists, ADOPT that feature as done at that code commit;
 #  - else discard any uncommitted crash leftovers so the next coder starts clean.
 # Idempotent: a healthy resume (HEAD == last recorded SHA, clean tree) is a no-op.
 # Args: <slug>. Stdout: "adopted <fid>" | "cleaned" | "clean".
@@ -30,14 +30,18 @@ while IFS= read -r sha; do
   [[ -n "$n" ]] || continue
   if (( n > PREV_N )); then PREV_N="$n"; PREV="$sha"; fi
 done < <(jq -r '.features[].commit_sha // empty' "$STATE")
-[[ -z "$PREV" ]] && PREV="$BASE"
+# No feature recorded a commit yet: anchor on the branch-off point (merge-base), not
+# the base branch tip, which may have advanced after we forked.
+[[ -z "$PREV" ]] && PREV="$(rtk git merge-base "$BASE" HEAD 2>/dev/null || echo "$BASE")"
 FID="$(jq -r 'first(.features[] | select(.status != "done") | .id) // empty' "$STATE")"
 
 # Real code committed since PREV (excluding the mission metadata dir)?
 CODE="$(rtk git diff --name-only "$PREV..HEAD" -- . ":(exclude).claude/missions/$SLUG" 2>/dev/null || true)"
 
 if [[ -n "$CODE" && -n "$FID" ]]; then
-  SHA="$(rtk git rev-parse HEAD)"
+  # Adopt at the newest real-code commit, not a trailing metadata-only commit.
+  SHA="$(rtk git log -1 --format=%H "$PREV..HEAD" -- . ":(exclude).claude/missions/$SLUG" 2>/dev/null || true)"
+  [[ -z "$SHA" ]] && SHA="$(rtk git rev-parse HEAD)"
   TMP="$STATE.tmp.$$"
   jq --arg f "$FID" --arg s "$SHA" --arg t "$(date -u +%FT%TZ)" '
     (.features[] | select(.id == $f)) |= (
