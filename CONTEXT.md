@@ -76,4 +76,4 @@ De tussentijdse review na elke 4 goedgekeurde stappen van een steps-run: twee do
 
 ### walkthrough
 
-Het leesbare rapport per mijlpaal (sjabloon gedocumenteerd in `skills/engineering/fwd:mission-run/REFERENCE.md`). Leesbaar in ±5 minuten. Begint altijd met "In één oogopslag".
+Het leesbare rapport per mijlpaal (sjabloon gedocumenteerd in `skills/engineering/mission-run/REFERENCE.md`). Leesbaar in ±5 minuten. Begint altijd met "In één oogopslag".

@@ -8,7 +8,7 @@
   },
   "plugins": [
     {
-      "name": "fwd-skills",
+      "name": "fwd",
       "source": "./",
       "description": "HeadingFWD's skills plus the fwd:mission-* multi-agent orchestration layer (orchestrator + coder + adversarial validators). Install as a plugin (not via npx skills add) to get the bundled mission agents."
     }

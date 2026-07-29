@@ -45,12 +45,12 @@ fi
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 STATUS=0
 check_block "Shared tool prohibitions" \
-  agents/fwd-mission-coder.md \
-  agents/fwd-mission-reviewer.md \
-  agents/fwd-mission-user-tester.md \
-  agents/fwd-steps-doubt.md \
-  agents/fwd-steps-reviewer.md || STATUS=1
+  agents/mission-coder.md \
+  agents/mission-reviewer.md \
+  agents/mission-user-tester.md \
+  agents/steps-doubt.md \
+  agents/steps-reviewer.md || STATUS=1
 check_block "Shared Codex handoff" \
-  "skills/engineering/fwd:codex-review-plan/SKILL.md" \
-  "skills/engineering/fwd:codex-review-implementation/SKILL.md" || STATUS=1
+  "skills/engineering/codex-review-plan/SKILL.md" \
+  "skills/engineering/codex-review-implementation/SKILL.md" || STATUS=1
 exit $STATUS
