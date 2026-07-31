@@ -1,6 +1,6 @@
 ---
 name: steps-plan
-description: Plan een klus als een reeks kleine, toetsbare stappen voor attended uitvoering met /fwd:steps-run — de lichte tegenhanger van fwd:mission-plan. Scope het doel kort, pin een Definition of Done mét concreet eindbeeld (input→output-voorbeeld of ASCII-mockup), spreek de testplekken (seams) af, en lever een genummerde stappenlijst binnen een stappenbudget — een getal als eerste argument-token = precies zoveel stappen (gate-momenten), `auto` = fijnmazig met één aantoonbaar gedrag per stap, default 3; een stap bundelt dan meerdere gedragingen, elk met een machinaal toetsbaar klaar-criterium. Use when the user zegt "plan dit in stappen", "maak een stappenplan", "steps-plan", of invokes /fwd:steps-plan. Niet voor onbeheerd/overnight werk — dat is fwd:mission-plan.
+description: Plan een klus als een reeks kleine, toetsbare stappen voor uitvoering met /fwd:steps-run — de lichte tegenhanger van fwd:mission-plan. Scope het doel kort, pin een Definition of Done mét concreet eindbeeld (input→output-voorbeeld of ASCII-mockup), spreek de testplekken (seams) af, en lever een genummerde stappenlijst binnen een stappenbudget — een getal als eerste argument-token = precies zoveel stappen (gate-momenten), `auto` = fijnmazig met één aantoonbaar gedrag per stap, default 3; een stap bundelt dan meerdere gedragingen, elk met een machinaal toetsbaar klaar-criterium. Vraagt bij het akkoord ook de uitvoermodus — attended (jij beslist per stap) of autonoom (alle stappen achter elkaar, commit per stap) — en legt die vast als `run_mode`. Use when the user zegt "plan dit in stappen", "maak een stappenplan", "steps-plan", of invokes /fwd:steps-plan. Niet voor onbeheerd/overnight werk — dat is fwd:mission-plan.
 argument-hint: "[<N>|auto] <het doel, of leeg om interactief te scopen>"
 allowed-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, AskUserQuestion, Write
 ---
@@ -74,6 +74,21 @@ Draai vóór het tonen de **zelf-lint** en verwerk de uitkomst stilzwijgend (mel
 
 Laat de gebruiker in plain text herordenen, splitsen of schrappen.
 
+### 3a. Uitvoermodus (bij hetzelfde akkoord — geen extra beurt)
+
+Sluit het voorstel van stap 3 af met deze regel:
+
+> `ok` = attended (jij beslist per stap) · `ok auto` = autonoom (ik werk alle stappen achter elkaar af) · of geef aan wat je aan wil passen.
+
+- **attended** (default) — `/fwd:steps-run` stopt na elke stap met een stap-rapport; jouw `ok` is de commit.
+- **autonoom** — alle stappen achter elkaar, per stap dezelfde rigor (rood, groen, volledige gate, verse reviewer) en een eigen commit, met één eindrapport aan het slot. Breekt terug naar attended zodra een stap vastloopt, de gate rood blijft, de reviewer een FAIL geeft of een doubt-agent een concreet voorstel doet.
+
+De keuze landt als `run_mode` in `state.json` en in de headerregel van `plan.md`. Het is een default, geen slot: `/fwd:steps-run <slug> auto` of `<slug> attended` overrulet 'm per sessie.
+
+**Advies in één zin bij twijfel.** Autonoom heeft geen menselijke correctie tussen de stappen — een verkeerde aanname in stap 2 draagt door tot het eindrapport. Raakt de klus de architectuur, een migratie of onbekend terrein, adviseer dan attended (of: attended tot de eerste tussenbalans, daarna `auto`); is het afgebakend uitvoerwerk op bekend terrein, dan is autonoom prima.
+
+Er is bewust géén argument-token voor de modus: `auto` is bij deze skill al het stappenbudget (`/fwd:steps-plan auto <doel>` = fijnmazig), en een tweede betekenis zou botsen.
+
 ### 4. Gate-commando
 
 ```
@@ -103,7 +118,7 @@ Commit beide (alleen deze twee bestanden) **in de worktree** — gebruik het `wo
 
 Sluit af met exact deze regels (enkelvoud bij M=1: schrijf `1 stap`, nooit `1 stappen` — geldt ook voor de commit message hierboven):
 
-> Stappenplan staat op branch `<branch>` (worktree `<worktree>`): **<M> stappen**.
+> Stappenplan staat op branch `<branch>` (worktree `<worktree>`): **<M> stappen**, uitvoermodus **<attended | autonoom>**.
 > Start met: `/fwd:steps-run <slug>`
 
 ## Templates
@@ -113,7 +128,7 @@ Sluit af met exact deze regels (enkelvoud bij M=1: schrijf `1 stap`, nooit `1 st
 ```markdown
 # Stappenplan: <titel>
 
-*Doel: <één zin>. Branch: `<branch>`. Gate: `<gate-commando>`. Stappenbudget: <bijv. "3 (default)", "5" of "auto">.*
+*Doel: <één zin>. Branch: `<branch>`. Gate: `<gate-commando>`. Stappenbudget: <bijv. "3 (default)", "5" of "auto">. Uitvoermodus: <attended | autonoom>.*
 
 ## Definition of Done
 1. <criterium>
@@ -145,6 +160,7 @@ De checkbox-regel blijft **één regel** — steps-run's `record-step.sh` vinkt 
   "base_branch": "<base>",
   "created_at": "<UTC ISO-8601>",
   "completed_at": null,
+  "run_mode": "attended",
   "gate_command": "<commando>",
   "seams": ["<interface>"],
   "steps": [
@@ -163,7 +179,7 @@ De checkbox-regel blijft **één regel** — steps-run's `record-step.sh` vinkt 
 }
 ```
 
-`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `approved_mode` (`attended` | `autonomous`, default `attended`) legt vast hoe de stap is goedgekeurd — steps-run kent naast het per-stap `ok` ook een autonome `auto`-afronding die alle resterende stappen zonder tussenstops afmaakt en pas na één eindreview commit. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen. Een gebundelde stap met gemengd bewijs (tests én commando's) houdt `done_criterion.type: "test"`; `value` benoemt dan ook de command-bewezen delen, en de sub-bullets in plan.md dragen per gedraging het precieze bewijs. steps-run's rood-overslaan bij commando-bewijs geldt per gedraging, niet per stap.
+`done_criterion.type` is `"test"` of `"command"`; bij `"command"` komt er een `"expected"`-veld bij met het verwachte resultaat. `status` per stap: `todo` | `done` | `skipped`. `run_mode` (`attended` | `autonomous`, default `attended` als het veld ontbreekt) is de uitvoermodus uit stap 3a; steps-run leest 'm, een argument-token overrulet 'm per sessie. `approved_mode` per stap (`attended` | `autonomous`, default `attended`) legt het **commit-regime** van die stap vast — niet wie 'm goedkeurde: `attended` = een eigen commit (het per-stap `ok`, én elke stap van een run die vanaf de start autonoom draait), `autonomous` = opgestapeld voor één eindcommit (de `auto` die middenin een attended run start). steps-run leidt daaruit af of een onderbroken run nog een commit tegoed heeft. `deferrals` vult steps-run bij akkoord (bewust-uitgesteld-lijst: `{"note": "...", "when": "..."}`). Er is bewust geen los voortgangsveld: "huidige stap" is altijd *de eerste stap met status `todo`* — afgeleide waarheid kan niet liegen. Een gebundelde stap met gemengd bewijs (tests én commando's) houdt `done_criterion.type: "test"`; `value` benoemt dan ook de command-bewezen delen, en de sub-bullets in plan.md dragen per gedraging het precieze bewijs. steps-run's rood-overslaan bij commando-bewijs geldt per gedraging, niet per stap.
 
 ## Stijl
 

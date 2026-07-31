@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Record the approval of ONE step: mark it done in state.json (merging any deferrals from
-# stdin) and tick the plan.md checkbox. In attended mode it then commits code + state
+# stdin) and tick the plan.md checkbox. Without --no-commit it then commits code + state
 # atomically (the tree was clean when the step started, so everything dirty now IS the step).
 # With --no-commit it updates state + checkbox but commits nothing and leaves HEAD untouched
-# — the autonomous path, which accumulates steps and makes one commit at the end of the run.
-# The mode is recorded on the step as approved_mode (attended | autonomous).
+# — the accumulating path, taken when `auto` starts mid-run on top of uncommitted work and
+# ends in one commit via finalize-autonomous.sh.
+# The choice is recorded on the step as approved_mode, which names the COMMIT REGIME, not who
+# approved: attended = its own commit (the per-step `ok`, and every step of a run that was
+# autonomous from the start — same clean-tree assumption), autonomous = accumulated, still
+# owed a commit. status.sh derives pending_autonomous_commit from exactly that.
 # Usage:
 #   echo '{"deferrals":[{"note":"…","when":"…"}]}' | record-step.sh [--no-commit] <slug> <step-id> "<commit message>"
 #   (stdin is optional)

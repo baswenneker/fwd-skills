@@ -48,7 +48,7 @@ Het verplichte "zo ziet klaar eruit"-blok in een stappenplan: een letterlijk inp
 
 ### gate-moment
 
-Het stopmoment na elke stap in een steps-run. De gebruiker reageert plain text: `ok` (commit + door), `m` (meer detail), `stop` (pauze) of vrije tekst (correctie/vraag/planwijziging). Akkoord op het gate-moment is het enige dat een commit veroorzaakt.
+Het stopmoment na elke stap in een attended steps-run. De gebruiker reageert plain text: `ok` (commit + door), `auto` (autonoom afmaken), `m` (meer detail), `stop` (pauze) of vrije tekst (correctie/vraag/planwijziging). In attended modus is akkoord op het gate-moment het enige dat een commit veroorzaakt; een autonome run kent geen gate-momenten en commit op een schoon reviewer-oordeel (zie [uitvoermodus](#uitvoermodus)).
 
 ### golden example
 
@@ -73,6 +73,10 @@ Het aantal gate-momenten waarin `fwd:steps-plan` een klus snijdt. Eerste token v
 ### tussenbalans
 
 De tussentijdse review na elke 4 goedgekeurde stappen van een steps-run: twee doubt-subagents beantwoorden elk één vraag ("waar zijn we het minst zeker over?" / "wat is de grootste blinde vlek?") in caveman-stijl met bewijs-verwijzingen; de orchestrator consolideert in helder Nederlands mét verdict.
+
+### uitvoermodus
+
+Hoe een steps-run z'n stappen afwerkt, afgesproken in `fwd:steps-plan` en vastgelegd als `run_mode` in `state.json`. **attended** (default): stoppen na elke stap met een [stap-rapport](#stap-rapport); het akkoord van de gebruiker is de commit. **autonoom**: alle stappen achter elkaar met dezelfde rigor per stap (rood, groen, volledige gate, verse reviewer) en een eigen commit per stap, met één eindrapport aan het slot; breekt terug naar attended bij vastlopen, een rode gate, een reviewer-FAIL of een doubt-agent met een concreet voorstel. Een argument-token bij `/fwd:steps-run <slug> auto|attended` overrulet de afspraak voor die sessie zonder `state.json` aan te passen. Onderscheid met een mission: een autonome steps-run blijft één sessie met één stappenplan en de hoofdsessie als schrijver; missions zijn onbeheerd, multi-agent en werken met een PRD en mijlpalen.
 
 ### walkthrough
 

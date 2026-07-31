@@ -17,6 +17,7 @@
     "./skills/productivity/explain",
     "./skills/productivity/handoff",
     "./skills/productivity/premortem",
-    "./skills/productivity/jip-janneke"
+    "./skills/productivity/jip-janneke",
+    "./skills/productivity/unsure"
   ]
 }

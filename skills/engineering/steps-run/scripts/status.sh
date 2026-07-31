@@ -6,15 +6,19 @@
 # Usage:
 #   status.sh            -> one line per steps-plan (from the steps/* branches)
 #   status.sh <slug>     -> key=value detail (next step, worktree presence, dirty tree,
-#                           and pending_autonomous_commit: yes when the dirty worktree holds
-#                           an interrupted autonomous run's work, still awaiting one commit)
+#                           run_mode as planned, and pending_autonomous_commit: yes when the
+#                           dirty worktree holds an interrupted autonomous run's work, still
+#                           awaiting one commit)
 # Exit codes: 0 ok · 2 no such plan · 3 corrupt state.json
 set -euo pipefail
 
 command -v jq >/dev/null 2>&1 || { echo "missing-jq — install jq (brew install jq)" >&2; exit 1; }
 REPO_ROOT="$(dirname "$(rtk git rev-parse --path-format=absolute --git-common-dir)")"
 WT_DIR="${FWD_STEPS_WORKTREE_DIR:-$REPO_ROOT/.trees}"
+# The skill passes "$ARGUMENTS" verbatim, which may carry a trailing mode token
+# ("<slug> auto"). Only the slug concerns this script; the mode is the skill's business.
 SLUG="${1:-}"
+SLUG="${SLUG%% *}"
 
 # Echo a plan's state.json: from its worktree if materialised, else straight from the
 # branch (committed) via `git show`. Empty output on failure.
@@ -41,7 +45,7 @@ if [[ -z "$SLUG" ]]; then
     js="$(read_state "$s")"
     if [[ -n "$js" ]] && jq -e . >/dev/null 2>&1 <<<"$js"; then
       wt="afwezig"; [[ -d "$WT_DIR/steps/$s" ]] && wt="actief"
-      jq -r --arg wt "$wt" '"\(.slug)\t\(.status)\t\([.steps[] | select(.status == "done")] | length)/\(.steps | length) stappen\tbranch=\(.branch)\tworktree=\($wt)\t\(.title)"' <<<"$js"
+      jq -r --arg wt "$wt" '"\(.slug)\t\(.status)\t\([.steps[] | select(.status == "done")] | length)/\(.steps | length) stappen\tbranch=\(.branch)\tworktree=\($wt)\tmodus=\(.run_mode // "attended")\t\(.title)"' <<<"$js"
     else
       printf '%s\tcorrupt-of-onleesbaar\n' "$br"
     fi
@@ -81,6 +85,7 @@ jq -r --arg wt "$WT_STATE" --arg wtpath "$WT_PATH" --arg dirty "${DIRTY:+yes}" '
     "worktree_path=\($wtpath)",
     "progress=\($done)/\($total)",
     "gate=\(.gate_command)",
+    "run_mode=\(.run_mode // "attended")",
     "dirty_tree=\(if $dirty == "yes" then "yes" else "no" end)",
     "pending_autonomous_commit=\(if ($dirty == "yes" and (($lastdone.approved_mode // "attended") == "autonomous")) then "yes" else "no" end)",
     (if $next == null then
