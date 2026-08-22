@@ -2,11 +2,15 @@
 # Record a milestone's validation outcome and commit the checkpoint on the branch.
 # Args: <slug> <milestone-id> <validation_status>   (pending|gates_passed|failed|passed)
 # Stdin: JSON {"gate_results":[...], "vc_results":[{id,passed,evidence,report_path}, ...],
-#              "concerns":[{location,issue,why_it_matters,category}, ...]}
+#              "concerns":[{location,issue,why_it_matters,category}, ...],
+#              "advisories":[{location,suggestion}, ...]}
 #   vc_results are merged BY ID onto the milestone's existing assertions.
 #   concerns (OPTIONAL, schema v5): when the key is present, it REPLACES the
 #   milestone's concerns for this round (an empty array clears them); when the
 #   key is absent the field is left untouched — older payloads stay valid.
+#   advisories (OPTIONAL, schema v6): same replace-or-leave rule as concerns.
+#   They are the reviewer's non-blocking simplicity findings; without this field
+#   they had nowhere to land and were lost after the review file was written.
 # Circuit breaker: passed -> reset; failed -> increment. Concerns touch neither.
 set -euo pipefail
 
@@ -38,6 +42,12 @@ if [[ "$HAS_CONCERNS" == "true" ]]; then
     || { echo "invalid concerns on stdin — must be an array (or absent) — refusing to record" >&2; exit 1; }
 fi
 CONCERNS="$(jq -c '.concerns // []' <<<"$IN")"
+HAS_ADVISORIES="$(jq 'has("advisories")' <<<"$IN")"
+if [[ "$HAS_ADVISORIES" == "true" ]]; then
+  jq -e '.advisories == null or (.advisories | type == "array")' >/dev/null 2>&1 <<<"$IN" \
+    || { echo "invalid advisories on stdin — must be an array (or absent) — refusing to record" >&2; exit 1; }
+fi
+ADVISORIES="$(jq -c '.advisories // []' <<<"$IN")"
 
 jq -e --arg m "$MID" 'any(.milestones[]; .id == $m)' "$STATE" >/dev/null 2>&1 \
   || { echo "no such milestone: $MID" >&2; exit 1; }
@@ -45,7 +55,8 @@ jq -e --arg m "$MID" 'any(.milestones[]; .id == $m)' "$STATE" >/dev/null 2>&1 \
 TMP="$STATE.tmp.$$"
 jq --arg m "$MID" --arg vs "$VSTATUS" --arg t "$(date -u +%FT%TZ)" \
    --argjson g "$GATES" --argjson v "$VCS" \
-   --argjson hc "$HAS_CONCERNS" --argjson c "$CONCERNS" '
+   --argjson hc "$HAS_CONCERNS" --argjson c "$CONCERNS" \
+   --argjson ha "$HAS_ADVISORIES" --argjson a "$ADVISORIES" '
   ($v | map({key: .id, value: .}) | from_entries) as $vmap
   | .milestones |= map(
       if .id == $m then
@@ -61,6 +72,7 @@ jq --arg m "$MID" --arg vs "$VSTATUS" --arg t "$(date -u +%FT%TZ)" \
         # Concerns are per-round state, not history: replace when the payload
         # carries the key, leave untouched when it does not (schema v5, additive).
         | (if $hc then .concerns = $c else . end)
+        | (if $ha then .advisories = $a else . end)
         | .validation_status = $vs
         | .validated_at = $t
       else . end)

@@ -31,11 +31,11 @@ if [[ ! -f "$TARGET" ]]; then
     exit 0
 fi
 
+# No jq means no merge is possible. Refuse — never overwrite an existing settings
+# file with the snippet alone; that silently discards every setting already in it.
 if ! command -v jq >/dev/null 2>&1; then
-    printf '⚠  jq not found — backing up %s to %s.bak and replacing\n' "$TARGET" "$TARGET" >&2
-    cp "$TARGET" "${TARGET}.bak"
-    printf '%s\n' "$NEW_JSON" > "$TARGET"
-    exit 0
+    printf '⚠  jq ontbreekt — geen merge uitgevoerd; %s is ongewijzigd gelaten. Installeer jq en draai /fwd:setup opnieuw.\n' "$TARGET" >&2
+    exit 2
 fi
 
 MERGED=$(jq -s '

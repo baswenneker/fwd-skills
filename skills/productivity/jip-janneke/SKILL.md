@@ -1,7 +1,7 @@
 ---
 name: jip-janneke
 description: |
-  Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only; output is always Dutch unless another language is explicitly requested. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke.
+  Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only; output is always Dutch unless another language is explicitly requested. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "leg uit in jip janneke", "leg dit uit voor een leek", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke.
 
   Not fwd:explain (interactive layered walkthrough — explains, does not rewrite).
   Not fwd:caveman (compresses WITH abbreviations, cuts to fragments — opposite direction).
@@ -62,7 +62,9 @@ Then stop.
 
 ## Step 2 — Rewrite rules
 
-Apply all four rules. No exceptions.
+**The reader.** An experienced software/AI builder who is a layperson on devops, cloud, and infrastructure, and who forwards the rewrite to colleagues. English technical terms may stay — provided each gets its one-line explanation at first use. Never write as if the reader already knows the source's vocabulary.
+
+Apply all rules. No exceptions.
 
 ### Rule A — Abbreviations written out in full at first use
 
@@ -79,13 +81,27 @@ Replace jargon with plain everyday words wherever possible. When a technical ter
 
 **Technical terms keep their established English form — also in a Dutch rewrite.** The explanation is written in the output language; the term itself is never translated. Never coin a Dutch calque for an English concept: write "de gate (de selectiestap die bepaalt welke kandidaten doorgaan)", never "toelatingspoort"; write "isolation families", never "isolatie-families". A contrived Dutch translation is harder to read than the English term it replaces — the opposite of what this skill is for.
 
-### Rule C — ASCII diagrams for structured content
+### Rule B2 — Labels and numbers are replaced by their content
 
-Whenever the source has structure — a flow, a hierarchy, a before/after comparison, a sequence of steps — render it as an ASCII diagram using `┌─┐ │ └─┘ → ↓ ─→`. Never draw decorative diagrams. If the source already contains a useful diagram, re-use it unchanged.
+Any code that only has meaning inside the source — H4, RQ1c, S2, tier 2, Gate 1, #6, DoD #3, R7 — is replaced in the rewrite by what it refers to. Keep the code at most in parentheses after the content: "de defaults-tabel (issue 6)", never "#6" alone.
 
-### Rule D — Concise and organised
+Two numbering schemes side by side (say RQ numbers and issue numbers)? Put one mapping table at the top: column "in de tekst" next to column "waar het over gaat". Never invent your own label or metaphor as a name ("wereld 2", "ronde 2", "de vier rechten") — name the thing.
 
-Use short sentences (one idea per sentence). Use headers and bullet lists to group related points. The rewrite must be **at most as long as the source text** — trim padding, redundancy, and filler, never content.
+### Rule C — A picture for structure
+
+Whenever the source has structure — a flow, a hierarchy, a before/after comparison, a sequence of steps — draw it. In chat: ASCII (`┌─┐ │ └─┘ → ↓ ─→`), always — mermaid does not render in the terminal. Mermaid is allowed only when the rewrite itself targets an artifact or markdown file, and then render the diagram for real before delivering: check for truncated labels and dark-theme legibility.
+
+Is the source longer than ~60 lines, or does it describe an architecture, deployment, or authentication flow? Then end the rewrite with one sentence: "Zal ik hier een html explainer van maken?" If the user accepts, the artifact is a separate follow-up step (see Step 4). No decorative diagrams — only when the picture shows the mechanism. If the source already contains a useful diagram, re-use it unchanged.
+
+### Rule D — Short and organised, measurably
+
+Sentences average at most 15 words; no sentence above 25. One idea per sentence; paragraphs at most 100 words. Active voice ("Azure bouwt de container", not "de bouw van de container vindt plaats"); turn nominalisations back into verbs. Headers must cover the text below them. The rewrite must be **at most as long as the source text** — trim padding, redundancy, and filler, never content. Never drop the key term to keep the text simple: name it and explain it.
+
+### Rule E — Every abstraction gets a concrete case
+
+As soon as the text introduces an abstract concept (protocol, inference, managed identity), one concrete case follows within two sentences: an example line, a number, an input→output pair, or a three-sentence scenario. If the source lacks one, derive it from the source itself — never invent facts (see Step 3).
+
+An analogy is allowed and works well ("een nakijkmachine voor proefwerken"), but always gets one sentence after it naming where the comparison breaks down. Without that sentence: no analogy.
 
 ## Step 3 — Meaning preservation
 
@@ -95,7 +111,7 @@ If a passage is genuinely ambiguous, reproduce it faithfully rather than resolvi
 
 ## Step 4 — Output
 
-Output lands in chat only. No files written.
+Output lands in chat only. No files written — with one exception: if the user accepts the html explainer offer from Rule C, that artifact follows as a separate step after the chat rewrite.
 
 **Output language is Dutch by default — regardless of the source language.** English source → Dutch rewrite. Only when the user explicitly asks for another language ("in plain English", "in het Engels", …) does the rewrite follow that language instead.
 
@@ -111,13 +127,23 @@ Render in this order, always:
 
 2. **Rewritten text** — the full rewrite, applying all rules from Step 2 and Step 3.
 
-3. **Abbreviations list** — include **only** when the rewrite expanded 4 or more distinct abbreviations under Rule A (household abbreviations don't count and don't appear).
+3. **Term list** — include **only** when the rewrite explained 4 or more distinct abbreviations and technical terms combined under Rule A/B (household abbreviations don't count and don't appear).
    Format:
    ```
-   **Afkortingen** / **Abbreviations**
-   - PRD — Product Requirements Document
-   - API — Application Programming Interface
+   **Termen** / **Terms**
+   - PRD — Product Requirements Document: wat er gebouwd moet worden en waarom
+   - managed identity — een Azure-account voor een applicatie, zonder wachtwoord
    …
    ```
 
 Do not add a preamble ("Here is the rewrite…"). Do not add a closing remark. Start directly with the summary block.
+
+## Step 5 — Count these before sending
+
+1. Any source code or label left without its content next to it? → replace it (Rule B2).
+2. Any abstract concept without a concrete case within two sentences? → add one (Rule E).
+3. Any abbreviation or technical term without its explanation at first use? → add it (Rule A/B).
+4. A sequence or comparison in the source without a diagram in the rewrite? → add one (Rule C).
+5. Any sentence above 25 words? → split it.
+
+No open-ended question like "is this clear enough" — only these five counts.

@@ -85,6 +85,8 @@ bash "${CLAUDE_SKILL_DIR}/scripts/reconcile.sh" <slug>
 
 `adopted <fid>` → a feature was committed last tick but never recorded; now `done`. `cleaned` → partial crash leftovers discarded. `clean` → nothing to do.
 
+On `adopted <fid>`, check whether that feature closes its milestone: every feature of that milestone is `done` **and** its `validation_status` is still `pending`. If so, run 2.5 for that milestone **before** anything else. Adoption marks the feature, never the milestone — without this check `pick-next-unit.sh` returns no work, the loop reads that as "everything done", and finalize runs on a milestone that was never validated.
+
 Then repeat until `pick-next-unit.sh` reports no work.
 
 **2.1 — Pick the next unit.**
@@ -98,7 +100,7 @@ Outputs JSON `{"feature": {...}, "closes_milestone": "M2"|null}` for the first f
 **2.2 — Brief yourself.** From the worktree's `.claude/missions/<slug>/`, read the feature's acceptance criteria: its `vc_ids` mapped to the assertions in `validation-contract.md`, plus the relevant `mission.md` context. The previous feature's code is already present (inherited via git).
 
 **2.3 — Spawn the coder.** Agent tool, `subagent_type: fwd:mission-coder`. The prompt MUST pin:
-- the worktree path `<WT>` (the coder works there, `cd`'d in),
+- the worktree path `<WT>` — the coder passes it on every call (`rtk git -C <WT> …`, absolute paths); a `cd` does not survive between its Bash calls,
 - the ONE feature (id, title) and its acceptance criteria (the VC-IDs verbatim),
 - the mission's **design budget** — copy the "Strategy & Design Budget" section verbatim from `mission.md`; the coder must stay within it,
 - the feature's `reading_list` from `state.json` (schema v6) as the coder's **entire orientation scope**, with the explicit instruction: "read only this; do not re-scan the repo." This is what makes the diet work — a fresh coder that re-reads the whole codebase every spawn pays the orientation cost the sizing rule in `fwd:mission-plan` step 3 was written to eliminate. `reading_list` absent (v1–v5 plans) → omit this bullet; the coder orients from the pinned VC-IDs and design budget alone.
@@ -140,7 +142,7 @@ bash "${CLAUDE_SKILL_DIR}/scripts/boot-app.sh" <slug>
 
 - `no-boot` (exit 2) → record user-testing VCs `null` ("no boot command captured").
 - `boot-timeout` / `boot-crashed` (exit 1) → record `null` ("app did not boot").
-- `ready url=<url>` (exit 0) → spawn `fwd:mission-user-tester` (Agent), pinning the worktree, the URL, the `smoke_commands`, the `playwright_present` flag, and the `user-testing` assertions verbatim. Returns `{narrative, verdicts}` — write its narrative to `handoffs/<milestone-id>-usertest.md`.
+- `ready url=<url>` (exit 0) → spawn `fwd:mission-user-tester` (Agent), pinning the worktree, the URL, the `smoke_commands`, the `playwright_present` flag, and the `user-testing` assertions verbatim. Returns `{narrative, verdicts, concerns}` — write its narrative to `handoffs/<milestone-id>-usertest.md` and merge its concerns with the reviewer's into the one concerns list (they share the single remediation pass).
 
 Always tear down afterwards (whatever the boot outcome):
 
@@ -153,11 +155,11 @@ bash "${CLAUDE_SKILL_DIR}/scripts/teardown-app.sh" <slug>
 *Record + commit:*
 
 ```
-echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>],"concerns":[<reviewer concerns, verbatim>]}' \
+echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-testing nulls, each {id,passed,evidence,report_path}>],"concerns":[<reviewer concerns + user-testing concerns, verbatim>],"advisories":[<reviewer advisories, verbatim>]}' \
   | bash "${CLAUDE_SKILL_DIR}/scripts/record-validation.sh" <slug> <milestone-id> <status>
 ```
 
-*Remediation — ONE bounded pass (concerns and failures share it).* Trigger: the milestone came back `failed` (gate or scrutiny VC) **or** the reviewer raised ≥1 concern (a defect **outside** the contract — CONTEXT.md "concern"). Exactly **one** pass — never a separate pass per channel:
+*Remediation — ONE bounded pass (concerns and failures share it).* Trigger: the milestone came back `failed` (gate or scrutiny VC) **or** the reviewer or the user-tester raised ≥1 concern (a defect **outside** the contract — CONTEXT.md "concern"). Exactly **one** pass — never a separate pass per channel:
 
 1. Re-spawn ONE coder (2.3) on the affected feature(s), with the failing verdicts **and** the concerns **verbatim** in the prompt. Respect the attempt cap: a feature already at `FWD_MISSION_MAX_ATTEMPTS` is not re-spawned — the milestone is blocked instead.
 2. If the coder committed a fix, **record that feature again** — immediately, before re-validating:
@@ -169,7 +171,7 @@ echo '{"gate_results":<gate-results>,"vc_results":[<reviewer verdicts + user-tes
 
 Concerns never change `validation_status`, and the breaker only moves on a `failed` record — a milestone that ends `passed`/`gates_passed` after remediation never increments it. Still `failed` or cap hit after the pass → the milestone is blocked (`record-validation.sh` already incremented the breaker); log it and continue. Surviving concerns land verbatim in the walkthrough's "Zorgen" section and the eindrapport's "Open punten" — parking a found defect nowhere is not an option.
 
-*Compile the milestone walkthrough* (regardless of `validation_status` — every milestone gets one): delegate the **compiling** to `fwd:mission-scribe` (Agent tool) — never write it yourself. Pin in its prompt: worktree path, milestone id, commit range, the final `vc_results` (reviewer + user-testing verdicts/nulls), the surviving concerns. The scribe follows the walkthrough template in REFERENCE.md ("In één oogopslag" + verdictbalans; reading order; per-feature what/why + key files + **bewijs per criterium** uit `vc_results` + self-verify commands; "Zorgen" from the surviving concerns; "Nieuw t.o.v. het design budget"; advisories) and itself runs the verification pass against the diff before returning:
+*Compile the milestone walkthrough* (regardless of `validation_status` — every milestone gets one): delegate the **compiling** to `fwd:mission-scribe` (Agent tool) — never write it yourself. Pin in its prompt: worktree path, milestone id, commit range, the final `vc_results` (reviewer + user-testing verdicts/nulls), the surviving concerns, and the reviewer's advisories verbatim (the walkthrough template has a section for them — without them in the prompt that section can only stay empty). The scribe follows the walkthrough template in REFERENCE.md ("In één oogopslag" + verdictbalans; reading order; per-feature what/why + key files + **bewijs per criterium** uit `vc_results` + self-verify commands; "Zorgen" from the surviving concerns; "Nieuw t.o.v. het design budget"; advisories) and itself runs the verification pass against the diff before returning:
 
 1. Build the milestone's file list with `rtk git -C <WT> diff --name-only <range>`. Always `-C <WT>` — the main session is not checked out on the mission branch; only inside the worktree does HEAD point at the mission code. (Membership check: an extra rtk line cannot make a real path disappear, so no filtering needed — same as `record-feature.sh` and `reconcile.sh`.)
 2. Every path the walkthrough names must appear in that list, or exist on HEAD of the mission branch (`rtk git -C <WT> cat-file -e HEAD:<path>`) — a path from an earlier milestone exists on HEAD but not in this range.

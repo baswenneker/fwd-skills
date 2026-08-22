@@ -32,4 +32,17 @@ for feature in "${FEATURES[@]}"; do
     rm -f "$stdout_file" "$stderr_file"
 done
 
+# Which of the files we may have touched are under version control? Those changes
+# land in someone else's merge request unless the user decides otherwise, so the
+# report must name them. Silent on a repo where none are tracked.
+echo "### tracked"
+if rtk git rev-parse --git-dir >/dev/null 2>&1; then
+    for f in CLAUDE.md .gitignore .claude/settings.local.json; do
+        if rtk git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+            echo "$f"
+        fi
+    done
+fi
+echo
+
 exit 0

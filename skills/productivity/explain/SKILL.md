@@ -9,8 +9,6 @@ allowed-tools: Read, Bash, Glob, Grep, WebFetch
 
 Take anything heavy, build a mental model on demand: a one-screen frame (problem + mental model + map) first, then one chunk at a time when the user asks. The mental-model form adapts to the content; mechanical chunking does not replace pedagogical scaffolding. Chunk shape changes per input type (phases for a plan, sections for a code file, files for a diff) — the layered structure stays the same.
 
-Opposite of `/fwd:plan` and `/fwd:write-doc` — those *create*, this one *explains*.
-
 ## Step 1 — Resolve the target
 
 **Never prompt for confirmation — just dive in.** Wrong target → the user will tell you.

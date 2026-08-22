@@ -53,4 +53,13 @@ check_block "Shared tool prohibitions" \
 check_block "Shared Codex handoff" \
   "skills/engineering/codex-review-plan/SKILL.md" \
   "skills/engineering/codex-review-implementation/SKILL.md" || STATUS=1
+check_block "Gedeelde taalregel" \
+  agents/steps-reviewer.md \
+  agents/steps-doubt.md \
+  agents/mission-scribe.md \
+  agents/mission-reviewer.md \
+  agents/mission-user-tester.md \
+  "skills/engineering/steps-run/SKILL.md" \
+  "skills/engineering/codex-review-plan/SKILL.md" \
+  "skills/engineering/codex-review-implementation/SKILL.md" || STATUS=1
 exit $STATUS

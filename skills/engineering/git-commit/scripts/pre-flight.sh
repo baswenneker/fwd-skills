@@ -32,7 +32,10 @@ KEY_EXT='\.(key|pem|p12|pfx|crt|cer)$'
 LOG_EXT='\.log$'
 LARGE_BYTES=1048576
 
-if ! status_output=$(rtk git status --porcelain 2>&1); then
+# --untracked-files=all is required: without it git collapses a new directory into a
+# single "?? dir/" line, so a risky file inside it (config/.env.production) passes every
+# name check below and still gets staged by `git add -A`.
+if ! status_output=$(rtk git status --porcelain --untracked-files=all 2>&1); then
   printf 'git-failed: %s\n' "${status_output//$'\n'/ }"
   exit 0
 fi

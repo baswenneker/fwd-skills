@@ -106,7 +106,13 @@ De **volledige gate** draait één keer per stap, ná de laatste gedraging, in d
 
 ### 4. Vers oordeel
 
-Spawn de reviewer (Agent tool, `subagent_type: fwd:steps-reviewer`). Prompt bevat **alleen**: worktree-pad `<WT>` (z'n repo-root — daar staat de code), stap-titel + álle gedragingen (bundel: de sub-bullets), per gedraging het klaar-criterium, gate-commando, rule-paden. **Niet** de diff, je code of je redenering — de reviewer trekt alles zelf op (`rtk git diff`): bespaart tokens, voorkomt doorvertel-bias.
+Spawn de reviewer (Agent tool, `subagent_type: fwd:steps-reviewer`). Prompt bevat **alleen**: worktree-pad `<WT>` (z'n repo-root — daar staat de code), stap-titel + álle gedragingen (bundel: de sub-bullets), per gedraging het klaar-criterium, gate-commando, rule-paden, én het pad `<WT>/.claude/steps/<slug>/plan.md` (de normatieve bron: Definition of Done, eindbeeld, afgesproken seams — zonder dat vlagt de reviewer een seam die het plan juist eist als over-engineering). **Niet** de diff, je code of je redenering — de reviewer trekt alles zelf op (`rtk git diff`): bespaart tokens, voorkomt doorvertel-bias.
+
+**Blokkerend spawnen.** Wacht in dezelfde beurt op het verdict; start de reviewer nooit als achtergrondtaak. Een achtergrondagent overleeft een sessieherstart niet netjes en komt terug als verlate melding waar niemand nog iets mee kan.
+
+Een stap zonder code-diff (alle klaar-criteria van het type `command`) krijgt **ook** een reviewer-run: de gate-herdraai en het commando-bewijs zijn dan het hele oordeel, en het verdict draagt `command_proof` in plaats van `test_quality`.
+
+Komt het antwoord niet als één JSON-object terug, vraag dan één keer terug om alléén dat object. Blijft dat uit, toon het stap-rapport met "reviewer gaf geen geldig verdict" als open punt — vul het oordeel nooit zelf in.
 
 Verwerk het JSON-verdict:
 
@@ -119,7 +125,7 @@ Verwerk het JSON-verdict:
 
 *Autonoom draait deze sectie niet* — daar volstaat één voortgangsregel per stap (sectie 6a); de uitleg komt gebundeld in het eindrapport.
 
-Render exact dit sjabloon (±25 regels, Nederlands, technische termen Engels, titels bóven de tekst — nooit ernaast — en geen code-snippets: die zitten achter `m`):
+Render exact dit sjabloon (±25 regels, Nederlands, technische termen Engels, titels bóven de tekst — nooit ernaast — en geen code-snippets: die zitten achter `m`). De ingevulde tekst volgt de "Gedeelde taalregel" onderaan dit bestand — geen statuscodes of skill-interne woorden in wat de gebruiker leest:
 
 ```
 ── Stap <N>/<M> — <titel> ──────────────────────────────
@@ -144,10 +150,10 @@ Veranderd (per map)
 Waarom je dit kunt vertrouwen
 <2-4 zinnen: eerst rood — de letterlijke falende testregel (bundel: één
 voorbeeld + "zo voor alle <n> gedragingen"; commando-bewijs: "commando →
-verwacht resultaat" i.p.v. rood) — daarna <n> nieuwe tests en gate <X/X>
-groen, en dat de reviewer de gate zelf herdraaide en testkwaliteit en
-rules keurde; sluit af met de narrative-zin van de reviewer tussen
-aanhalingstekens>
+verwacht resultaat" i.p.v. rood) — daarna <n> nieuwe tests en de volledige
+testrun <X>/<X> groen, en dat een meekijkende reviewer die run zelf
+herhaalde en testkwaliteit en de projectregels keurde; sluit af met de
+narrative-zin van de reviewer tussen aanhalingstekens>
 
 Volgende:   stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
 ── ok = commit & door · auto = autonoom afmaken · m = meer detail · stop = pauze · of typ correctie/vraag ──
@@ -162,6 +168,8 @@ Volgende:   stap <N+1>/<M> — <titel>    (of: dit was de laatste stap)
   ```
   echo '{"deferrals":[…]}' | ( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/record-step.sh" <slug> <step-id> "<conventional message>" )
   ```
+
+  **Stap zonder codewijziging** — alle klaar-criteria van deze stap zijn van het type `command` én de tree is schoon (een pure validatiestap): draai dezelfde regel mét `--state-only` als eerste argument. Dan wordt alleen `.claude/steps/<slug>/` gecommit, met een message in de vorm `chore(steps): <wat er is aangetoond>`. Zonder die vlag weigert het script — een schone tree leest het als "niets te committen".
 
   De message beschrijft het gedrag (`feat(auth): wachtwoord-reset e-mail met 1u-expiry`), zonder stap-codes. Uitvoer: `interim_review=due` → tussenbalans (sectie 7), beurt stopt · `status=done` → eindrapport (sectie 9), zelfde beurt · anders → volgende stap (terug naar stap 1), eindig bij háár rapport.
 - **`auto` / `autonoom`** (geldig overal waar `ok` mag) — resterende stappen autonoom afmaken: **Autonome modus** (sectie 6a).
@@ -190,7 +198,7 @@ Resterende stappen afmaken **zonder per stap te stoppen**, met per stap exact de
 5. **Registreer.** *Vanaf de start*: `echo '{"deferrals":[…]}' | ( cd "<WT>" && bash "${CLAUDE_SKILL_DIR}/scripts/record-step.sh" <slug> <step-id> "<conventional message>" )` — stap done, plan.md getikt, commit op de plan-branch; identiek aan een attended `ok`, alleen zonder het stopmoment. *Mid-run*: dezelfde aanroep met `--no-commit` — stap done, geen commit, `approved_mode=autonomous`. Deferrals registreer je in beide gevallen zoals attended: elke bewuste versimpeling die je een comment gaf, gaat als `{note, when}` mee.
 6. **Lees de uitvoer.** `interim_review=due` → tussenbalans (sectie 7; doubt-agents diffen zelf ongecommit-inclusief tegen de base-branch, geen snapshot meegeven): verdict "niets aanpassen" → automatisch door, concreet voorstel → break-out. `status=done` → *vanaf de start*: eindrapport (sectie 9, met het autonome overzicht erboven) · *mid-run*: eindreview (sectie 9a). Anders → volgende stap.
 
-**Voortgang tonen zonder te stoppen.** Meld per afgeronde stap één regel — `✓ <N>/<M> <titel> — gate groen, reviewer schoon` (of wat er afweek) — zodat een meelezende gebruiker kan ingrijpen. Geen stap-rapporten tussendoor: die zijn er voor een beslissing, en die valt hier pas aan het eind.
+**Voortgang tonen zonder te stoppen.** Meld per afgeronde stap één regel — `✓ <N>/<M> <titel> — alle checks groen, reviewer zonder bezwaren` (of wat er afweek) — zodat een meelezende gebruiker kan ingrijpen. Geen stap-rapporten tussendoor: die zijn er voor een beslissing, en die valt hier pas aan het eind.
 
 **Break-out naar attended** — beurt stopt, de gebruiker beslist — bij:
 - een **vastgelopen stap** (sectie 8);
@@ -202,7 +210,7 @@ Toon het "vastgelopen"-rapport (sectie 8) of de tussenbalans (sectie 7); de beur
 
 ### 7. Tussenbalans (elke 4 goedgekeurde stappen)
 
-Getriggerd door `interim_review=due` uit `record-step.sh`. Spawn **beide doubt-agents parallel** (één bericht, twee Agent-calls, `subagent_type: fwd:steps-doubt`). Elke prompt bevat alleen: worktree-pad `<WT>` als repo-root, de slug, de zojuist goedgekeurde stappen, en **één** vraag verbatim:
+Getriggerd door `interim_review=due` uit `record-step.sh`. Spawn **beide doubt-agents parallel én blokkerend** (één bericht, twee Agent-calls, `subagent_type: fwd:steps-doubt`) — parallel binnen dezelfde beurt mag, als achtergrondtaak nooit. Elke prompt bevat alleen: worktree-pad `<WT>` als repo-root, de slug, de zojuist goedgekeurde stappen, en **één** vraag verbatim:
 
 1. `What are you least confident about right now?`
 2. `What's the biggest thing I'm missing about the situation right now? What don't I realize?`
@@ -269,11 +277,11 @@ Gebouwd (nog niets gecommit):
   … (één regel per autonome stap)
   Totaal: <n> stappen · +<X>/-<Y> · <k> bestanden
 
-Gate:            <X/X> groen (na elke stap herdraaid)
-Reviewer:        <n>/<n> stappen schoon
-Doubt (na <id>): <verdict — "niets aanpassen" of wat er speelde>
-Deferrals:       <alle deferrals uit state.json; leeg → "niets">
-Open punt(en):   <reviewer-punten die open bleven, of "geen">
+Alle checks:       <X>/<X> groen (na elke stap opnieuw gedraaid)
+Reviewer:          <n>/<n> stappen zonder bezwaren
+Twijfelronde:      na stap <id> — <"niets aanpassen" of wat er speelde>
+Bewust uitgesteld: <uitgestelde punten uit state.json; leeg → "niets">
+Open punt(en):     <reviewer-punten die open bleven, of "geen">
 
 Zelf zien:       cd <WT> && rtk git diff <base>   ·   <gate-commando>
 
@@ -288,5 +296,10 @@ Brak de run halverwege uit → geen eindreview maar het "vastgelopen"-rapport (s
 ## Stijl
 
 - Nederlands, technische termen Engels; schrijf afkortingen uit bij eerste gebruik.
+- Alles wat de gebruiker leest (stap-rapport, tussenbalans, eindrapport, voortgangsregels) volgt de "Gedeelde taalregel" onderaan dit bestand.
 - Het stap-rapport is gevraagde uitleg, geen ballast — daarbuiten geldt ponytail's uitvoerregel: code eerst, geen essays, geen feature-tours.
 - Rapporteer uitkomsten trouw: falende gates met hun uitvoer, een niet-gedraaide reviewer als "niet gedraaid" — nooit aandikken.
+
+## Gedeelde taalregel
+
+Alle tekst die een mens leest — een narrative, walkthrough, evidence-regel, tussenbalans of eindrapport — is Nederlands, legt zichzelf uit en bevat geen skill-interne taal. Verboden in die tekst: statuscodes als S2, `gate ✓ 10/10`, `interim_review=not-due` en `run_mode`, kale criterium-codes als VC-3 en DoD #3, en de woorden "gate", "seam", "ponytail" en "YAGNI". Schrijf de zaak zelf: "alle 47 tests groen", "criterium 3: de CLI geeft exitcode 1 bij lege invoer", "de plek in de code waar de test aanhaakt". Ernstlabels uit ander gereedschap (P2, [high], Required) vertaal je: "ernstig genoeg om nu te fixen". Elke vakterm krijgt bij eerste gebruik één uitlegzin — in elk nieuw rapport opnieuw. Interne velden houden hun vocabulaire: JSON voor de orchestrator, tags, bestandsnamen en code-identifiers zijn geen gebruikerstekst.

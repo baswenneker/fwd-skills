@@ -99,7 +99,7 @@ Volg *Shared Codex handoff* voor presentatie. Skill-specifiek slotpunt: was de o
 
 - Altijd `--fresh` als eerste token — een onafhankelijke reviewthread, nooit stilzwijgend een oude coding-sessie voortzetten.
 - Altijd als openingsregel, verbatim: `READ-ONLY ADVERSARIAL REVIEW — no edits, no fixes, no file writes. Do not add --write. Diagnosis and review only.`
-- Nooit `--background` — de bevindingen moeten in dezelfde beurt landen.
+- Voeg zelf nooit `--background` toe. Landt de review tóch als achtergrondtaak (`Async agent launched`, `Codex Task started in the background`), meld dat in één regel, wacht de task-notificatie af of poll met `codex-companion.mjs status <task-id>`, en presenteer pas daarna — verzin nooit zelf een poll-lus met `sleep`.
 - Vermijd rauwe dubbele aanhalingstekens in de samengestelde tekst (de subagent wikkelt hem in `"..."` voor zijn eigen Bash-call) — gebruik enkele aanhalingstekens of parafraseer.
 - Vóór de aanroep: `rtk git status --porcelain --untracked-files=all` vastleggen; ná de aanroep opnieuw, en elke afwijking als eerste melden, vóór de bevindingen — niets wordt automatisch teruggedraaid.
 - Bevindingen presenteren op severity, exacte `file:line`, Codex' eigen feit/inferentie-onderscheid bewaard; "geen bevindingen" expliciet benoemen als de lijst leeg is.
@@ -110,3 +110,7 @@ Volg *Shared Codex handoff* voor presentatie. Skill-specifiek slotpunt: was de o
 - Nederlands, technische termen Engels; schrijf afkortingen uit bij eerste gebruik (DoD = Definition of Done).
 - De Codex-prompt zelf (Step 3) is Engels — dat is interne machinerie, geen gebruikersoutput.
 - Geen `Write`/`Edit` in `allowed-tools` — deze skill kan structureel niets bewerken, niet alleen via instructie.
+
+## Gedeelde taalregel
+
+Alle tekst die een mens leest — een narrative, walkthrough, evidence-regel, tussenbalans of eindrapport — is Nederlands, legt zichzelf uit en bevat geen skill-interne taal. Verboden in die tekst: statuscodes als S2, `gate ✓ 10/10`, `interim_review=not-due` en `run_mode`, kale criterium-codes als VC-3 en DoD #3, en de woorden "gate", "seam", "ponytail" en "YAGNI". Schrijf de zaak zelf: "alle 47 tests groen", "criterium 3: de CLI geeft exitcode 1 bij lege invoer", "de plek in de code waar de test aanhaakt". Ernstlabels uit ander gereedschap (P2, [high], Required) vertaal je: "ernstig genoeg om nu te fixen". Elke vakterm krijgt bij eerste gebruik één uitlegzin — in elk nieuw rapport opnieuw. Interne velden houden hun vocabulaire: JSON voor de orchestrator, tags, bestandsnamen en code-identifiers zijn geen gebruikerstekst.

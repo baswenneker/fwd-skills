@@ -5,6 +5,10 @@
 #    SHA and a not-done feature exists, ADOPT that feature as done at that code commit;
 #  - else discard any uncommitted crash leftovers so the next coder starts clean.
 # Idempotent: a healthy resume (HEAD == last recorded SHA, clean tree) is a no-op.
+# Adoption marks the FEATURE only — it never touches milestones[].validation_status. After an
+# "adopted" the caller must check whether that feature closed its milestone and, if so, run the
+# milestone validation before continuing; otherwise the loop walks straight into finalize with
+# an unvalidated milestone.
 # Args: <slug>. Stdout: "adopted <fid>" | "cleaned" | "clean".
 set -euo pipefail
 

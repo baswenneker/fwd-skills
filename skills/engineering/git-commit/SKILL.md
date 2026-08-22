@@ -69,4 +69,6 @@ Committed:
 - NEVER skip hooks (--no-verify)
 - NEVER force push
 - NEVER bypass the pre-flight scan — if it blocks, report and stop
+- NEVER add a `Co-Authored-By`, `Claude-Session`, or any other Claude/Anthropic trailer to the commit message — not in a `-m` body, not in a heredoc
+- ALL git calls go through `rtk git ...` — never bare `git`, not for status, diff, or restore either
 - If commit fails due to hooks, report the error — do NOT retry with --no-verify

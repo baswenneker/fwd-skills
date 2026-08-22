@@ -34,10 +34,21 @@ List features in this exact order, always all five.
 `stdout:` line, across all `✓` features only, deduplicated, one per line.
 `⚠`/`✗` features touched nothing — never list a path for them here.
 
-**Aandachtspunten** — only include this section (heading included) when at
-least one feature is `⚠` or `✗`. One bullet per such feature: its Dutch
-label, the full `stderr:` verbatim, then "Los op en draai `/fwd:setup`
-opnieuw." Omit the entire section when every feature is `✓`.
+**Aandachtspunten** — include this section (heading included) when at least
+one feature is `⚠`/`✗`, **or** when a `✓` feature left a non-empty `stderr:`.
+One bullet per such feature: its Dutch label, the full `stderr:` verbatim,
+then "Los op en draai `/fwd:setup` opnieuw." For a `✓` feature with stderr,
+open the bullet with *Let op (installatie geslaagd, met kanttekening)* — an
+installer can succeed and still warn, and that warning must never disappear.
+Omit the entire section only when every feature is `✓` **and** every
+`stderr:` is empty.
+
+**Onder versiebeheer** — `apply-all.sh` ends with a `### tracked` block
+listing the touched files that git tracks. Is that block non-empty, then add
+this section after "Bestanden aangepast", listing those paths, followed by
+one line: "Deze staan onder versiebeheer en zijn nu gewijzigd in je
+werkboom — beslis bewust of ze mee mogen in je volgende commit." Omit the
+whole section when the block is empty (nothing tracked, or no git repo).
 
 ---
 
@@ -59,6 +70,12 @@ Bestanden aangepast:
 - .claude/settings.local.json
 - CLAUDE.md (Lessons-sectie toegevoegd)
 - .gitignore
+
+Onder versiebeheer:
+- CLAUDE.md
+- .gitignore
+
+Deze staan onder versiebeheer en zijn nu gewijzigd in je werkboom — beslis bewust of ze mee mogen in je volgende commit.
 
 Je kan /fwd:setup opnieuw draaien — alle installers zijn idempotent.
 ```

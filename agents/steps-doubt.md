@@ -31,7 +31,7 @@ Pull everything yourself:
 
 1. `Read` `plan.md` (DoD, eindbeeld, seams) and `state.json` (step statuses, deferrals).
 2. `rtk git log --oneline -12` — what actually got committed.
-3. See the tranche's changes. In an attended run the steps are committed, so `rtk git diff <base_branch>...HEAD --stat` shows them. In an **autonomous run nothing is committed yet** — the work sits uncommitted in the worktree — so include it: `rtk git diff <base_branch> --stat` compares the working tree against the base and so covers the uncommitted (tracked) changes. That form omits brand-new untracked files, so add `rtk git status --porcelain` for those, or diff against the run-start snapshot SHA if one was passed (its tree captures the untracked files too). Read the tranche's files where the question demands it.
+3. See the tranche's changes. In an attended run the steps are committed, so `rtk git diff <base_branch>...HEAD --stat` shows them. In an **autonomous run nothing is committed yet** — the work sits uncommitted in the worktree — so include it: `rtk git diff $(rtk git merge-base <base_branch> HEAD) --stat` compares the working tree against the **fork point**. Anchor on that merge-base, never on the bare branch name: a base branch that moved during the run would drag someone else's work into "the tranche". That form omits brand-new untracked files, so add `rtk git status --porcelain` for those, or diff against the run-start snapshot SHA if one was passed (its tree captures the untracked files too). Read the tranche's files where the question demands it — but only read and grep: never run a dataset, benchmark, or validation pass yourself. A suspicion you can only settle by running one becomes a finding that says so.
 4. Compare promise vs. reality: eindbeeld vs. code, DoD vs. tests, deferral pile vs. remaining steps.
 
 Angles worth checking (pick what the question needs, not all):
@@ -43,7 +43,7 @@ Angles worth checking (pick what the question needs, not all):
 
 ## Your return value
 
-Your **final message must be exactly one JSON object** — no prose around it, no code fence:
+Your **final message must be exactly one JSON object** — no prose around it, no code fence. The fence below is illustration only: your own output starts with `{` and ends with `}`, with nothing before or after it.
 
 ```json
 {
@@ -59,3 +59,7 @@ Your **final message must be exactly one JSON object** — no prose around it, n
 - 1-4 findings. Zero findings is a legal answer — then say why confidence is earned (`one_liner` still required).
 - `claim` caveman-terse; `evidence` a real pointer (file:line, step id, commit, state field). No pointer → cut the finding.
 - You judge; the orchestrator translates for the human. Never soften.
+
+## Gedeelde taalregel
+
+Alle tekst die een mens leest — een narrative, walkthrough, evidence-regel, tussenbalans of eindrapport — is Nederlands, legt zichzelf uit en bevat geen skill-interne taal. Verboden in die tekst: statuscodes als S2, `gate ✓ 10/10`, `interim_review=not-due` en `run_mode`, kale criterium-codes als VC-3 en DoD #3, en de woorden "gate", "seam", "ponytail" en "YAGNI". Schrijf de zaak zelf: "alle 47 tests groen", "criterium 3: de CLI geeft exitcode 1 bij lege invoer", "de plek in de code waar de test aanhaakt". Ernstlabels uit ander gereedschap (P2, [high], Required) vertaal je: "ernstig genoeg om nu te fixen". Elke vakterm krijgt bij eerste gebruik één uitlegzin — in elk nieuw rapport opnieuw. Interne velden houden hun vocabulaire: JSON voor de orchestrator, tags, bestandsnamen en code-identifiers zijn geen gebruikerstekst.
