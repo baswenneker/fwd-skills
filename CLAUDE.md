@@ -23,7 +23,7 @@ README.md                                 # Public-facing index
 Skills live under `skills/<category>/`. Pick the existing category that fits; only create a new one if no existing category covers it.
 
 - **`engineering/`** — workflow tooling that touches code, git, builds, or repo state. Examples: `fwd:git-commit`. Side effects on the repo are expected.
-- **`productivity/`** — interaction patterns and communication modes. Examples: `fwd:grill-me`, `fwd:caveman`, `fwd:explain`. These shape how Claude responds; they don't touch the codebase.
+- **`productivity/`** — interaction patterns and communication modes. Examples: `fwd:caveman`, `fwd:explain`. These shape how Claude responds; they don't touch the codebase.
 
 When adding a new category, add a one-line description here too.
 
