@@ -81,8 +81,6 @@ options:
     description: "Drie distincte plannen + aanbeveling"
   - label: "Plan met 1 enkelvoudig"
     description: "Alleen het meest passende plan"
-  - label: "Eerst stress-testen"
-    description: "Skill stopt; draai /fwd:grill-me of /fwd:premortem en roep /fwd:plan daarna opnieuw aan"
   - label: "Nog een ronde vragen"
     description: "Step 2 herhaalt met nieuwe vragen"
 ```
@@ -93,9 +91,9 @@ Op basis van de keuze:
 
 - **Plan met 3** → Step 3 in 3-plan modus.
 - **Plan met 1** → Step 3 in 1-plan modus.
-- **Eerst stress-testen** → skill stopt met:
-  > "Type `/fwd:grill-me` (vraagverdieping) of `/fwd:premortem` (faalscenario's vooraf) voor een diepere stress-test. Roep daarna `/fwd:plan` opnieuw aan met de aangescherpte context."
 - **Nog een ronde vragen** → herhaal Step 2 met nieuwe ambiguïteiten. Maximaal nog één extra ronde; daarna forceer een keuze tussen "Plan met 3" of "Plan met 1".
+
+Er is hier bewust geen "eerst stress-testen"-optie: op dit punt bestaat er nog geen plan, alleen een Definition of Done, en `/fwd:premortem` heeft een plan nodig om iets op te toetsen. De stress-test-uitnodiging staat daarom pas aan het eind van Step 4, waar wél een plan ligt.
 
 ## Step 3 — Plannen
 
@@ -181,7 +179,7 @@ Regels:
 - Hangt de juiste keuze écht af van iets dat alleen de gebruiker weet ("ga je dit over 6 maanden uitbreiden?"): benoem die fork, geef conditioneel advies.
 - 1-plan modus: het verdict is een korte verantwoording (2-3 zinnen) waarom dit plan het juiste is — geen vergelijking.
 
-Sluit het verdict-block af met één regel: *"Zeg welk plan je kiest (of 'ok' voor de aanbeveling) — dan leg ik het vast als contract."* Dit is de overgang naar Step 5; render géén `AskUserQuestion` en géén `ExitPlanMode` — de plain-text keuze van de gebruiker is genoeg.
+Sluit het verdict-block af met twee regels: *"Wil je het gekozen plan eerst stress-testen, zeg dan 'premortem' — dan draai ik /fwd:premortem op dit plan vóór ik het contract vastleg."* en *"Zeg welk plan je kiest (of 'ok' voor de aanbeveling) — dan leg ik het vast als contract."* Dit is de overgang naar Step 5; render géén `AskUserQuestion` en géén `ExitPlanMode` — de plain-text keuze van de gebruiker is genoeg. Hier bestaat wél een plan, dus premortem is hier niet circulair.
 
 ## Step 5 — Contract vastleggen (na de plan-keuze)
 

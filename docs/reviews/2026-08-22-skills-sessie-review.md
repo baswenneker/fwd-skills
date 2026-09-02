@@ -2,14 +2,16 @@
 
 *Datum: 22 augustus 2026 · Scope: alle 19 skills en 6 agents in deze repo · Bron: 56 Claude Code-sessies uit 14 projecten (juni–augustus 2026)*
 
+**Update 31 augustus 2026.** Buiten dit rapport om zijn `fwd:grill-me` en `fwd:handoff` uit de repo verwijderd (handoff vervangen door de mattpocock-plugin; grill-me zonder toelichting). Alle bevindingen over die twee skills zijn hieronder verwijderd of gemarkeerd als vervallen. Twee live skills verwezen nog naar het verdwenen `/fwd:grill-me`: `fwd:plan`'s stap 2c bood het als stress-test-optie aan (samen met een circulaire premortem-optie — dat was al bevinding #171 hieronder) en `fwd:mission-plan` linkte naar grill-me's vraagformaat-bestand. Beide zijn gerepareerd: stap 2c biedt nu geen stress-test-optie meer (premortem staat aan het eind van stap 4, waar wél een plan bestaat) en de mission-plan-link is vervangen — de drie regels stonden daar al volledig inline, dus er ging niets verloren.
+
 ## In 't kort
 
-- **Stand van zaken (22 augustus):** de tien punten uit deel 1 zijn doorgevoerd en geverifieerd, plus de vijf hoog-impactpunten op de mission-agents in deel 3. De rest ligt er nog.
-- **115 verbeterpunten** — 82 per skill, 19 per agent, 14 repo-breed. Elk sessiepunt heeft een citaat uit een echte run, elk repo-punt een `bestand:regel`. Alles is geverifieerd tegen de huidige repo; ruim de helft is een tekstwijziging van één tot drie zinnen.
+- **Stand van zaken (31 augustus):** tranche 1 én tranche 2 uit deel 7 zijn afgerond en geverifieerd — de tien punten van deel 1, de vijf hoog-impactpunten op de mission-agents in deel 3, en de zeven punten van tranche 2 (waaronder de README-drift en de twee dode `grill-me`-verwijzingen die de verwijdering van die skill achterliet). Tranches 3 en 4 liggen er nog.
+- **110 verbeterpunten** (oorspronkelijk 115; vijf vervielen toen `fwd:grill-me` en `fwd:handoff` werden verwijderd) — 77 per skill, 19 per agent, 14 repo-breed. Elk sessiepunt heeft een citaat uit een echte run, elk repo-punt een `bestand:regel`. Alles is geverifieerd tegen de huidige repo; ruim de helft is een tekstwijziging van één tot drie zinnen.
 - **De grootste risico's zijn klein te repareren**: een read-only reviewer die `git stash` doet op je onbeoordeelde werk, een geheim dat door de commit-scan glipt, en een setup-wizard die ongevraagd getrackte bestanden in een klantrepo aanpast.
 - **Het juli-review is grotendeels ingelopen**: 20 van de 27 gaten dicht, 7 deels — die zeven zitten bijna allemaal in `fwd:mission-run`.
 - **De drie mission-agents waren een blinde vlek.** Ze kregen geen enkele sessiebevinding, simpelweg omdat ze minder vaak draaien. Bij directe lezing leverden ze vijf hoog-impactpunten op, waaronder een compleet outputkanaal (`advisories`) dat nergens landt.
-- **Vier skills worden nooit gebruikt** (`fwd:skill-eval`, `fwd:explain`, `fwd:handoff`, `fwd:premortem`) en één is niet eens aanroepbaar (`plan-with-doc` staat niet in `plugin.json`). Dat is een aparte beslissing: repareren of schrappen.
+- **Drie skills worden nooit gebruikt** (`fwd:skill-eval`, `fwd:explain`, `fwd:premortem`). Dat is een aparte beslissing: repareren of schrappen — `fwd:handoff` koos de repo inmiddels voor het laatste, en `plan-with-doc` is als kapotte, nooit-geregistreerde kopie al verwijderd (deel 1).
 - **Terugkerend patroon**: hand-gekopieerde tekstblokken lopen uiteen, en `check-agent-norms.sh` bewaakt maar twee blokken over vijf van de zes agents.
 
 ---
@@ -113,7 +115,7 @@ Drie echte runs. De skills werken, maar drie beloftes in de tekst kloppen niet m
 | De branch-diff faalt als de branch al opgeruimd is | Dat is het normale eindstadium na een merge, en er is geen alternatief beschreven | Drie takken in plaats van twee: worktree bestaat / `show-ref` slaagt / `show-ref` faalt → melden en terugvallen op de working tree | hoog / klein |
 | Het promptsjabloon eist ingesloten planinhoud, maar stuurt in de praktijk een pad | De slotregel "report only findings you can support from the plan content given above" is dan betekenisloos, en het werkt alleen zolang Codex dezelfde repo kan lezen | Tweerijige tabel in Step 3: plan ligt als bestand in deze repo → geef het pad en pas de slotregel aan; geplakte tekst of een plan op een niet-uitgecheckte branch → inhoud verplicht insluiten. Geldt alleen voor de *plan*-inhoud; de diff-scope is bewust "zoek het zelf op" | midden / middel |
 | De skill stelde een vraag met een verboden tool | `AskUserQuestion` staat niet in `allowed-tools` en wordt door de zusterskill expliciet verboden; direct erna onderbrak de gebruiker de sessie en er kwam geen review | Platte-tekstlijn uitschrijven, direct na de exit-2-regel: "Ik heb *X* gevonden, maar die is afgerond / heeft geen branch meer. Zal ik in plaats daarvan de working tree reviewen? ja / nee / geef een `--base <ref>`" | midden / klein |
-| "Structureel niets kunnen bewerken" klopt niet | `Bash` staat wél in `allowed-tools`; in dezelfde sessie werden bestanden weggeschreven met een heredoc — óók het plan zelf | Herformuleer de bullet naar wat waar is, en voeg aan het gedeelde blok een toetsbaar verbod toe: geen `>`, `>>`, `tee` of heredoc naar een bestand | midden / klein |
+| "Structureel niets kunnen bewerken" klopt niet | `Bash` staat wél in `allowed-tools`; in dezelfde sessie werden bestanden weggeschreven met een heredoc — óók het plan zelf | ✅ **Opgelost (31 augustus).** Bullet herschreven naar wat waar is; het gedeelde `## Shared Codex handoff`-blok kreeg er een toetsbaar verbod bij: geen `>`, `>>`, `tee` of heredoc naar een bestand | midden / klein |
 | Staleness ontbreekt voor de pad- en plaktekst-tak | Het model verzon een basiscommit en greep de commit die `/fwd:git-commit` één beurt eerder had gemaakt | Twee bullets erbij: pad → `rtk git log -1 --format=%H -- <pad>` als basis; geplakte tekst → letterlijk "Staleness: onbekend (plan is niet vastgelegd in de repo)" | laag / klein |
 
 ### `fwd:rules-audit` — 5 punten
@@ -168,16 +170,12 @@ Eén echte run in het hele archief (res-193). Die ene run legde meteen zeven din
 | 160 regels in één beurt met het advies onderaan | De gebruiker moet door drie volledige planblokken en wijzigingstabellen van 12-17 rijen scrollen voordat hij ziet wat wordt aangeraden — precies wat de beslis-eerst-les van 24 juli in `steps-run` heeft opgelost | Verplicht kopje "In 't kort" van 3-5 regels vóór alles; Style-bullet met een grens van ~120 regels en uitklappen op verzoek | hoog / klein |
 | Basis-commit gaat uit van een exclusieve checkout | Halverwege bleek een tweede sessie in dezelfde repo bestanden te hebben aangeraakt én op dezelfde branch te hebben gecommit; de diff-toets is dan waardeloos | Leg bij het pinnen ook de toestand van de werkboom vast ("schoon" of "*n* bestanden al gewijzigd — paden") en trek die vooraf-vieze bestanden in de check-modus af | midden / klein |
 | Het contract wordt nooit afgesloten | De check-modus is in het hele archief nul keer gedraaid; geen enkel contract heeft ooit een toets-uitslag gekregen. De correcties op de foute bewijsregels bleven in de chat hangen | Het contract moet zichzelf afdwingen: opdracht bóven de afvinklijst ("Draai `/fwd:plan check <slug>` vóór je commit"), plus een vierde checklistregel voor bewijsregels die tijdens de bouw niet bleken te deugen | midden / klein |
-| "Eerst stress-testen" is een circulaire optie | Op dat punt bestaat er nog geen plan, alleen een Definition of Done; premortem weigert dan met "No plan found — run /fwd:plan first". Kiezen voor die optie gooit bovendien al het stap-1-onderzoek weg | Laat in 2c alleen grill-me staan, en verplaats de premortem-uitnodiging naar het einde van stap 4, náást de plan-keuze — daar ligt er wél een plan | midden / klein |
+| "Eerst stress-testen" is een circulaire optie | Op dat punt bestaat er nog geen plan, alleen een Definition of Done; premortem weigert dan met "No plan found — run /fwd:plan first". Kiezen voor die optie gooit bovendien al het stap-1-onderzoek weg | ✅ **Opgelost (31 augustus).** De oorspronkelijke fix ("laat alleen grill-me staan") kon niet meer, want die skill is inmiddels verwijderd. Stap 2c biedt nu geen stress-test-optie meer — nog 3 opties in plaats van 4; de premortem-uitnodiging staat aan het eind van stap 4, náást de plan-keuze, waar wél een plan bestaat | midden / klein |
 | README-beschrijving wijkt af van de frontmatter | Claude Code kijkt alleen naar de frontmatter; de skill vuurde niet op een verzoek dat inhoudelijk een planvraag was en de gebruiker typte zijn hele bericht opnieuw over met `/fwd:plan` erachter | Trek de rijkere README-tekst terug ín de frontmatter (die richting bedoelt de conventie) en zorg dat de echte triggerzinnen erin staan: "maak een plan", "hoe zou je dit aanpakken", "welke opties heb ik" | laag / klein |
 
-### `fwd:grill-me` — 3 punten
+### `fwd:grill-me` — verwijderd (31 augustus 2026)
 
-| Wat er misging | Waarom het uitmaakt | Wat te doen | Impact / Werk |
-| --- | --- | --- | --- |
-| Een oude persoonlijke kopie overschaduwt de plugin-skill | De enige echte grill-sessie laadde `~/.claude/skills/grill-me` — een verouderde kopie zonder genummerde opties, zonder `QUESTION_FORMAT.md` en zonder het verbod om vragen te tellen. De sessie nummerde de vragen tóch, precies het gedrag dat op 9 juni is weggehaald | Opruimen: `rm ~/.claude/skills/grill-me` (en `caveman`). Plus één regel in CLAUDE.md: check bij het spiegelen uit `fwd-claude-code` of de naam al onder `~/.claude/skills/` bestaat | hoog / middel |
-| Geen positie over `AskUserQuestion` | Alle twaalf vragen verschenen dubbel — eerst als markdown-kop, dan als dialoog met een andere formulering. Het gedocumenteerde `y`-antwoord bestond niet meer | Kies en schrijf het uit. Aanbeveling: dialoog toestaan, maar één vraag per aanroep, geen prozakop die hem herhaalt, en elke optie draagt zelf zijn uitleg | midden / klein |
-| Geen eindcontract en geen tool-beperking | De skill maakte van de laatste vraag een procesvraag, kreeg "bouw het nu" terug en begon zelf productiecode te schrijven — terwijl de sessie met `/fwd:mission-plan` was begonnen | `allowed-tools` zonder `Write`/`Edit` (zoals premortem dat heeft), plus een slotsectie: samenvattingstabel van de keuzes, één regel over de logische vervolgstap, en stoppen | midden / klein |
+De skill is buiten dit rapport om uit de repo gehaald, zonder toegelichte reden in de commit. De drie bevindingen die hier stonden zijn daarmee vervallen op één na: de dode `grill-me`-verwijzingen die zijn verdwijning in `fwd:plan` en `fwd:mission-plan` achterliet, zijn hierboven en in "Update 31 augustus" gerepareerd. De les die de eerste bevinding droeg — een verouderde persoonlijke kopie onder `~/.claude/skills/` kan de plugin-skill overschaduwen — is vastgelegd als stap 5 van CLAUDE.md § Syncing from `fwd-claude-code` (31 augustus).
 
 ### `fwd:jip-janneke` — 4 punten
 
@@ -198,20 +196,18 @@ Twee echte aanroepen, allebei in res-211. Beide keren werkte het resultaat, maar
 | Trigger-kwaliteit is nooit gemeten | De optimizer draaide 20 testvragen, alle 20 scoorden 0 — ook de letterlijke match. De uitkomst is dus niet "goed" maar "onbekend": de testopstelling draait elke vraag in een lege sessie, terwijl deze skill juist over iets eerder in het gesprek gaat | Leg de fixture-variant vast (eerst plan plakken, dán de triggervraag) — in CLAUDE.md of als extra categorie in `skill-eval` — en draai hem eenmalig voor `unsure` en `jip-janneke` | laag / middel |
 | README-rij loopt achter op de frontmatter | De bewust toegevoegde slotzin over de terloopse vraag staat wel in `SKILL.md`, niet in de README — terwijl CLAUDE.md voorschrijft dat die elkaar spiegelen | README aanvullen (één edit). Een `check-readme-descriptions.sh` in de vorm van `check-agent-norms.sh` is optioneel | laag / klein |
 
-### `fwd:explain`, `fwd:caveman`, `fwd:handoff`, `fwd:premortem` — 8 punten
+### `fwd:explain`, `fwd:caveman`, `fwd:premortem` — 6 punten
 
-Deze vier zijn in de onderzochte sessies nul of één keer gebruikt. Zie ook deel 5.
+Deze drie zijn in de onderzochte sessies nul of één keer gebruikt. Zie ook deel 5. (`fwd:handoff` stond hier ook bij twee bevindingen — die skill is 31 augustus verwijderd, zie hierboven; ze zijn geschrapt.)
 
 | Wat er misging | Waarom het uitmaakt | Wat te doen | Impact / Werk |
 | --- | --- | --- | --- |
 | **explain** — nul keer geladen; de gebruiker vroeg twee keer om een HTML-explainer | Het chat-menu (`next` / `more` / `full` / `done`) is niet de vorm waarin uitleg wordt afgenomen | Klein en nu: triggers aanvullen ("maak een explainer", "leg uit wat X doet", "ik snap niet wat dit doet"). Apart te beslissen: na stap 3 de keuze tussen chatvorm en één uitlegpagina als Artifact | midden / middel |
-| **explain** — dode verwijzing naar `/fwd:write-doc` plus een afgekeurde afbakeningsregel | Die skill bestaat niet meer, en zulke afbakeningsregels heeft de gebruiker eerder al uit `fwd:unsure` laten schrappen als ruis | Regel schrappen. Idem het afbakeningsblok in de body van `jip-janneke` — in de description mag het blijven, daar heeft het triggerwaarde | laag / klein |
 | **explain + jip-janneke** — de gekopieerde resolutietabel is gedrift | `explain` mist de "nothing resolves"-rij, `jip-janneke` mist de stack-trace-rij, foutmeldingen verschillen, en `explain` gebruikt kaal `git diff` waar de repo-conventie `rtk git` eist | Doe nu de onbetwiste fix: `explain` regel 25 → `rtk git diff`. De-driften daarna, en alleen over deze twee — `premortem`'s tabel is géén kopie en zou een byte-identieke check meteen laten falen | midden / middel |
 | **caveman** — dekt alleen antwoordstijl, niet "comprimeer dit document" | De gebruiker vroeg letterlijk om caveman toe te passen op een skillbestand; de skill werd niet geladen en het model verzon zelf de afbakening. Was hij wél geladen, dan had de Persistence-clausule de hele sessie op caveman gezet | Description uitbreiden met Nederlandse en document-triggers; onder `## Persistence` twee zinnen die de twee gebruiken scheiden: gespreksmodus is persistent, een aangewezen tekst comprimeren is eenmalig | midden / middel |
-| **handoff** — geen doelwit-, uitvoer- of lengtecontract, en schrijft naar `/tmp` | Nul keer gebruikt, ook niet in de twee meerdaagse sessies waar wel handmatig werd overgedragen. Een overdrachtsdocument in `mktemp -t` bereikt de volgende sessie niet | Schrijf naar `.claude/handoffs/<slug>.md` (reist mee naar de volgende clone) of de scratchpad; triggerzinnen toevoegen; een vast beslis-eerst-sjabloon met lengtegrens | midden / middel |
-| **handoff** — `mktemp -t handoff-XXXXXX.md` levert helemaal geen `.md`-bestand op | Op macOS neemt `mktemp -t` een prefix en plakt daar zelf een suffix achter; de X'en worden niet vervangen. Getest: het resultaat heet `handoff-XXXXXX.md.UJQ0ho4NW9`. Het enige artefact van deze skill heet dus letterlijk XXXXXX en eindigt niet op `.md` | Vervang door een vorm die wél een `.md` oplevert (`mktemp -d` plus een vaste naam erin). Schrap "read the file before you write to it" — `Write` op een nieuw pad volstaat — en laat de skill het absolute eindpad rapporteren | midden / klein |
 | **caveman** — geen taalregel, terwijl alle compressieregels Engels-specifiek zijn | De regels dragen op Engelse lidwoorden en filler ("just/really/basically") te schrappen; alle voorbeelden zijn Engels. De modus blijft actief bij élk antwoord, dus hij bepaalt de uitvoertaal van de hele sessie — terwijl de standaard Nederlands is | Sectie "Language": caveman volgt de taal van de gebruiker; in het Nederlands vervallen de/het/een en gewoon/eigenlijk/even op dezelfde manier. Eén Nederlands voorbeeld naast de twee Engelse | midden / klein |
-| **premortem** — nul keer gebruikt, en de enige route ernaartoe loopt vast | De skill wordt alleen aangeboden in `fwd:plan` 2c, op het moment dat er nog geen plan is om te premortemen | Voer de plan-fix door (uitnodiging naar het einde van stap 4). De openingszin is skill-afbakening in plaats van instructie — hooguit inkorten | laag / klein |
+| **premortem** — nul keer gebruikt, en de enige route ernaartoe loopt vast | De skill werd alleen aangeboden in `fwd:plan` 2c, op het moment dat er nog geen plan was om te premortemen | ✅ **Opgelost (31 augustus)** — samen met de "circulaire optie"-fix hierboven: premortem staat nu aan het eind van stap 4, waar wél een plan bestaat. De openingszin blijft skill-afbakening in plaats van instructie — hooguit nog in te korten | laag / klein |
+| **explain** — dode verwijzing naar `/fwd:write-doc` plus een afgekeurde afbakeningsregel | Die skill bestaat niet meer, en zulke afbakeningsregels heeft de gebruiker eerder al uit `fwd:unsure` laten schrappen als ruis | ✅ **Opgelost (deel 1, 22 augustus)** — de dode regel is geschrapt bij het verwijderen van `plan-with-doc`. Het afbakeningsblok in de body van `jip-janneke` staat nog open — in de description mag het blijven, daar heeft het triggerwaarde | laag / klein |
 
 ---
 ### `fwd:skill-eval` — 3 punten
@@ -316,12 +312,12 @@ De bestaande harness draait groen (`tests: 7 · pass: 7 · fail: 0`). Trek `test
 | Wat | Bewijs | Wat te doen |
 | --- | --- | --- |
 | `plan-with-doc` staat niet in `plugin.json` en niet in de README | 19 skillmappen, 18 registraties; de skill is niet aanroepbaar | Zie deel 1, punt 9. Halfweg laten staan is de slechtste van de twee opties |
-| README-beschrijving van `fwd:plan` is volledig verouderd | Frontmatter is ingekort tot één regel, README draagt nog de oude versie van ~900 tekens. Claude Code triggert op de frontmatter | Kies welke van de twee de waarheid is; is de lange tekst de bedoeling, dan hoort die in `SKILL.md` |
-| README mist stukken van `fwd:setup`, `fwd:unsure` en `fwd:jip-janneke` | Bij `unsure` ontbreekt de slotzin over de terloopse vraag; bij `jip-janneke` de drie afbakeningszinnen; bij `setup` een herformulering in plaats van een kopie | README-cellen letterlijk gelijkmaken aan de frontmatter |
+| README-beschrijving van `fwd:plan` was volledig verouderd | Frontmatter was ingekort tot één regel, README droeg nog de oude versie van ~900 tekens. Claude Code triggert op de frontmatter | ✅ **Opgelost (31 augustus).** README-cel vervangen door de huidige, korte frontmatter-tekst — die richting bedoelt de conventie |
+| README miste stukken van `fwd:setup`, `fwd:unsure` en `fwd:jip-janneke` | Bij `unsure` ontbrak de slotzin over de terloopse vraag; bij `jip-janneke` de drie afbakeningszinnen; bij `setup` een herformulering in plaats van een kopie | ✅ **Opgelost (31 augustus).** Alle drie README-cellen zijn nu letterlijk gelijk aan de frontmatter; het overgebleven afbakeningszinnetje in jip-janneke's body (dat er per finding #83 juist uit moest — het mocht alleen in de description blijven) is meteen verwijderd |
 | Dode verwijzing `/fwd:write-doc` in `fwd:explain` | Die skill bestaat niet meer in deze plugin | Schrappen (of vervangen als `plan-with-doc` blijft) |
 | `marketplace.json` noemt de steps-agents niet | De mission-agents staan er wel in | Aanvullen of het veld weglaten — nu suggereert het een onvolledige set |
 | `repo-structure.md` beschrijft een andere repo | Verwarrend voor wie de repo binnenkomt | Bijwerken of verwijderen |
-| CLAUDE.md's naamconventie klopt niet met de helft van de skills | De regel schrijft `<veld-of-context>-<naam>` voor; `plan`, `setup`, `caveman`, `explain`, `handoff`, `premortem`, `unsure` en `jip-janneke` volgen dat niet | Conventie bijstellen naar de praktijk ("een samengestelde naam als er een familie is") in plaats van andersom |
+| CLAUDE.md's naamconventie klopt niet met de helft van de skills | De regel schrijft `<veld-of-context>-<naam>` voor; `plan`, `setup`, `caveman`, `explain`, `premortem`, `unsure` en `jip-janneke` volgen dat niet | Conventie bijstellen naar de praktijk ("een samengestelde naam als er een familie is") in plaats van andersom |
 | CLAUDE.md's regel "alle git via rtk" kent een niet-gedocumenteerde uitzondering | Machine-geparste reads gebruiken `grep -vx 'ok'`-workarounds; GAP-24 stelt voor daar plain `git` te gebruiken | Documenteer de uitzondering zodra GAP-24 wordt opgepakt |
 | Drie scripts hebben geen `set`-opties, en er lopen twee conventies naast elkaar (`set -euo` en `set -uo`) | Alle andere scripts openen wel met een set-regel | Uniformeren en de keuze in CLAUDE.md vastleggen |
 | Eén productiescript en alle tests staan op `644` | Niet uitvoerbaar zonder `bash <pad>` | `chmod +x` |
@@ -346,28 +342,27 @@ De bestaande harness draait groen (`tests: 7 · pass: 7 · fail: 0`). Trek `test
 
 ## Deel 6 — Skills die niemand gebruikt
 
-Vier skills zijn in de onderzochte periode nul keer geladen, en dat is op zichzelf een bevinding.
+Drie skills zijn in de onderzochte periode nul keer geladen, en dat is op zichzelf een bevinding. (`fwd:handoff` stond hier ook bij — die skill is 31 augustus verwijderd, zonder dat het "geen instap"-probleem hieronder eerst werd gerepareerd.)
 
 | Skill | Wat er in plaats daarvan gebeurde | Gok waarom |
 | --- | --- | --- |
 | `fwd:skill-eval` | Evaluaties liepen als losse bash-checksets in de scratchpad | De triggerzinnen ("self-evaluate skill X", "shake down skill X") worden niet gebruikt, en de flow is zwaarder dan de ad-hoc check die in het werk nodig blijkt |
 | `fwd:explain` | De gebruiker vroeg twee keer om een HTML-explainer en het model bouwde die zelf | Het chat-menu is niet de gewenste vorm; de triggers dekken "ik snap het niet" niet |
-| `fwd:handoff` | In twee meerdaagse sessies werd handmatig overgedragen | Geen triggerzinnen in de description, en het document belandt in `/tmp` |
-| `fwd:premortem` | Alleen aangeboden in `fwd:plan` 2c — op het moment dat er nog geen plan is | De enige route ernaartoe loopt vast op de skill zelf |
+| `fwd:premortem` | Alleen aangeboden in `fwd:plan` 2c — op het moment dat er nog geen plan is (inmiddels opgelost, zie deel 2) | De enige route ernaartoe liep vast op de skill zelf |
 
-Dat is geen bewijs dat ze waardeloos zijn: het zijn vier verschillende oorzaken (verkeerde triggers, verkeerde uitvoervorm, geen instap, verkeerde opslagplek). Per skill is de keuze: repareren zoals hierboven beschreven, of schrappen. Ik zou `explain`, `handoff` en `premortem` repareren — het zijn kleine ingrepen — en over `skill-eval` een bewuste beslissing nemen, want dat is de enige met een grote ingreep.
+Dat is geen bewijs dat ze waardeloos zijn: het zijn drie verschillende oorzaken (verkeerde triggers, verkeerde uitvoervorm, geen instap — nu gefixt). Per skill is de keuze: repareren zoals hierboven beschreven, of schrappen zoals bij `fwd:handoff` gebeurde. Ik zou `explain` repareren — een kleine ingreep — en over `skill-eval` een bewuste beslissing nemen, want dat is de enige met een grote ingreep.
 
 ---
 
 ## Deel 7 — Voorgestelde volgorde
 
-Vier tranches. De eerste is een halve dag werk en haalt de scherpe randen eruit; de rest is te doen wanneer het uitkomt.
+Vier tranches. De eerste twee zijn gedaan; de rest is te doen wanneer het uitkomt.
 
-**Tranche 1 — veiligheid en blokkades (klein, doe dit eerst)**
+**Tranche 1 — veiligheid en blokkades · ✅ voltooid (22 augustus)**
 `steps-reviewer` mag niet meer in de tree schrijven · `pre-flight.sh` krijgt `-uall` · `merge-json.sh` schrijft niet zonder `jq` · setup meldt getrackte bestanden · het trailer-verbod verhuist naar `## Safety` · `record-step.sh` krijgt `--state-only` · `mission-coder` krijgt `-C <WT>` in plaats van `cd` · `plan-with-doc` weg.
 
-**Tranche 2 — beloftes die niet kloppen (klein, veel tekst)**
-De `--background`-belofte · "structurally cannot modify" in drie bestanden · de fence-in-het-voorbeeld in zes agentbestanden · het doodlopende `advisories`-kanaal · de metadata-uitsluiting voor `mission-reviewer` · de dode `/fwd:write-doc`-verwijzing · de README-cellen gelijkmaken.
+**Tranche 2 — beloftes die niet kloppen · ✅ voltooid (31 augustus)**
+De `--background`-belofte · "structurally cannot modify" in drie bestanden (mission-reviewer al bij de tranche-1-nasleep gefixt; de twee codex-skills nu: herformulering plus een nieuw shell-redirect-verbod in het gedeelde handoff-blok) · de fence-in-het-voorbeeld in zes agentbestanden · het doodlopende `advisories`-kanaal · de metadata-uitsluiting voor `mission-reviewer` · de dode `/fwd:write-doc`-verwijzing · de README-cellen van `fwd:plan`, `fwd:setup`, `fwd:unsure` en `fwd:jip-janneke` gelijkgetrokken met hun frontmatter (en het overgebleven afbakeningszinnetje in jip-janneke's body verwijderd, conform de eerdere unsure-correctie).
 
 **Tranche 3 — gaten die werk kosten in een echte run (middel)**
 Gate-nulmeting en `env-missing`-detectie in `steps-run` · drift-signalering op de basisbranch (steps én missions, één mechanisme) · `discover-gates.sh` zonder valse Python-gate · plan-inhoud versus pad in de codex-skills · de resolver die dode missions kiest · de omvang-poort in `mission-plan`.

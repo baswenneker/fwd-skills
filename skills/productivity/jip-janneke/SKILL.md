@@ -12,7 +12,7 @@ allowed-tools: Read, Bash, Glob, Grep, WebFetch
 
 # Jip-en-janneketaal
 
-Rewrite a referenced text into plain, readable language — complete sentences, no abbreviation soup, no unexplained jargon. One pass. Output in chat only. (Not `/fwd:explain` — explains layer by layer, doesn't rewrite; not `/fwd:caveman` — compresses with abbreviations, the opposite direction.)
+Rewrite a referenced text into plain, readable language — complete sentences, no abbreviation soup, no unexplained jargon. One pass. Output in chat only.
 
 ## Step 1 — Resolve the target
 

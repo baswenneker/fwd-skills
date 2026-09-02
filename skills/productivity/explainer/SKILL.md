@@ -41,10 +41,10 @@ Altijd deze onderdelen, in deze volgorde:
 
 1. **Titel als productnaam** (2-4 woorden, geen samenvatting) + één kaderzin die het onderwerp aan iets bekends koppelt.
 2. **Feitenrij** — 3-6 pillen (kleine afgeronde labels) direct onder de kaderzin, met de harde feiten van dit onderwerp: versies, aantallen, model, datum. Elke pil is één feit in één taal, met zijn onderwerp erbij ("174 tests groen", niet "174"). Heeft het onderwerp geen harde feiten, laat de rij dan weg.
-3. **Inhoudsopgave** — een genummerde rij ankerlinks naar de secties uit onderdeel 5, tussen twee dunne lijnen, vóór "In 't kort". Verplicht zodra de pagina 3 of meer secties heeft. De linktekst is de sectiekop zelf, dus elke sectie krijgt een `id`.
+3. **Inhoudsopgave** — een genummerde lijst ankerlinks naar de secties uit onderdeel 5, **elk item op een eigen regel, onder elkaar**, tussen twee dunne lijnen, vóór "In 't kort". Nooit als doorlopende rij: die breekt af op willekeurige plekken en dan is de volgorde niet meer te lezen. Verplicht zodra de pagina 3 of meer secties heeft. De linktekst is de sectiekop zelf, dus elke sectie krijgt een `id`.
 4. **In 't kort** — 3-5 regels met de uitkomst en de kernboodschap.
 5. **Diagram van het mechanisme** — de volgorde, keten of wie-praat-met-wie, als getekende inline SVG (zie Step 3). Geen decoratie: elk element in het plaatje legt iets uit. Labels in één taal per label.
-6. **Het verhaal, van bekend naar onbekend** — korte secties met titels bóven de tekst, elk met een `id` waar de inhoudsopgave naar wijst. Eén concreet voorbeeld loopt door de héle pagina heen (dezelfde gebruiker, request of dataset in elke sectie).
+6. **Het verhaal, van bekend naar onbekend** — secties onder elkaar, elk met een echte `<h2>` bóven de tekst en een `id` waar de inhoudsopgave naar wijst. Nooit secties naast elkaar in kolommen: dat perst de tekst en breekt de leesvolgorde. De pagina mag zo lang zijn als het onderwerp vraagt — kort is geen doel op zich. Eén concreet voorbeeld loopt door de héle pagina heen (dezelfde gebruiker, request of dataset in elke sectie).
 7. **Termen** — verschijnt zodra de pagina 4 of meer vaktermen of afkortingen heeft uitgelegd: term — één uitlegzin.
 8. **"Wat ik weglaat"** — één korte sectie die benoemt wat bewust niet op de pagina staat, zodat de lezer weet dat het er wél is en ernaar kan vragen.
 
@@ -60,13 +60,13 @@ Kleuren als tokens bovenaan, in drie blokken: `:root` (licht), `@media (prefers-
 | Accent | `#0F6E7B` | `#5CC5CF` |
 | Waarschuwing | `#9C5A06` | `#E0A752` |
 
-Feitenrij en inhoudsopgave zijn rustig, nooit knalpartijen. Pillen: mono, 12px, dunne lijn in de lijnkleur, kaartachtergrond, `border-radius:999px`, tekst in de zachte kleur met alleen het getal of de naam in de gewone tekstkleur. Inhoudsopgave: één rij die mag doorlopen (`flex-wrap`), 13-14px, linktekst in de accentkleur, nummer ervoor in mono en zacht, onderstreping pas bij hover of toetsenbordfocus, en een dunne lijn boven én onder de rij. Zet `scroll-behavior:smooth` alleen binnen `@media (prefers-reduced-motion: no-preference)`.
+Feitenrij en inhoudsopgave zijn rustig, nooit knalpartijen. Pillen: mono, 12px, dunne lijn in de lijnkleur, kaartachtergrond, `border-radius:999px`, tekst in de zachte kleur met alleen het getal of de naam in de gewone tekstkleur. Inhoudsopgave: een verticale lijst (`display:flex; flex-direction:column`), 15-16px, linktekst in de accentkleur, het nummer ervoor in mono en zacht met een vaste breedte zodat de titels uitlijnen, onderstreping pas bij hover of toetsenbordfocus, en een dunne lijn boven én onder de lijst. Zet `scroll-behavior:smooth` alleen binnen `@media (prefers-reduced-motion: no-preference)`.
 
 Accent spaarzaam: bovenkop, rand links van de "In 't kort"-kaart, randen in het diagram. Waarschuwingskleur alleen voor het ene kader met de belangrijkste kanttekening.
 
 Letters via Google Fonts, drie rollen: kop in een grotesk (Bricolage Grotesque), lopende tekst in een serif (Source Serif 4), cijfers en labels in mono (IBM Plex Mono). Die omkering — grotesk boven serif — is opzettelijk.
 
-Layout: buitenmaat 1080px, tekstkolom `max-width:64ch; margin-inline:auto`. Alleen figuren, kaarten en tabellen mogen breder. Ruimte uit `flex` + `gap`, niet uit marges per element. Getallen `tabular-nums`; brede blokken `overflow-x:auto`.
+Layout: buitenmaat 1080px, en **alles op de pagina is even breed** — kop, kaderzin, "In 't kort", het diagram, de lopende tekst, tabellen, de termenlijst, "wat ik weglaat". Zet nooit een `max-width` op de tekstkolom: een smalle kolom naast een breed diagram laat de halve pagina leeg en leest als slordigheid. Zet in plaats daarvan de lettergrootte op 17-18px met `line-height:1.7`, zodat de regel op die breedte prettig blijft. Past de inhoud van een kaart niet over die breedte, gebruik dan twee kolommen binnen de kaart (`grid-template-columns:repeat(2,1fr)`) — nooit een smallere kaart. Ruimte uit `flex` + `gap`, niet uit marges per element. Getallen `tabular-nums`; brede blokken `overflow-x:auto`.
 
 **Diagram = handgetekende SVG, nooit mermaid.** De artifact-viewer rendert mermaid met zijn eigen kleuren en negeert die van jou; dat levert lichte tekst op een lichte kaart. Teken zelf: afgeronde rechthoeken met accentrand, ruit voor een beslissing, labels 13px mono, pijlbijschriften 12px in de zachte kleur, één gedeelde pijlpunt in `<defs>`. Elke `fill` en `stroke` uit een token.
 
@@ -99,8 +99,9 @@ Layout: buitenmaat 1080px, tekstkolom `max-width:64ch; margin-inline:auto`. Alle
 2. Heeft elk abstract begrip een concreet geval binnen twee zinnen? → toevoegen.
 3. Toont het diagram het mechanisme (volgorde/keten), niet alleen dozen? → anders hertekenen.
 4. Loopt het ene concrete voorbeeld door alle secties? → anders doortrekken.
-5. Wijst elke link in de inhoudsopgave naar een bestaand `id`, en dekt de lijst alle secties? → anders repareren.
-6. Zin boven de 25 woorden? → knippen.
-7. Beide thema's gerenderd bekeken, diagram inbegrepen? → anders eerst renderen.
+5. Wijst elke link in de inhoudsopgave naar een bestaand `id`, dekt de lijst alle secties, en staat elk item op een eigen regel? → anders repareren.
+6. Is álles even breed — tekst, kaarten, tabellen en diagram — en staan de secties onder elkaar met een echte `<h2>`? → anders repareren.
+7. Zin boven de 25 woorden? → knippen.
+8. Beide thema's gerenderd bekeken, diagram inbegrepen? → anders eerst renderen.
 
 Lever in chat alleen de link plus 2-3 zinnen over wat er op de pagina staat — herhaal de inhoud niet.

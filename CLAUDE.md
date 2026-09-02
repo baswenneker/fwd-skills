@@ -70,6 +70,7 @@ Most skills here originate in [baswenneker/fwd-claude-code](https://github.com/b
 2. Verify frontmatter `name:` uses the `fwd:` prefix — rename if the upstream version is bare (e.g. `caveman` → `fwd:caveman`).
 3. Update any bare-slash trigger references in the description (`/caveman` → `/fwd:caveman`).
 4. Register the folder in `.claude-plugin/plugin.json` and add a row to `README.md`.
+5. Check `ls ~/.claude/skills/<name>` — a personal-scope copy with the same `name` and `description` can shadow the plugin skill (Claude Code picks one), silently making every improvement made here invisible. Remove or rename the personal copy if found.
 
 Do not back-port edits made here into `fwd-claude-code` automatically — that repo is the upstream source of truth for the canonical skill content; this repo is the slimmed-down distribution.
 

@@ -103,13 +103,14 @@ Volg *Shared Codex handoff* voor presentatie. Skill-specifiek slotpunt: was de o
 - Vermijd rauwe dubbele aanhalingstekens in de samengestelde tekst (de subagent wikkelt hem in `"..."` voor zijn eigen Bash-call) — gebruik enkele aanhalingstekens of parafraseer.
 - Vóór de aanroep: `rtk git status --porcelain --untracked-files=all` vastleggen; ná de aanroep opnieuw, en elke afwijking als eerste melden, vóór de bevindingen — niets wordt automatisch teruggedraaid.
 - Bevindingen presenteren op severity, exacte `file:line`, Codex' eigen feit/inferentie-onderscheid bewaard; "geen bevindingen" expliciet benoemen als de lijst leeg is.
+- Geen shell-redirect binnen deze skill — geen `>`, `>>`, `tee` of heredoc naar een bestand. `Bash` dient uitsluitend git-inspectie en het samenstellen van de Codex-prompt.
 - Stop na het presenteren. Nooit zelf fixen, nooit een plan-contract of mission/steps-artefact bewerken, nooit doorgaan zonder de gebruiker. Sluit af met een platte-tekstvraag welke bevinding(en), indien enige, opgevolgd moeten worden — en wacht.
 
 ## Style
 
 - Nederlands, technische termen Engels; schrijf afkortingen uit bij eerste gebruik (DoD = Definition of Done).
 - De Codex-prompt zelf (Step 3) is Engels — dat is interne machinerie, geen gebruikersoutput.
-- Geen `Write`/`Edit` in `allowed-tools` — deze skill kan structureel niets bewerken, niet alleen via instructie.
+- Geen `Write`/`Edit` in `allowed-tools`; `Bash` blijft nodig voor git-inspectie, dus de read-only-belofte leunt deels op instructie (zie het verbod op shell-redirects in het gedeelde Codex-handoff-blok).
 
 ## Gedeelde taalregel
 

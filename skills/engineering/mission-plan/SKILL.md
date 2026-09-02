@@ -19,7 +19,7 @@ The **interactive** half of the `fwd:mission-*` layer — deliberately conversat
 2. **Gewone taal.** Geen vakterm die de gebruiker zelf nog niet gebruikte; bij twijfel één concreet voorbeeld of mini-diagram van wat elke optie voor het eindresultaat betekent.
 3. **Impact per optie.** Elke antwoordoptie krijgt één regel in gewone taal: wat betekent deze keuze voor het eindresultaat?
 
-Voor niet-triviale keuzevragen: volg het format van fwd:grill-me ([QUESTION_FORMAT.md](../../productivity/grill-me/references/QUESTION_FORMAT.md)). De drie regels staan bewust ook hier inline, zodat de norm blijft werken als dat pad ooit breekt.
+Deze drie regels zijn bewust volledig inline — geen verwijzing naar een andere skill — zodat de norm hier blijft werken ongeacht wat daar verandert.
 
 **No product code.** This skill writes only mission artifacts (`mission.md`, `validation-contract.md`, `state.json`). It never implements features — that's the coder's job under `/fwd:mission-run`.
 
