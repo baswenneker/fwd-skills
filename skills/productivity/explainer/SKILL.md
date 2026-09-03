@@ -57,9 +57,33 @@ A reader grasps a picture faster than a paragraph. The main diagram is therefore
 
 Rule of thumb: a page with five sections easily carries two to four diagrams besides the main one. In doubt about a section, draw it. Only a section that purely describes a reason or a trade-off stays without — a picture without a mechanism is decoration and goes out.
 
+### Which diagram — and where the recipe lives
+
+Before you draw, name what the section actually shows, then read the one reference file
+for that family. Each file holds, per type: when to pick it, when not to, what it must
+show, the geometry, a working SVG snippet with the tokens already in place, and the
+pitfalls. Read `references/svg-basis.md` once per page first — canvas, tokens, arrowhead
+ids and the label-fitting rule live there, and the family files assume it.
+
+| What the section shows | Diagram types | Read |
+|---|---|---|
+| An order: this happens, then that | flowchart, sequence diagram, timeline, state diagram | [`references/diagrams-flow.md`](references/diagrams-flow.md) |
+| A shape: what consists of what, what touches what | architecture picture, layer model, tree, pipeline | [`references/diagrams-structure.md`](references/diagrams-structure.md) |
+| A weighing: two situations, a set of options, a division of work | before and after, 2×2 matrix, option cards, swimlanes | [`references/diagrams-compare.md`](references/diagrams-compare.md) |
+| A quantity: how much, how many, what share | bar chart, funnel, distribution | [`references/diagrams-numbers.md`](references/diagrams-numbers.md) |
+
+Read the family file **before** you draw, not after. Drawing first and checking later
+produces a picture you then defend instead of fix. If a section fits two families, pick
+the one whose question the reader is actually asking — the same subject drawn as an order
+and drawn as a shape teaches two different things.
+
 Every extra diagram follows the same rules as the main one: same card styling, same width, same visual grammar (a rectangle is a thing, a diamond is a decision), colors from the same tokens, and one single-sentence caption saying what the reader should see. Give each diagram its own `<defs>` with a unique `id` for the arrowhead (`ar-flow`, `ar-compare`) — one shared id across multiple SVGs is not reliable.
 
 ## Step 3 — House style
+
+This section is the single source for colour, type and width. The diagram
+reference files inherit it and never restate a colour — if something here changes,
+it changes everywhere.
 
 Colors as tokens at the top, in three blocks: `:root` (light), `@media (prefers-color-scheme: dark)` containing `:root:not([data-theme="light"])`, and `:root[data-theme="dark"]`. Never a color that exists in only one of those blocks. `body` always gets an explicit background from a token.
 
@@ -123,11 +147,12 @@ Shorter word over longer one, as long as the meaning holds. Except for technical
 3. Does every abstract concept have a concrete case within two sentences? → add one.
 4. Does every diagram show a mechanism (sequence, comparison, structure), not just boxes? → redraw it.
 5. Does every section with something drawable have its own diagram? → draw it.
-6. Does the one concrete example run through all sections? → extend it.
-7. Does every table-of-contents link point to an existing `id`, does the list cover all sections, and does each item sit on its own line? → fix it.
-8. Is everything the same width — text, cards, tables and diagrams — and do the sections stack with a real `<h2>`? → fix it.
-9. Any fact row or pill left on the page? → remove it.
-10. Any sentence over 25 words? → cut it.
-11. Both themes rendered and inspected, all diagrams included? → render first.
+6. Is every diagram drawn to the reference card for its type, including the pitfalls listed there? → read the family file and redraw.
+7. Does the one concrete example run through all sections? → extend it.
+8. Does every table-of-contents link point to an existing `id`, does the list cover all sections, and does each item sit on its own line? → fix it.
+9. Is everything the same width — text, cards, tables and diagrams — and do the sections stack with a real `<h2>`? → fix it.
+10. Any fact row or pill left on the page? → remove it.
+11. Any sentence over 25 words? → cut it.
+12. Both themes rendered and inspected, all diagrams included? → render first.
 
 In chat, hand over only the link plus 2-3 sentences about what the page holds — don't repeat the content. Use the language of the conversation.
