@@ -96,9 +96,21 @@ to the bottom. Messages are horizontal arrows between lifelines, caption 10px ab
 line. A reply goes back with `stroke-dasharray="5 4"`. An activation bar — the period a
 participant is busy — is a 12px-wide rect on the lifeline, `--accent` at 0.18 opacity.
 
+**Notes.** A note says what one participant does *by itself*: "thinks for 20 seconds",
+"reads the last turn", "the user types". That is not a message, so it must not look like
+one — no arrow, no box. Write it as 12px muted text with a thin 1px `--rule` tick to its
+left, 12px before the text, spanning the rows it covers. Place it in the gap to the right
+of the lifeline it belongs to, on a row where no arrow crosses. If every row there is
+taken, keep the right margin free as a note column and name the participant in the note
+itself.
+
+Notes are where a sequence diagram earns its keep: without them a reader sees three fast
+arrows and misses that the middle step takes twenty seconds. Add one wherever the waiting,
+the thinking or the storing is the actual point.
+
 ```html
-<svg viewBox="0 0 1000 300" width="100%" style="height:auto;display:block" role="img"
-     aria-label="The browser asks the API, which asks the database, and the answer travels back">
+<svg viewBox="0 0 1000 330" width="100%" style="height:auto;display:block" role="img"
+     aria-label="The browser asks the API, which asks the database; the query itself takes about 900 milliseconds">
   <defs>
     <marker id="ar-seq" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -110,52 +122,79 @@ participant is busy — is a 12px-wide rect on the lifeline, `--accent` at 0.18 
         fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
   <text x="120" y="45" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="13" fill="var(--ink)">browser</text>
-  <line x1="120" y1="60" x2="120" y2="280" stroke="var(--rule)"
+  <line x1="120" y1="60" x2="120" y2="310" stroke="var(--rule)"
         stroke-width="1.5" stroke-dasharray="4 5"/>
 
-  <rect x="420" y="20" width="160" height="40" rx="8"
+  <rect x="340" y="20" width="160" height="40" rx="8"
         fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
-  <text x="500" y="45" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="420" y="45" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="13" fill="var(--ink)">API</text>
-  <line x1="500" y1="60" x2="500" y2="280" stroke="var(--rule)"
+  <line x1="420" y1="60" x2="420" y2="310" stroke="var(--rule)"
         stroke-width="1.5" stroke-dasharray="4 5"/>
 
-  <rect x="800" y="20" width="160" height="40" rx="8"
+  <rect x="640" y="20" width="160" height="40" rx="8"
         fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
-  <text x="880" y="45" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="720" y="45" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="13" fill="var(--ink)">database</text>
-  <line x1="880" y1="60" x2="880" y2="280" stroke="var(--rule)"
+  <line x1="720" y1="60" x2="720" y2="310" stroke="var(--rule)"
         stroke-width="1.5" stroke-dasharray="4 5"/>
 
-  <line x1="120" y1="110" x2="492" y2="110" stroke="var(--muted)"
+  <line x1="120" y1="110" x2="412" y2="110" stroke="var(--muted)"
         stroke-width="1.5" marker-end="url(#ar-seq)"/>
-  <text x="306" y="100" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="266" y="100" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="12" fill="var(--muted)">GET /report/42</text>
 
-  <rect x="494" y="110" width="12" height="90" fill="var(--accent)"
+  <rect x="414" y="110" width="12" height="90" fill="var(--accent)"
         fill-opacity="0.18" stroke="var(--accent)" stroke-width="1"/>
 
-  <line x1="506" y1="150" x2="872" y2="150" stroke="var(--muted)"
+  <line x1="426" y1="150" x2="712" y2="150" stroke="var(--muted)"
         stroke-width="1.5" marker-end="url(#ar-seq)"/>
-  <text x="689" y="140" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="569" y="140" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="12" fill="var(--muted)">select rows</text>
 
-  <line x1="872" y1="190" x2="510" y2="190" stroke="var(--muted)" stroke-width="1.5"
+  <line x1="712" y1="190" x2="434" y2="190" stroke="var(--muted)" stroke-width="1.5"
         stroke-dasharray="5 4" marker-end="url(#ar-seq)"/>
-  <text x="691" y="180" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="573" y="180" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="12" fill="var(--muted)">42 rows</text>
 
-  <line x1="494" y1="240" x2="128" y2="240" stroke="var(--muted)" stroke-width="1.5"
+  <line x1="752" y1="140" x2="752" y2="200" stroke="var(--rule)" stroke-width="1.5"/>
+  <text x="764" y="166" font-family="IBM Plex Mono, monospace"
+        font-size="12" fill="var(--muted)">scans 2.1M rows,</text>
+  <text x="764" y="184" font-family="IBM Plex Mono, monospace"
+        font-size="12" fill="var(--muted)">takes about 900 ms</text>
+
+  <line x1="414" y1="250" x2="128" y2="250" stroke="var(--muted)" stroke-width="1.5"
         stroke-dasharray="5 4" marker-end="url(#ar-seq)"/>
-  <text x="311" y="230" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+  <text x="271" y="240" text-anchor="middle" font-family="IBM Plex Mono, monospace"
         font-size="12" fill="var(--muted)">JSON, 200</text>
+
+  <line x1="136" y1="272" x2="136" y2="300" stroke="var(--rule)" stroke-width="1.5"/>
+  <text x="148" y="291" font-family="IBM Plex Mono, monospace"
+        font-size="12" fill="var(--muted)">the browser draws the table</text>
 </svg>
 ```
+
+### Comparing two routes
+
+A sequence diagram also answers "should we do it in one call or two?". Draw the routes as
+**two sequence diagrams with the same participants in the same positions**, each with its
+own heading above it: "Option A — two separate calls", "Option B — one call". The reader
+then compares by counting arrows and reading the notes, which is exactly the comparison
+that matters: fewer round trips, or less waiting.
+
+Two rules keep it honest. Keep the lifelines at identical x positions in both pictures, so
+the eye can jump between them. And put the same notes in both, with their real numbers —
+if option A waits twenty seconds and option B waits two, that difference is the whole
+answer and it lives in the notes, not in the arrows.
+
+If the comparison is not about the order of messages but about effort, risk or cost, use
+option cards instead — see `diagrams-compare.md`.
 
 **Pitfalls.** More than four participants and the lifelines crowd; merge two into one, or
 split the exchange into two pictures. Messages need 40px of vertical space each, so count
 the rows before you set the height. A caption sitting on the arrow instead of above it
-becomes unreadable in the dark theme.
+becomes unreadable in the dark theme. A note drawn in a box reads as a participant — keep
+it as bare text with its tick.
 
 ---
 
