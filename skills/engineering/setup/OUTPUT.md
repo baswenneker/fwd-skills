@@ -2,7 +2,7 @@
 
 Fixed final-message format for `/fwd:setup`. `scripts/apply-all.sh` prints one
 `### <feature>` block per installer, each with `exit=`, `stdout:`, and
-`stderr:`. Turn that into the report below and print it **verbatim** as your
+`stderr:`, then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
 last message, in Dutch, exactly as structured here. Do not paraphrase, add
 sections, reorder, or write a free-form summary instead — this is a fixed
 report, not something to compose.
@@ -50,6 +50,18 @@ one line: "Deze staan onder versiebeheer en zijn nu gewijzigd in je
 werkboom — beslis bewust of ze mee mogen in je volgende commit." Omit the
 whole section when the block is empty (nothing tracked, or no git repo).
 
+**Vervolgstap** — `apply-all.sh` ends with a `### followup` block. Does it
+contain `mattpocock-setup`, then close the report with one extra line after
+the "opnieuw draaien" line:
+
+```
+Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de issue tracker, de triage-labels en de plek van de domain docs vast. Let op: die wizard stelt wel vragen, deze niet.
+```
+
+Omit the line entirely when the block is empty. Never invent a follow-up
+that the block does not name, and never run one — this wizard installs
+nothing outside its own five features.
+
 ---
 
 ## Happy-path voorbeeld (echte output — dit is de exacte vorm)
@@ -78,6 +90,8 @@ Onder versiebeheer:
 Deze staan onder versiebeheer en zijn nu gewijzigd in je werkboom — beslis bewust of ze mee mogen in je volgende commit.
 
 Je kan /fwd:setup opnieuw draaien — alle installers zijn idempotent.
+
+Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de issue tracker, de triage-labels en de plek van de domain docs vast. Let op: die wizard stelt wel vragen, deze niet.
 ```
 
 ## Vorm bij een conflict — zelfde skelet, plus Aandachtspunten

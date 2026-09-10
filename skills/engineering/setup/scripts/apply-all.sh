@@ -45,4 +45,20 @@ if rtk git rev-parse --git-dir >/dev/null 2>&1; then
 fi
 echo
 
+# A follow-up the user may want to run by hand afterwards. Matt Pocock's engineering
+# skills need their own per-repo configuration (issue tracker, triage labels, domain
+# docs), and their setup skill is interactive — it cannot be chained into this
+# unattended run, so the report only points at it. Silent unless that plugin is
+# actually installed; an unmatched glob leaves the literal pattern, which is not a
+# directory, so the loop prints nothing.
+echo "### followup"
+CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+for candidate in "$CONFIG_DIR"/plugins/cache/*/mattpocock-skills/*/skills/*/setup-matt-pocock-skills; do
+    if [[ -d "$candidate" ]]; then
+        echo "mattpocock-setup"
+        break
+    fi
+done
+echo
+
 exit 0
