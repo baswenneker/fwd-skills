@@ -2,6 +2,8 @@
 
 Shared vocabulary for the `fwd-skills` repo. Keeps terminology consistent across skills, READMEs, and future ADRs.
 
+> Since 2026-09-10 the mission and steps families live under `obsolete/` and are no longer registered in the plugin. The sections below that describe them are kept as reference for that archived code.
+
 ## Schrijfstijl missions
 
 Regels voor alles wat missions en steps-runs produceren: plannen, rapporten, walkthroughs, stap-rapporten, handoff-narratieven.
@@ -80,4 +82,4 @@ Hoe een steps-run z'n stappen afwerkt, afgesproken in `fwd:steps-plan` en vastge
 
 ### walkthrough
 
-Het leesbare rapport per mijlpaal (sjabloon gedocumenteerd in `skills/engineering/mission-run/REFERENCE.md`). Leesbaar in ±5 minuten. Begint altijd met "In één oogopslag".
+Het leesbare rapport per mijlpaal (sjabloon gedocumenteerd in `obsolete/skills/engineering/mission-run/REFERENCE.md`). Leesbaar in ±5 minuten. Begint altijd met "In één oogopslag".

@@ -3,7 +3,6 @@ name: jip-janneke
 description: |
   Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only; output is always Dutch unless another language is explicitly requested. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "leg uit in jip janneke", "leg dit uit voor een leek", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke.
 
-  Not fwd:explain (interactive layered walkthrough — explains, does not rewrite).
   Not fwd:caveman (compresses WITH abbreviations, cuts to fragments — opposite direction).
   fwd:jip-janneke rewrites the full text once, into complete readable sentences.
 argument-hint: <file | glob | URL | "diff" | pr N | phrase | empty for most-recent-in-conversation>

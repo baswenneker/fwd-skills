@@ -2,21 +2,10 @@
   "name": "fwd",
   "skills": [
     "./skills/engineering/git-commit",
-    "./skills/engineering/mission-plan",
-    "./skills/engineering/mission-run",
-    "./skills/engineering/plan",
-    "./skills/engineering/codex-review-plan",
-    "./skills/engineering/codex-review-implementation",
     "./skills/engineering/setup",
     "./skills/engineering/rules-audit",
-    "./skills/engineering/skill-eval",
-    "./skills/engineering/steps-plan",
-    "./skills/engineering/steps-run",
     "./skills/productivity/caveman",
-    "./skills/productivity/explain",
-    "./skills/productivity/premortem",
     "./skills/productivity/jip-janneke",
-    "./skills/productivity/explainer",
-    "./skills/productivity/unsure"
+    "./skills/productivity/explainer"
   ]
 }

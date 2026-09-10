@@ -5,7 +5,7 @@
 # every copy against the first; any difference is drift and fails with a unified diff.
 #
 # With no arguments it guards this repo's own shared block ('## Shared tool prohibitions')
-# across the agents that carry it — run it before committing agent edits.
+# across the (now obsolete) agents that carry it — run it before committing agent edits.
 # With arguments it compares any block across any files (used by the fixtures):
 #   check-agent-norms.sh "<heading>" <file> <file> [<file>...]
 set -euo pipefail

@@ -1,9 +1,6 @@
-# fwd:mission-run / fwd:steps-run worktrees. Without .trees/ gitignored,
-# preflight rejects every tick on a clean repo because the worktree it
-# just created shows up as untracked.
-.trees/
-
 # Claude Code /loop scheduling state. Recreated on every ScheduleWakeup,
 # so it permanently dirties the tree unless ignored.
 .claude/scheduled_tasks.lock
+
+# Scratch output from skills and ad-hoc experiments.
 tmp/
