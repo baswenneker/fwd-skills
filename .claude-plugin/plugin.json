@@ -1,6 +1,7 @@
 {
   "name": "fwd",
   "skills": [
+    "./skills/engineering/autocoder-issue",
     "./skills/engineering/git-commit",
     "./skills/engineering/setup",
     "./skills/engineering/rules-audit",
