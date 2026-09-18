@@ -17,6 +17,15 @@ claude plugin install fwd@headingfwd
 
 Installs every skill listed in `.claude-plugin/plugin.json`. Restart Claude Code after installing or updating so the skills register.
 
+The marketplace carries a second plugin, `workcenter`. Its skills drive the
+Workcenter mini-PC over SSH and live in [baswenneker/workcenter](https://github.com/baswenneker/workcenter),
+next to the `dev` command they call, so the entry here only points at that
+repo. That repo is private; install it on a machine that can reach it.
+
+```bash
+claude plugin install workcenter@headingfwd
+```
+
 **Option B — skills only, via the skills CLI:**
 
 ```bash

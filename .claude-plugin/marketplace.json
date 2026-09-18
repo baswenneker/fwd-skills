@@ -11,6 +11,14 @@
       "name": "fwd",
       "source": "./",
       "description": "HeadingFWD's skills plus the fwd:mission-* multi-agent orchestration layer (orchestrator + coder + adversarial validators). Install as a plugin (not via npx skills add) to get the bundled mission agents."
+    },
+    {
+      "name": "workcenter",
+      "source": {
+        "source": "github",
+        "repo": "baswenneker/workcenter"
+      },
+      "description": "Drive the Workcenter mini-PC from any Claude Code session: hand the current repo over, clone one into the right account, open, close and list sessions, and run the autocoder. The skills live in the workcenter repo, next to the dev command they call."
     }
   ]
 }
