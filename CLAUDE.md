@@ -58,6 +58,15 @@ Frontmatter: `name`, `description`, optional `tools` / `disallowedTools` (a `too
 
 Retired on 2026-09-10 and moved to `obsolete/` (layout mirrors the live tree): the `fwd:mission-*` family (unattended multi-agent missions), the `fwd:steps-*` family (attended step-by-step runs), `fwd:plan`, `fwd:codex-review-plan`, `fwd:codex-review-implementation`, `fwd:skill-eval`, `fwd:explain`, `fwd:premortem`, `fwd:unsure`, the six agents listed above, and `scripts/check-agent-norms.sh`. They are not registered in `plugin.json` and Claude Code does not load them. See `obsolete/README.md` for the table and the way back (`git mv` + a `plugin.json` line). `CONTEXT.md` keeps the mission/steps vocabulary as reference for that archived code.
 
+## Moved out
+
+`autocoder-issue` left this repo on 2026-09-18 for `baswenneker/workcenter`,
+which ships the `workcenter` plugin. Every other autocoder skill already lived
+there, and two repos creating the same six `fwd-` labels meant two sets of
+colours, of which the last run won. It is `/autocoder-issue` now, not
+`/fwd:autocoder-issue`. Nothing is kept here: `obsolete/` is for skills that
+were retired, not for ones that live on elsewhere.
+
 ## Syncing from `fwd-claude-code`
 
 Most skills here originate in [baswenneker/fwd-claude-code](https://github.com/baswenneker/fwd-claude-code) at `fwd/skills/<skill>/SKILL.md`. To mirror one into this repo:
