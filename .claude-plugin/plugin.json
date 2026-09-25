@@ -1,11 +1,8 @@
 {
   "name": "fwd",
   "skills": [
-<<<<<<< Updated upstream
     "./skills/engineering/autocoder-issue",
-=======
     "./skills/engineering/changelog",
->>>>>>> Stashed changes
     "./skills/engineering/git-commit",
     "./skills/engineering/setup",
     "./skills/engineering/rules-audit",
