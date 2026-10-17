@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Setup wizard for HeadingFWD's optional Claude Code conventions. Runs unattended — zero prompts, always project-local scope: installs every convention in one batch — smartlint Stop-hook, lessons memory file, gitignore entries for fwd runtime artefacts, clear-context prompt on plan accept, and no-attribution (disables the Claude commit/PR byline). Copies bundled payload files into .claude/hooks/ or .claude/lessons/, merges JSON snippets into .claude/settings.local.json, injects an instructions section into CLAUDE.md (lessons), or appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Prints a fixed-format Dutch summary from the bundled OUTPUT.md template, never free-form prose. Runs on Haiku. Use only when the user invokes /fwd:setup explicitly.
+description: Setup wizard for HeadingFWD's optional Claude Code conventions. Runs unattended — zero prompts, project-local scope except one global rule: installs every convention in one batch — smartlint Stop-hook, lessons memory file, gitignore entries for fwd runtime artefacts, clear-context prompt on plan accept, no-attribution (disables the Claude commit/PR byline), and a grilling rule in ~/.claude/CLAUDE.md that makes Matt Pocock's grilling skill ask only the real questions and list the rest as assumptions. Copies bundled payload files into .claude/hooks/ or .claude/lessons/, merges JSON snippets into .claude/settings.local.json, injects a marker-bracketed section into CLAUDE.md (lessons in the project, grilling in ~/.claude), or appends a marker-bracketed block to .gitignore. Idempotent and modular — each feature lives in scripts/<feature>/. Prints a fixed-format Dutch summary from the bundled OUTPUT.md template, never free-form prose. Runs on Haiku. Use only when the user invokes /fwd:setup explicitly.
 context: fork
 model: haiku
 allowed-tools: Bash
@@ -9,8 +9,8 @@ disable-model-invocation: true
 
 # fwd:setup
 
-Install HeadingFWD's optional conventions with zero prompts, always
-project-local. One batch, one fixed-format summary. Each feature is
+Install HeadingFWD's optional conventions with zero prompts, project-local
+except the grilling rule (global). One batch, one fixed-format summary. Each feature is
 independent: its installer lives in `scripts/<feature>/install.sh`, accepts
 `--scope user|project`, and is idempotent. Re-running the skill is safe.
 
@@ -20,13 +20,13 @@ independent: its installer lives in `scripts/<feature>/install.sh`, accepts
 
 ## Instructions
 
-The block above already ran all five installers at `--scope project` — that
-already happened, do not run them again. It contains two parts:
+The block above already ran all six installers — five at `--scope project`,
+`grilling` at `--scope user`. That already happened, do not run them again. It contains two parts:
 
 1. **Above `---OUTPUT-TEMPLATE---`**: one `### <feature>` report per
    installer (`exit=`, `stdout:`, `stderr:`), always in this order:
    `smartlint`, `lessons`, `gitignore`, `clear-context-on-plan`,
-   `no-attribution` — followed by a `### tracked` block (touched files that
+   `no-attribution`, `grilling` — followed by a `### tracked` block (touched files that
    git tracks) and a `### followup` block (a skill the user may want to run
    by hand next, detected but never run).
 2. **Below `---OUTPUT-TEMPLATE---`**: the fixed report template
@@ -52,21 +52,22 @@ Feature-specific collision causes (for context when relaying stderr):
 - **gitignore** — corrupt sentinel markers in `.gitignore`.
 - **clear-context-on-plan** — `showClearContextOnPlanAccept` explicitly set to `false`.
 - **no-attribution** — `attribution.commit` or `attribution.pr` holds a non-empty custom string.
+- **grilling** — corrupt sentinel markers in `~/.claude/CLAUDE.md` (one without the other, or out of order).
 
 ## Invariants
 
 - Skill is invoked explicitly only — `disable-model-invocation: true` keeps the wizard out of automatic-trigger flows.
-- **Zero prompts.** The wizard never calls `AskUserQuestion` — every feature is always installed, always at project scope. `allowed-tools: Bash` enforces this structurally: the skill has no tool to ask with.
-- **Always project scope.** `scripts/apply-all.sh` hardcodes `--scope project` — this skill never touches `~/.claude/`. (The installers themselves still accept `--scope user` if invoked manually outside this skill.)
+- **Zero prompts.** The wizard never calls `AskUserQuestion` — every feature is always installed, at the scope fixed below. `allowed-tools: Bash` enforces this structurally: the skill has no tool to ask with.
+- **Project scope, with one exception.** `scripts/apply-all.sh` runs every installer at `--scope project`, except `grilling`, which it runs at `--scope user`. That makes `~/.claude/CLAUDE.md` (or `$CLAUDE_CONFIG_DIR/CLAUDE.md`) the only file outside the project this skill writes, and only between the `<!-- fwd:grilling:start -->` / `<!-- fwd:grilling:end -->` markers. The rule narrows Matt Pocock's `grilling` skill, which runs in every repo, so a per-project copy would be missing wherever setup was not run. Overriding it from CLAUDE.md leaves that skill untouched, so its plugin updates keep arriving. Nothing else goes global without the same deliberate decision. (The installers themselves accept either scope when invoked manually.)
 - Runs on Haiku (`context: fork` + `model: haiku`) — the apply step is a single deterministic bash pre-flight block and the report is a fill-in-the-blanks template, so no larger model is needed.
 - The final message is always the filled-in `OUTPUT.md` template — never a free-form summary. See `OUTPUT.md` for the exact fill rules and worked examples.
 - Each feature installer lives at `scripts/<feature>/install.sh`, accepts `--scope user|project`, and is idempotent. Re-runs detect existing installs and either refresh in place or exit 2 on a corrupt/conflicting state.
 - `scripts/apply-all.sh` always exits 0 itself (it reports per-installer failures, it doesn't propagate them) so the `&&` chain in "Apply + report" always reaches `cat OUTPUT.md`.
 - **JSON merging** (smartlint, clear-context-on-plan, no-attribution): the shared `scripts/lib/merge-json.sh` deep-merges objects, concatenates arrays, and lets new scalars win on conflict. Each installer dedupe-checks its own entries before calling the merger so re-runs do not double the array. `jq` is required; when missing the merger backs up the target to `<file>.bak` and replaces it with the new snippet.
-- **Markdown injection** (lessons): the lessons installer brackets its section with sentinel HTML comments (`<!-- fwd:lessons:start -->` / `<!-- fwd:lessons:end -->`) and uses inline `head` / `tail` to replace the region between them on refresh. No shared lib yet — extract to `scripts/lib/merge-markdown.sh` if a second feature also needs it.
+- **Markdown injection** (lessons): the lessons installer brackets its section with sentinel HTML comments (`<!-- fwd:lessons:start -->` / `<!-- fwd:lessons:end -->`) and uses inline `head` / `tail` to replace the region between them on refresh. The grilling installer copies the same approach (`<!-- fwd:grilling:start -->` / `<!-- fwd:grilling:end -->`) and adds `--remove`, which deletes the block. The wizard never calls `--remove`; it exists for undoing by hand: `bash scripts/grilling/install.sh --scope user --remove`. Two copies now — extract to `scripts/lib/merge-markdown.sh` if a third feature needs it.
 - **Gitignore injection**: marker-bracketed block (`# fwd:setup:gitignore:start` / `# fwd:setup:gitignore:end`) in `.gitignore`.
 - Hook commands use literal `$CLAUDE_PROJECT_DIR` — Claude Code's shell expands it at hook runtime.
-- One feature's collision (exit 2) never aborts the batch — `apply-all.sh` always runs all five.
+- One feature's collision (exit 2) never aborts the batch — `apply-all.sh` always runs all six.
 - **Follow-up detection, never execution.** `apply-all.sh` checks whether Matt Pocock's `setup-matt-pocock-skills` is installed and, if so, emits `mattpocock-setup` in its `### followup` block; `OUTPUT.md` turns that into one closing line. That skill configures a repo's issue tracker, triage labels and domain docs, and it is interactive — it asks questions and shows drafts to edit. That is why it is only pointed at, never chained: this wizard has no tool to ask with, runs on Haiku in a fork, and its zero-prompt guarantee would be broken by any skill that prompts. The check is a glob over the plugin cache under `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; no match means no line, which is also what happens if that cache layout ever changes.
 
 ## Adding a new feature later

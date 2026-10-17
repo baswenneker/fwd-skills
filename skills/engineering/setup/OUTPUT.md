@@ -2,7 +2,7 @@
 
 Fixed final-message format for `/fwd:setup`. `scripts/apply-all.sh` prints one
 `### <feature>` block per installer, each with `exit=`, `stdout:`, and
-`stderr:`, then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
+`stderr:` (only `grilling` writes outside the project, to `~/.claude/CLAUDE.md`, which is why the `Scope:` line names it), then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
 last message, in Dutch, exactly as structured here. Do not paraphrase, add
 sections, reorder, or write a free-form summary instead — this is a fixed
 report, not something to compose.
@@ -16,8 +16,9 @@ report, not something to compose.
 | `gitignore` | Gitignore entries voor fwd artefacten |
 | `clear-context-on-plan` | Clear-context prompt |
 | `no-attribution` | Attribution uitgeschakeld |
+| `grilling` | Grilling-regel (globaal) |
 
-List features in this exact order, always all five.
+List features in this exact order, always all six.
 
 ## How to fill each line
 
@@ -60,7 +61,7 @@ Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de i
 
 Omit the line entirely when the block is empty. Never invent a follow-up
 that the block does not name, and never run one — this wizard installs
-nothing outside its own five features.
+nothing outside its own six features.
 
 ---
 
@@ -69,7 +70,7 @@ nothing outside its own five features.
 ```
 ✅ Setup voltooid
 
-Scope: Project-lokaal
+Scope: Project-lokaal, behalve de grilling-regel (globaal, ~/.claude/CLAUDE.md)
 
 Geïnstalleerde conventies:
 - ✓ Smartlint Stop-hook → /Users/bas/Development/Accounts/Artific/res-202-agent-loop/.claude/hooks/
@@ -77,11 +78,13 @@ Geïnstalleerde conventies:
 - ✓ Gitignore entries voor fwd artefacten → .gitignore
 - ✓ Clear-context prompt → ingesteld in settings.local.json
 - ✓ Attribution uitgeschakeld → commits/PRs zonder byline en trailers
+- ✓ Grilling-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 
 Bestanden aangepast:
 - .claude/settings.local.json
 - CLAUDE.md (Lessons-sectie toegevoegd)
 - .gitignore
+- /Users/bas/.claude/CLAUDE.md
 
 Onder versiebeheer:
 - CLAUDE.md
@@ -99,7 +102,7 @@ Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de i
 ```
 ⚠️ Setup deels voltooid
 
-Scope: Project-lokaal
+Scope: Project-lokaal, behalve de grilling-regel (globaal, ~/.claude/CLAUDE.md)
 
 Geïnstalleerde conventies:
 - ✓ Smartlint Stop-hook → /pad/.claude/hooks/
@@ -107,10 +110,12 @@ Geïnstalleerde conventies:
 - ⚠ Gitignore entries voor fwd artefacten → corrupte markers in .gitignore
 - ✓ Clear-context prompt → ingesteld in settings.local.json
 - ✓ Attribution uitgeschakeld → commits/PRs zonder byline en trailers
+- ✓ Grilling-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 
 Bestanden aangepast:
 - .claude/settings.local.json
 - .claude/lessons/LESSONS.md
+- /pad-naar-home/.claude/CLAUDE.md
 
 Aandachtspunten:
 - Gitignore entries voor fwd artefacten — ⚠ Found start marker but no end marker in .gitignore. The gitignore section is corrupt. Repair the markers (or delete the region between them) and re-run /fwd:setup. → Los op en draai /fwd:setup opnieuw.

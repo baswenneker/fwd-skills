@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# apply-all.sh - Run every fwd:setup installer at --scope project and print
-# a per-feature report (exit code + stdout + stderr).
+# apply-all.sh - Run every fwd:setup installer and print a per-feature report
+# (exit code + stdout + stderr). Every installer runs at --scope project,
+# except grilling, which runs at --scope user: its rule narrows a skill the
+# user runs in every repo, so it belongs in ~/.claude/CLAUDE.md.
 #
 # Usage:
 #   apply-all.sh
@@ -12,13 +14,16 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution)
+FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution grilling)
 
 for feature in "${FEATURES[@]}"; do
     stdout_file="$(mktemp)"
     stderr_file="$(mktemp)"
 
-    bash "$SCRIPT_DIR/${feature}/install.sh" --scope project >"$stdout_file" 2>"$stderr_file"
+    scope=project
+    [[ "$feature" == grilling ]] && scope=user
+
+    bash "$SCRIPT_DIR/${feature}/install.sh" --scope "$scope" >"$stdout_file" 2>"$stderr_file"
     code=$?
 
     echo "### ${feature}"

@@ -33,7 +33,7 @@ After installing the plugin, run the setup wizard to enable optional HeadingFWD 
 /fwd:setup
 ```
 
-It runs unattended: zero prompts, always project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`). It installs all five features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you.
+It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`), with one exception: the grilling rule goes into `~/.claude/CLAUDE.md`. It installs all six features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you.
 
 ### Feature: smartlint Stop-hook
 
@@ -58,6 +58,12 @@ It runs unattended: zero prompts, always project-local (`<project>/.claude/`, `.
 ### Feature: no-attribution
 
 - **What** — disables the Claude byline and trailers on commits and PRs via the `attribution` settings. Refuses to overwrite a custom attribution string you set yourself.
+
+### Feature: grilling rule (global)
+
+- **Why** — Matt Pocock's `grilling` skill (behind grill-me / grill-with-docs) asks every decision as a question. This rule keeps only the real questions and lists the rest as assumptions at the end of each round, which you correct in one reply.
+- **How** — a rule in your user-level `CLAUDE.md` narrows the skill. The skill itself stays untouched, so its plugin updates keep arriving.
+- **What** — injects a marker-bracketed block (`<!-- fwd:grilling:start -->` … `<!-- fwd:grilling:end -->`) into `~/.claude/CLAUDE.md`, the only file the wizard writes outside the project. Re-runs refresh the block in place. To remove it: `bash <plugin>/skills/engineering/setup/scripts/grilling/install.sh --scope user --remove`.
 
 ## Skills
 
