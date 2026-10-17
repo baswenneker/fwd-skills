@@ -5,13 +5,15 @@
 #   install.sh --scope <user|project>
 #
 # Behavior:
-#   user:    sets `attribution.commit = ""` and `attribution.pr = ""` in
-#            ~/.claude/settings.json
+#   user:    sets `attribution.commit = ""`, `attribution.pr = ""` and
+#            `attribution.sessionUrl = false` in ~/.claude/settings.json
 #   project: same in <project>/.claude/settings.local.json
 #
-# Idempotent. If both fields are already empty strings, we skip silently. If
-# either field holds a non-empty string, we exit 2 — the user already set a
-# custom attribution and we don't overwrite that.
+# sessionUrl false keeps the link to the Claude session out of commits and PRs.
+#
+# Idempotent. If all three fields already hold those values, we skip silently.
+# If commit or pr holds a non-empty string, or sessionUrl is explicitly true,
+# we exit 2 — the user chose that attribution and we don't overwrite it.
 
 set -euo pipefail
 
@@ -86,6 +88,7 @@ read_field() {
 
 CURRENT_COMMIT=$(read_field "commit")
 CURRENT_PR=$(read_field "pr")
+CURRENT_SESSION_URL=$(read_field "sessionUrl")
 
 collision=0
 for value in "$CURRENT_COMMIT" "$CURRENT_PR"; do
@@ -94,18 +97,24 @@ for value in "$CURRENT_COMMIT" "$CURRENT_PR"; do
         *)            collision=1 ;;
     esac
 done
+case "$CURRENT_SESSION_URL" in
+    false|missing) ;;
+    *)             collision=1 ;;
+esac
 
 if (( collision )); then
-    printf '⚠  attribution.commit or attribution.pr is a non-empty string in %s\n' "$SETTINGS_FILE" >&2
-    printf '   attribution.commit = %s\n   attribution.pr     = %s\n' "$CURRENT_COMMIT" "$CURRENT_PR" >&2
+    printf '⚠  attribution holds a custom value in %s\n' "$SETTINGS_FILE" >&2
+    printf '   attribution.commit     = %s\n   attribution.pr         = %s\n   attribution.sessionUrl = %s\n' \
+        "$CURRENT_COMMIT" "$CURRENT_PR" "$CURRENT_SESSION_URL" >&2
     printf '   Refusing to overwrite a custom attribution.\n' >&2
-    printf '   To disable: set both `attribution.commit` and `attribution.pr` to ""\n' >&2
+    printf '   To disable: set `attribution.commit` and `attribution.pr` to "" and\n' >&2
+    printf '   `attribution.sessionUrl` to false\n' >&2
     printf '   in %s, then re-run /fwd:setup.\n' "$SETTINGS_FILE" >&2
     exit 2
 fi
 
-if [[ "$CURRENT_COMMIT" == '""' && "$CURRENT_PR" == '""' ]]; then
-    echo "✔ attribution.commit + attribution.pr already empty in $SETTINGS_FILE — no change"
+if [[ "$CURRENT_COMMIT" == '""' && "$CURRENT_PR" == '""' && "$CURRENT_SESSION_URL" == false ]]; then
+    echo "✔ Attribution already off (commit, pr, sessionUrl) → $SETTINGS_FILE, no change"
     exit 0
 fi
 
@@ -113,4 +122,4 @@ fi
 
 SNIPPET=$(cat "$PAYLOAD_FILE")
 bash "$LIB_MERGE" "$SETTINGS_FILE" "$SNIPPET"
-echo "✔ attribution.commit + attribution.pr → \"\" in $SETTINGS_FILE"
+echo "✔ Attribution off (commit, pr, sessionUrl) → $SETTINGS_FILE"

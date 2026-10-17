@@ -33,7 +33,7 @@ After installing the plugin, run the setup wizard to enable optional HeadingFWD 
 /fwd:setup
 ```
 
-It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`), with one exception: the grilling rule goes into `~/.claude/CLAUDE.md`. It installs all six features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you.
+It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`), except four features that go into `~/.claude` because they apply to every repo: the grilling, wait-loops and codex-review rules and the RTK hook. It installs all nine features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you.
 
 ### Feature: smartlint Stop-hook
 
@@ -57,13 +57,28 @@ It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/
 
 ### Feature: no-attribution
 
-- **What** — disables the Claude byline and trailers on commits and PRs via the `attribution` settings. Refuses to overwrite a custom attribution string you set yourself.
+- **What** — disables the Claude byline and trailers on commits and PRs, and the link to the Claude session, via the `attribution` settings (`commit`, `pr`, `sessionUrl`). Refuses to overwrite a custom attribution string you set yourself.
 
 ### Feature: grilling rule (global)
 
 - **Why** — Matt Pocock's `grilling` skill (behind grill-me / grill-with-docs) asks every decision as a question. This rule keeps only the real questions and lists the rest as assumptions at the end of each round, which you correct in one reply.
 - **How** — a rule in your user-level `CLAUDE.md` narrows the skill. The skill itself stays untouched, so its plugin updates keep arriving.
 - **What** — injects a marker-bracketed block (`<!-- fwd:grilling:start -->` … `<!-- fwd:grilling:end -->`) into `~/.claude/CLAUDE.md`, the only file the wizard writes outside the project. Re-runs refresh the block in place. To remove it: `bash <plugin>/skills/engineering/setup/scripts/grilling/install.sh --scope user --remove`.
+
+### Feature: wait-loops rule (global)
+
+- **Why** — a background loop that waits for a file or a log line runs forever when that never comes. Claude Code then hangs on exit, which blocks restarts and updates.
+- **What** — a marker-bracketed block (`<!-- fwd:wait-loops:start -->` …) in `~/.claude/CLAUDE.md`: every wait loop runs under `timeout 1800`, only loops that watch get wrapped (never a build or deploy), and exit code 124 means "not done yet", not "failed". Remove with `scripts/wait-loops/install.sh --scope user --remove`.
+
+### Feature: codex-review rule (global)
+
+- **Why** — `/codex:adversarial-review` first asks whether to wait or run in the background, and a review takes minutes.
+- **What** — a marker-bracketed block (`<!-- fwd:codex-review:start -->` …) in `~/.claude/CLAUDE.md` that always runs it in the background, without asking. Installs only when the codex plugin (openai-codex) is installed; otherwise the report marks it as skipped. Remove with `scripts/codex-review/install.sh --scope user --remove`.
+
+### Feature: RTK hook (global)
+
+- **Why** — [RTK](https://github.com/rtk-ai/rtk) filters the output of commands such as `git status` before it reaches Claude, which saves many tokens.
+- **What** — merges a `PreToolUse` hook (`rtk hook claude`, matcher `Bash`) into `~/.claude/settings.json`. Skipped, and marked so in the report, when `rtk` is not on `PATH` or when the `rtk` there is the unrelated Rust Type Kit. Refuses (exit 2) when another rtk hook is already registered, so commands are never rewritten twice.
 
 ## Skills
 

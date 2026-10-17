@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # apply-all.sh - Run every fwd:setup installer and print a per-feature report
-# (exit code + stdout + stderr). Every installer runs at --scope project,
-# except grilling, which runs at --scope user: its rule narrows a skill the
-# user runs in every repo, so it belongs in ~/.claude/CLAUDE.md.
+# (exit code + stdout + stderr). Most installers run at --scope project. The
+# ones in USER_SCOPE run at --scope user: they shape how Claude works in every
+# repo, so they belong in ~/.claude (CLAUDE.md rules, the RTK hook).
 #
 # Usage:
 #   apply-all.sh
@@ -14,14 +14,15 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution grilling)
+FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution grilling wait-loops codex-review rtk)
+USER_SCOPE=" grilling wait-loops codex-review rtk "
 
 for feature in "${FEATURES[@]}"; do
     stdout_file="$(mktemp)"
     stderr_file="$(mktemp)"
 
     scope=project
-    [[ "$feature" == grilling ]] && scope=user
+    [[ "$USER_SCOPE" == *" $feature "* ]] && scope=user
 
     bash "$SCRIPT_DIR/${feature}/install.sh" --scope "$scope" >"$stdout_file" 2>"$stderr_file"
     code=$?
