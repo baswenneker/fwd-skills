@@ -65,6 +65,12 @@ for candidate in "$CONFIG_DIR"/plugins/cache/*/mattpocock-skills/*/skills/*/setu
         break
     fi
 done
+# fwd:setup-review (pre-commit, gitleaks, CI, the Workcenter reviewer hook) is a
+# separate skill so it can run on its own; point at it while the repo has no
+# pre-commit config yet.
+if [[ ! -f "${CLAUDE_PROJECT_DIR:-$(pwd)}/.pre-commit-config.yaml" ]]; then
+    echo "setup-review"
+fi
 echo
 
 exit 0

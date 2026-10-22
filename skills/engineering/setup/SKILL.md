@@ -28,7 +28,7 @@ already happened, do not run them again. It contains two parts:
    installer (`exit=`, `stdout:`, `stderr:`), always in this order:
    `smartlint`, `lessons`, `gitignore`, `clear-context-on-plan`,
    `no-attribution`, `grilling`, `wait-loops`, `codex-review`, `rtk` — followed by a `### tracked` block (touched files that
-   git tracks) and a `### followup` block (a skill the user may want to run
+   git tracks) and a `### followup` block (skills the user may want to run
    by hand next, detected but never run).
 2. **Below `---OUTPUT-TEMPLATE---`**: the fixed report template
    (`OUTPUT.md`) — read its own instructions and fill in every placeholder
@@ -72,7 +72,7 @@ Skipped is its own outcome, not a collision: `codex-review` without the codex pl
 - **Gitignore injection**: marker-bracketed block (`# fwd:setup:gitignore:start` / `# fwd:setup:gitignore:end`) in `.gitignore`.
 - Hook commands use literal `$CLAUDE_PROJECT_DIR` — Claude Code's shell expands it at hook runtime.
 - One feature's collision (exit 2) never aborts the batch — `apply-all.sh` always runs all nine.
-- **Follow-up detection, never execution.** `apply-all.sh` checks whether Matt Pocock's `setup-matt-pocock-skills` is installed and, if so, emits `mattpocock-setup` in its `### followup` block; `OUTPUT.md` turns that into one closing line. That skill configures a repo's issue tracker, triage labels and domain docs, and it is interactive — it asks questions and shows drafts to edit. That is why it is only pointed at, never chained: this wizard has no tool to ask with, runs on Haiku in a fork, and its zero-prompt guarantee would be broken by any skill that prompts. The check is a glob over the plugin cache under `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; no match means no line, which is also what happens if that cache layout ever changes.
+- **Follow-up detection, never execution.** `apply-all.sh` checks whether Matt Pocock's `setup-matt-pocock-skills` is installed and, if so, emits `mattpocock-setup` in its `### followup` block; `OUTPUT.md` turns that into one closing line. That skill configures a repo's issue tracker, triage labels and domain docs, and it is interactive — it asks questions and shows drafts to edit. That is why it is only pointed at, never chained: this wizard has no tool to ask with, runs on Haiku in a fork, and its zero-prompt guarantee would be broken by any skill that prompts. The check is a glob over the plugin cache under `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`; no match means no line, which is also what happens if that cache layout ever changes. It also emits `setup-review` while the project has no `.pre-commit-config.yaml`: `/fwd:setup-review` (pre-commit, gitleaks, CI checks, the Workcenter reviewer hook) is a separate skill so it can run on its own, and this wizard only points at it.
 
 ## Adding a new feature later
 

@@ -43,6 +43,15 @@ When adding a new category, add a one-line description here too.
 
 3. Add the skill's folder path to the `skills` array in `.claude-plugin/plugin.json`.
 4. Update the skills table in `README.md`.
+5. Raise `version` in `.claude-plugin/plugin.json` (see "Plugin version").
+
+## Plugin version
+
+`.claude-plugin/plugin.json` carries a `version` (since 1.0.0, 2026-10-22). Claude Code
+updates an installed plugin only when that number changes, so a change that is not
+followed by a raised version never reaches anyone. Raise it with every change that
+users should get: patch for fixes, minor for a new skill or feature, major for a
+removed or renamed skill.
 
 ## Agents
 
@@ -86,8 +95,8 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 - **Skill names follow `<field-or-context>-<name>`** (e.g. `git-commit`, `rules-audit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `rules`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — no prefix, no colon.
 - **The `fwd:` prefix comes from the plugin, not the skill name.** The plugin is named `fwd` in `.claude-plugin/plugin.json`, so Claude Code registers each skill as `/<plugin>:<skill-name>` — `/fwd:git-commit`. Do **not** put `fwd:` in a skill's `name` or folder: Claude Code rewrites the colon to a dash and you end up with `/fwd:fwd-git-commit`. Same rule for agents: `agents/foo-bar.md` → `fwd:foo-bar`.
 - Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
-- All git commands route through `rtk git ...` (no conditional fallback to plain `git`).
-- **Cross-skill script references:** a skill may invoke a sibling skill's scripts via `${CLAUDE_SKILL_DIR}/../<sibling-skill>/scripts/<name>.sh`. No live skill uses one today; two exist under `obsolete/` (`codex-review-implementation` → `codex-review-plan`, `mission-plan` → `mission-run`). Renaming a referenced skill folder breaks its referrers — check for cross-skill dependents before renaming or moving a skill folder.
+- All git commands route through `rtk git ...` (no conditional fallback to plain `git`). **Exception:** `skills/engineering/setup-review/` uses plain `git` in its scripts, its tests and the files it generates. Those run in other people's repos, on other machines and in CI, where rtk may be missing; a missing rtk would make a repo read as "not a git repository". None of that git output reaches Claude, so rtk would save nothing there.
+- **Cross-skill script references:** a skill may invoke a sibling skill's scripts via `${CLAUDE_SKILL_DIR}/../<sibling-skill>/scripts/<name>.sh`. One live use: `setup-review/tests/lib.sh` runs `setup/scripts/apply-all.sh` to test its follow-up line, and `setup` names `setup-review` in that line. Two more exist under `obsolete/` (`codex-review-implementation` → `codex-review-plan`, `mission-plan` → `mission-run`). Renaming a referenced skill folder breaks its referrers — check for cross-skill dependents before renaming or moving a skill folder.
 - **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch — `fwd:rules-audit` is the current example).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.
 
