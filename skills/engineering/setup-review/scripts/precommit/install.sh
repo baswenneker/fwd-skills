@@ -122,10 +122,11 @@ EOF
     fi
     if $GO; then
         cat <<'EOF'
-      # gofmt -l exits 0 even when files need formatting; fail on any output.
+      # gofmt -l exits 0 even when files need formatting; fail on any output, and
+      # when gofmt itself fails (missing, syntax error).
       - id: gofmt
         name: gofmt
-        entry: bash -c 'out="$(gofmt -l "$@")"; [ -z "$out" ] || { echo "$out"; exit 1; }' --
+        entry: bash -c 'out="$(gofmt -l "$@")" || exit 1; [ -z "$out" ] || { echo "$out"; exit 1; }' --
         language: system
         types: [go]
 EOF

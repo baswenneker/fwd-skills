@@ -50,6 +50,23 @@ assert_contains "$cfg" "npx --no-install eslint" "ESLint through the project's n
 assert_contains "$cfg" "gofmt -l" "Go format check"
 assert_contains "$cfg" "cargo fmt" "Rust format check"
 
+# The gofmt hook fails when gofmt itself fails (missing, or a syntax error), not only
+# when it lists files.
+entry="$(sed -n 's/^ *entry: \(bash -c .*gofmt.*\)$/\1/p' .pre-commit-config.yaml)"
+[[ -n "$entry" ]] || fail "gofmt entry found"
+nogo="$WORK/nogo-bin"
+mkdir -p "$nogo"
+ln -sf "$(command -v bash)" "$nogo/bash"
+echo 'package w' > w.go
+PATH="$nogo" eval "$entry w.go" >/dev/null 2>&1 && fail "gofmt hook fails when gofmt is missing"
+printf '#!/usr/bin/env bash\necho "w.go:1: syntax error" >&2\nexit 2\n' > "$nogo/gofmt"
+chmod +x "$nogo/gofmt"
+ln -sf "$(command -v env)" "$nogo/env"
+PATH="$nogo" eval "$entry w.go" >/dev/null 2>&1 && fail "gofmt hook fails when gofmt exits non-zero"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$nogo/gofmt"
+PATH="$nogo" eval "$entry w.go" >/dev/null 2>&1 || fail "gofmt hook passes on formatted files"
+rm -f w.go
+
 # Python detected from a tracked .py file alone; Node without Prettier gets no Prettier hook.
 repo="$(make_repo pyfile)"
 cd "$repo"
