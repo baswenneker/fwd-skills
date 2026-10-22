@@ -43,6 +43,15 @@ When adding a new category, add a one-line description here too.
 
 3. Add the skill's folder path to the `skills` array in `.claude-plugin/plugin.json`.
 4. Update the skills table in `README.md`.
+5. Raise `version` in `.claude-plugin/plugin.json` (see "Plugin version").
+
+## Plugin version
+
+`.claude-plugin/plugin.json` carries a `version` (since 1.0.0, 2026-10-22). Claude Code
+updates an installed plugin only when that number changes, so a change that is not
+followed by a raised version never reaches anyone. Raise it with every change that
+users should get: patch for fixes, minor for a new skill or feature, major for a
+removed or renamed skill.
 
 ## Agents
 

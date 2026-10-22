@@ -58,17 +58,25 @@ one line: "Deze staan onder versiebeheer en zijn nu gewijzigd in je
 werkboom — beslis bewust of ze mee mogen in je volgende commit." Omit the
 whole section when the block is empty (nothing tracked, or no git repo).
 
-**Vervolgstap** — `apply-all.sh` ends with a `### followup` block. Does it
-contain `mattpocock-setup`, then close the report with one extra line after
-the "opnieuw draaien" line:
+**Vervolgstap** — `apply-all.sh` ends with a `### followup` block. Close the
+report with one extra line per entry it names, after the "opnieuw draaien" line,
+in this order:
 
-```
-Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de issue tracker, de triage-labels en de plek van de domain docs vast. Let op: die wizard stelt wel vragen, deze niet.
-```
+- `mattpocock-setup`:
 
-Omit the line entirely when the block is empty. Never invent a follow-up
-that the block does not name, and never run one — this wizard installs
-nothing outside its own nine features.
+  ```
+  Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de issue tracker, de triage-labels en de plek van de domain docs vast. Let op: die wizard stelt wel vragen, deze niet.
+  ```
+
+- `setup-review`:
+
+  ```
+  Vervolgstap: draai /fwd:setup-review — die zet pre-commit met gitleaks, de GitHub Actions-checks en de Workcenter-reviewer op deze repo.
+  ```
+
+Omit a line when the block does not name it; an empty block means no line at
+all. Never invent a follow-up that the block does not name, and never run one —
+this wizard installs nothing outside its own nine features.
 
 ---
 
