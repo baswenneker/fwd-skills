@@ -17,10 +17,14 @@ if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
     exit 0
 fi
 
-# Exit gracefully if not in a git repo
-if [ ! -d .git ]; then
+# Exit gracefully if not in a git repo. In a worktree .git is a file, not a
+# directory, so ask git instead of testing for .git.
+if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
     exit 0
 fi
+
+# git reports paths relative to the top level; run from there so they resolve.
+cd "$(git rev-parse --show-toplevel)" || exit 0
 
 # Check if smart-lint is disabled in plugin.json
 PLUGIN_JSON="${CLAUDE_PROJECT_DIR:-.}/.claude/fwd/plugin.json"
@@ -43,19 +47,31 @@ fi
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Get modified and untracked files (staged + unstaged changes + new files)
-MODIFIED_FILES=$(git diff --name-only HEAD 2>/dev/null; git diff --cached --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null)
+# File lists are NUL-separated and kept in bash arrays, so a path with spaces
+# stays one argument all the way to the linter.
+RELEVANT_RE='\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$'
 
-if [ -z "$MODIFIED_FILES" ]; then
+# Modified and untracked files (staged + unstaged changes + new files),
+# filtered for relevant code file extensions (no mapfile: bash 3.2 compatible)
+RELEVANT_FILES=()
+while IFS= read -r -d '' f; do
+    [[ "$f" =~ $RELEVANT_RE ]] && RELEVANT_FILES+=("$f")
+done < <(
+    {
+        git diff -z --name-only HEAD
+        git diff -z --cached --name-only
+        git ls-files -z --others --exclude-standard
+    } 2>/dev/null | sort -zu
+)
+
+if [ ${#RELEVANT_FILES[@]} -eq 0 ]; then
     exit 0
 fi
 
-# Filter for relevant code file extensions
-RELEVANT_FILES=$(echo "$MODIFIED_FILES" | grep -E '\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$' | sort -u)
-
-if [ -z "$RELEVANT_FILES" ]; then
-    exit 0
-fi
+UNTRACKED_RELEVANT=()
+while IFS= read -r -d '' f; do
+    [[ "$f" =~ $RELEVANT_RE ]] && UNTRACKED_RELEVANT+=("$f")
+done < <(git ls-files -z --others --exclude-standard 2>/dev/null)
 
 # --- Content hash caching: skip lint if nothing changed since last successful run ---
 
@@ -66,22 +82,15 @@ PROJECT_HASH=$(echo "$PWD" | hash_cmd)
 # 2. git diff HEAD for those files (unstaged + staged changes)
 # 3. git diff --cached for those files (staged-only changes)
 # 4. Contents of untracked relevant files
-UNTRACKED_RELEVANT=$(comm -12 \
-    <(git ls-files --others --exclude-standard 2>/dev/null | grep -E '\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$' | sort) \
-    <(echo "$RELEVANT_FILES"))
-
+# --literal-pathspecs: a file name containing * or ? matches only itself.
 CONTENT_HASH=$(
     {
-        echo "$RELEVANT_FILES"
-        # shellcheck disable=SC2086
-        git diff HEAD -- $RELEVANT_FILES 2>/dev/null
-        # shellcheck disable=SC2086
-        git diff --cached -- $RELEVANT_FILES 2>/dev/null
-        if [ -n "$UNTRACKED_RELEVANT" ]; then
-            echo "$UNTRACKED_RELEVANT" | while IFS= read -r f; do
-                [ -f "$f" ] && cat "$f"
-            done
-        fi
+        printf '%s\n' "${RELEVANT_FILES[@]}"
+        git --literal-pathspecs diff HEAD -- "${RELEVANT_FILES[@]}" 2>/dev/null
+        git --literal-pathspecs diff --cached -- "${RELEVANT_FILES[@]}" 2>/dev/null
+        for f in "${UNTRACKED_RELEVANT[@]}"; do
+            [ -f "$f" ] && cat "$f"
+        done
     } | hash_cmd
 )
 
@@ -98,12 +107,11 @@ fi
 # Display which files will be checked
 echo ""
 echo "Running lint checks on modified and untracked files:"
-echo "$RELEVANT_FILES" | sed 's/^/  - /'
+printf '  - %s\n' "${RELEVANT_FILES[@]}"
 echo ""
 
 # Run smart-lint.sh with specific files
-# shellcheck disable=SC2086
-"$SCRIPT_DIR/smart-lint.sh" --files $RELEVANT_FILES
+"$SCRIPT_DIR/smart-lint.sh" --files "${RELEVANT_FILES[@]}"
 EXIT_CODE=$?
 
 # Cache the hash only after a successful lint run (exit 0).
