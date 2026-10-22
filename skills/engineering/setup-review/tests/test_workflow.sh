@@ -69,7 +69,18 @@ assert_contains "$wf" "uv run ruff check" "ruff lint"
 assert_contains "$wf" "go test ./..." "go tests"
 assert_contains "$wf" "go vet ./..." "go lint"
 assert_contains "$wf" "cargo test" "rust tests"
-assert_contains "$wf" "cargo clippy" "rust lint"
+assert_contains "$wf" "cargo clippy --all-targets -- -D warnings" "rust lint fails on warnings"
+valid_yaml "$PR"
+
+# pnpm: corepack installed first, Node 25+ no longer bundles it.
+repo="$(make_repo pnpm)"
+cd "$repo"
+echo '{"scripts": {"test": "vitest"}}' > package.json
+echo 'lockfileVersion: 9' > pnpm-lock.yaml
+bash "$SCRIPTS/workflow/install.sh" --scope project >/dev/null
+wf="$(cat "$PR")"
+assert_contains "$wf" "npm install -g corepack && corepack enable" "corepack installed before use"
+assert_contains "$wf" "pnpm install --frozen-lockfile" "pnpm install"
 valid_yaml "$PR"
 
 # ── Existing workflow file is left alone ──────────────────────────────────────

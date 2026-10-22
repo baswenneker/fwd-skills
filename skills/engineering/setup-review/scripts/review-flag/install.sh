@@ -57,7 +57,7 @@ fi
 
 case "$CURRENT" in
     true)
-        echo "✔ review already true in $FLAG_FILE — no change"
+        echo "✔ review already true, no change → $FLAG_FILE"
         exit 0
         ;;
     missing) ;;
@@ -73,6 +73,7 @@ esac
 
 mkdir -p "$(dirname "$FLAG_FILE")"
 TMP="$(mktemp "$FLAG_FILE.XXXXXX")"
+trap 'rm -f "$TMP"' EXIT
 if [[ -f "$FLAG_FILE" ]]; then
     jq '.review = true' "$FLAG_FILE" > "$TMP"
 else

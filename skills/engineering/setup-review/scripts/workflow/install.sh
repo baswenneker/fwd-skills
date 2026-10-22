@@ -47,33 +47,19 @@ WF_DIR="$PROJECT_ROOT/.github/workflows"
 PR_WF="$WF_DIR/fwd-review.yml"
 WEEKLY_WF="$WF_DIR/fwd-osv-weekly.yml"
 
-# Pinned versions. The gitleaks checksum is the linux_x64 line of the release's
-# gitleaks_<version>_checksums.txt.
-GITLEAKS_VERSION="8.30.1"
-GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
-PRE_COMMIT_VERSION="4.6.2"
-OSV_REF="v2.6.0"
-SETUP_UV_REF="v10.2.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/stack.sh
+source "$SCRIPT_DIR/../lib/stack.sh"
+require_jq
 
 # ── Detect stacks ─────────────────────────────────────────────────────────────
-
-if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    FILES="$(git -C "$PROJECT_ROOT" ls-files --cached --others --exclude-standard)"
-else
-    FILES="$(cd "$PROJECT_ROOT" && find . -type f ! -path './.git/*' | sed 's|^\./||')"
-fi
-has_file() { printf '%s\n' "$FILES" | grep -qE "$1"; }
-root_has() { [[ -f "$PROJECT_ROOT/$1" ]]; }
-
-PKG="$PROJECT_ROOT/package.json"
-pkg_query() { command -v jq >/dev/null 2>&1 && jq -e "$1" "$PKG" >/dev/null 2>&1; }
 
 NODE=false; NODE_HOOKS=false; NODE_LINT=false; NODE_TEST=false
 if root_has package.json; then
     NODE=true
-    pkg_query '[.dependencies, .devDependencies] | map(. // {} | has("prettier") or has("eslint")) | any' && NODE_HOOKS=true
-    pkg_query '.scripts.lint' && NODE_LINT=true
-    pkg_query '.scripts.test' && NODE_TEST=true
+    if pkg_has_dep prettier || pkg_has_dep eslint; then NODE_HOOKS=true; fi
+    if pkg_has_script lint; then NODE_LINT=true; fi
+    if pkg_has_script test; then NODE_TEST=true; fi
 fi
 if root_has pnpm-lock.yaml; then
     PM=pnpm; PM_INSTALL="pnpm install --frozen-lockfile"
@@ -89,13 +75,13 @@ fi
 UV=false; PY_LINT=false; PY_TEST=false
 if root_has uv.lock && root_has pyproject.toml; then
     UV=true
-    grep -q 'ruff' "$PROJECT_ROOT/pyproject.toml" && PY_LINT=true
-    grep -q 'pytest' "$PROJECT_ROOT/pyproject.toml" && PY_TEST=true
+    if grep -q 'ruff' "$PROJECT_ROOT/pyproject.toml"; then PY_LINT=true; fi
+    if grep -q 'pytest' "$PROJECT_ROOT/pyproject.toml"; then PY_TEST=true; fi
 fi
 PYTHON_NO_UV=false
-if ! $UV && has_file '(^|/)(pyproject\.toml|setup\.py|requirements[^/]*\.txt)$'; then PYTHON_NO_UV=true; fi
-GO=false; root_has go.mod && GO=true
-RUST=false; root_has Cargo.toml && RUST=true
+if ! $UV && has_file "$PYTHON_MARKERS"; then PYTHON_NO_UV=true; fi
+GO=false; if root_has go.mod; then GO=true; fi
+RUST=false; if root_has Cargo.toml; then RUST=true; fi
 
 # Files osv-scanner reads. Without one it finds no packages and fails the job.
 OSV=false
@@ -112,8 +98,9 @@ node_setup() {
           node-version: lts/*
 EOF
     if [[ "$PM" != npm ]]; then
+        # Node 25 and later no longer bundle corepack; install it first.
         cat <<'EOF'
-      - run: corepack enable
+      - run: npm install -g corepack && corepack enable
 EOF
     fi
     cat <<EOF
@@ -244,7 +231,7 @@ EOF
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: cargo clippy --all-targets
+      - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 EOF
     fi
@@ -291,8 +278,8 @@ else
     $GO && jobs+=", lint-test-go"
     $RUST && jobs+=", lint-test-rust"
     echo "✔ Pull-request checks ($jobs) → $PR_WF"
-    $OSV || echo "  (no osv-scanner: no lockfile or manifest it reads)"
-    $PYTHON_NO_UV && echo "  (no Python lint/test job: only written for uv projects with uv.lock)"
+    if ! $OSV; then echo "  (no osv-scanner: no lockfile or manifest it reads)"; fi
+    if $PYTHON_NO_UV; then echo "  (no Python lint/test job: only written for uv projects with uv.lock)"; fi
 fi
 
 if $OSV; then

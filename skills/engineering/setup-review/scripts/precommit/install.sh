@@ -52,35 +52,26 @@ CONFIG="$PROJECT_ROOT/.pre-commit-config.yaml"
 PUSH_SCRIPT="$PROJECT_ROOT/.claude/fwd/review-push.sh"
 MARKER="# Written by /fwd:setup-review."
 
-# Plain git, not `rtk git` (this skill's deliberate exception to the repo rule): these
-# scripts run in other people's repos, where rtk may be missing, and a missing rtk
-# would read as "not a git repository". Nothing here prints git output to Claude.
-
 if ! git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
     echo "⚠  $PROJECT_ROOT is not a git repository; pre-commit hooks need one. Run git init and re-run /fwd:setup-review." >&2
     exit 2
 fi
 
-# Pinned hook versions. Raise them here; repos pick them up with `pre-commit autoupdate`.
-GITLEAKS_REV="v8.30.1"
-RUFF_REV="v0.16.10"
+# shellcheck source=../lib/stack.sh
+source "$SCRIPT_DIR/../lib/stack.sh"
+require_jq
 
 # ── Detect stacks ─────────────────────────────────────────────────────────────
 
-# Every file git would see: tracked plus untracked-but-not-ignored.
-FILES="$(git -C "$PROJECT_ROOT" ls-files --cached --others --exclude-standard)"
-has_file() { printf '%s\n' "$FILES" | grep -qE "$1"; }
-
 PYTHON=false; GO=false; RUST=false; PRETTIER=false; ESLINT=false
-if has_file '(^|/)(pyproject\.toml|setup\.py|requirements[^/]*\.txt)$|\.py$'; then PYTHON=true; fi
-[[ -f "$PROJECT_ROOT/go.mod" ]] && GO=true
-[[ -f "$PROJECT_ROOT/Cargo.toml" ]] && RUST=true
-if [[ -f "$PROJECT_ROOT/package.json" ]] && command -v jq >/dev/null 2>&1; then
-    dep() { jq -e --arg d "$1" '[.dependencies, .devDependencies] | map(. // {} | has($d)) | any' \
-        "$PROJECT_ROOT/package.json" >/dev/null 2>&1; }
-    dep prettier && PRETTIER=true
-    dep eslint && ESLINT=true
+if has_file "$PYTHON_MARKERS"; then PYTHON=true; fi
+if root_has go.mod; then GO=true; fi
+if root_has Cargo.toml; then RUST=true; fi
+if root_has package.json; then
+    if pkg_has_dep prettier; then PRETTIER=true; fi
+    if pkg_has_dep eslint; then ESLINT=true; fi
 fi
+JS_RUNNER="$(js_runner)"
 
 # ── Write the config ──────────────────────────────────────────────────────────
 
@@ -92,7 +83,7 @@ default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: $GITLEAKS_REV
+    rev: v$GITLEAKS_VERSION
     hooks:
       - id: gitleaks
 EOF
@@ -111,20 +102,20 @@ EOF
     hooks:
 EOF
     if $PRETTIER; then
-        cat <<'EOF'
-      # The project's own Prettier and ESLint (npx --no-install), not a second copy.
+        cat <<EOF
+      # The project's own Prettier and ESLint ($JS_RUNNER), not a second copy.
       - id: prettier
         name: prettier --check
-        entry: npx --no-install prettier --check --ignore-unknown
+        entry: $JS_RUNNER prettier --check --ignore-unknown
         language: system
         types: [text]
 EOF
     fi
     if $ESLINT; then
-        cat <<'EOF'
+        cat <<EOF
       - id: eslint
         name: eslint
-        entry: npx --no-install eslint
+        entry: $JS_RUNNER eslint
         language: system
         types_or: [javascript, jsx, ts, tsx]
 EOF
@@ -174,7 +165,7 @@ if [[ ! -f "$CONFIG" ]]; then
     echo "✔ gitleaks, push hook${stacks:+ and format checks for$stacks} → $CONFIG"
 elif [[ "$(head -n 1 "$CONFIG")" == "$MARKER"* ]]; then
     OURS=true
-    echo "✔ $CONFIG already written by /fwd:setup-review — no change"
+    echo "✔ already written by /fwd:setup-review, no change → $CONFIG"
 else
     echo "↷ $CONFIG belongs to the repo, left alone: gitleaks and the push hook were not added → add them by hand (see /fwd:setup-review)"
 fi
@@ -200,8 +191,9 @@ if ! command -v pre-commit >/dev/null 2>&1; then
         echo "⚠  \`uv tool install pre-commit\` failed. Run it by hand to see why, then re-run /fwd:setup-review." >&2
         exit 2
     fi
-    export PATH="$(uv tool dir --bin 2>/dev/null || echo "$HOME/.local/bin"):$PATH"
-    echo "✔ pre-commit → installed with uv tool install"
+    UV_BIN="$(uv tool dir --bin 2>/dev/null || echo "$HOME/.local/bin")"
+    export PATH="$UV_BIN:$PATH"
+    echo "✔ pre-commit installed with uv tool install"
 fi
 
 # ── Install the git hooks ─────────────────────────────────────────────────────
@@ -217,4 +209,4 @@ if ! out="$(cd "$PROJECT_ROOT" && pre-commit install 2>&1)"; then
     printf '%s\n' "$out" | sed 's/^/   /' >&2
     exit 2
 fi
-echo "✔ Git hooks → pre-commit install (pre-commit, pre-push)"
+echo "✔ Git hooks installed with pre-commit install (pre-commit, pre-push)"

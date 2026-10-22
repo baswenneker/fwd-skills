@@ -18,26 +18,27 @@ List features in this exact order, always all three.
 
 ## How to fill each line
 
-- `exit=0` with a `stdout:` line starting with `↷` → icon `–` (skipped: the repo
-  already had that file). Trailing text = that line's text after `↷`, shortened to
-  what was left alone and what was not added.
-- other `exit=0` → icon `✓`. Trailing text = the path after the last `→` on that
-  feature's `stdout:`.
+- `exit=0` and the **first** `stdout:` line starts with `↷` → icon `–` (skipped:
+  the repo already had that file). Trailing text = that line's text after `↷`,
+  shortened to what was left alone and what was not added. For `precommit` this
+  holds even though later `✔` lines say the git hooks were installed.
+- other `exit=0` → icon `✓`. Trailing text = the path after the `→` on the
+  feature's **first** `stdout:` line. When a later line starts with `↷` (`workflow`:
+  the pull-request file written, the weekly one already there), add
+  "; <file name> bestond al".
 - `exit=2` → icon `⚠`. Trailing text = a short paraphrase of the first line of
   `stderr:` (the full stderr goes under "Aandachtspunten").
 - any other exit → icon `✗`. Same rule as `⚠`.
 
-A feature can have both `✔` and `↷` lines (`workflow`: one file written, the other
-already there). Then the icon is `✓` and the trailing text names the written path,
-followed by "; <file> bestond al".
+Lines starting with two spaces and `(` are notes (`(no osv-scanner: ...)`); put
+each one, translated, as a sub-bullet under its feature.
 
 **Top line** — every feature `✓` or `–` → `✅ Review-setup voltooid`. One or more
 `⚠`/`✗` → `⚠️ Review-setup deels voltooid`.
 
 **Bestanden aangepast** — the path after every `→` on a `✔` line, of any feature
 (a `⚠` feature may have written a file before it stopped), deduplicated, one per
-line. Lines with `no change` touched nothing; leave them out. The `✔ Git hooks` and
-`✔ pre-commit` lines name a command, not a file; leave them out too.
+line. Lines with `no change` touched nothing; leave them out.
 No path at all → write `- geen (alles stond er al)`.
 
 **Aandachtspunten** — include when at least one feature is `⚠`/`✗`, or a `✓`
@@ -61,7 +62,7 @@ Scope: Project-lokaal
 
 Geïnstalleerd:
 - ✓ pre-commit met gitleaks en push-hook → /pad/.pre-commit-config.yaml
-- ✓ GitHub Actions-checks → /pad/.github/workflows/fwd-osv-weekly.yml
+- ✓ GitHub Actions-checks → /pad/.github/workflows/fwd-review.yml
 - ✓ Reviewer aangezet (review: true) → /pad/.claude/fwd/plugin.json
 
 Bestanden aangepast:

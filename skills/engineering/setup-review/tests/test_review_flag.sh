@@ -11,10 +11,10 @@ assert_eq "$code" 0 "fresh install exits 0"
 assert_eq "$(jq -r .review .claude/fwd/plugin.json)" true "review flag set"
 assert_contains "$out" "→" "stdout names what changed"
 
-before="$(sha256sum .claude/fwd/plugin.json)"
+before="$(sha256 .claude/fwd/plugin.json)"
 bash "$SCRIPTS/review-flag/install.sh" --scope project >/dev/null; code=$?
 assert_eq "$code" 0 "re-run exits 0"
-assert_eq "$(sha256sum .claude/fwd/plugin.json)" "$before" "re-run leaves the file unchanged"
+assert_eq "$(sha256 .claude/fwd/plugin.json)" "$before" "re-run leaves the file unchanged"
 
 echo '{"smart-lint": false}' > .claude/fwd/plugin.json
 bash "$SCRIPTS/review-flag/install.sh" --scope project >/dev/null; code=$?

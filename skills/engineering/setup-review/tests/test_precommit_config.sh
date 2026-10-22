@@ -61,6 +61,23 @@ assert_contains "$cfg" "id: ruff-format" "Python from a .py file"
 assert_not_contains "$cfg" "prettier" "no Prettier when package.json lacks it"
 assert_not_contains "$cfg" "eslint" "no ESLint when package.json lacks it"
 
+# Yarn Plug'n'Play has no node_modules for npx: the hooks go through yarn.
+repo="$(make_repo pnp)"
+cd "$repo"
+echo '{"devDependencies": {"prettier": "^3"}}' > package.json
+echo 'yarnPath: .yarn/releases/yarn.cjs' > .yarnrc.yml
+bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null
+assert_contains "$(cat .pre-commit-config.yaml)" "entry: yarn prettier --check" "PnP runs Prettier through yarn"
+
+# A large repo: stack detection must not depend on how far grep reads the file list.
+repo="$(make_repo large)"
+cd "$repo"
+mkdir -p gen
+for i in $(seq 1 4000); do : > "gen/file-with-a-fairly-long-name-$i.txt"; done
+echo 'print(1)' > zz.py
+bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null
+assert_contains "$(cat .pre-commit-config.yaml)" "id: ruff-format" "Python found in a large file list"
+
 # ── A config the repo wrote itself is left alone ──────────────────────────────
 repo="$(make_repo foreign)"
 cd "$repo"

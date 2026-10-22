@@ -34,9 +34,15 @@ make_repo() {
     echo "$dir"
 }
 
+# sha256 <file>... → sha256sum on Linux, shasum on macOS (which has no sha256sum).
+sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi
+}
+
 # snapshot <dir> → one line per file (path + sha256), .git internals except hooks left out.
 snapshot() {
-    (cd "$1" && find . -type f ! -path './.git/*' -o -type f -path './.git/hooks/*' | LC_ALL=C sort | xargs sha256sum)
+    (cd "$1" && find . -type f ! -path './.git/*' -o -type f -path './.git/hooks/*' | LC_ALL=C sort |
+        while IFS= read -r f; do sha256 "$f"; done)
 }
 
 # fake_aws_key → an AWS access key id gitleaks treats as real (no EXAMPLE suffix).
