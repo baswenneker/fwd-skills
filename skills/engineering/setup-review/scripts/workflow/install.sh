@@ -171,7 +171,9 @@ EOF
         env:
           BASE_SHA: \${{ github.event.pull_request.base.sha }}
           HEAD_SHA: \${{ github.event.pull_request.head.sha }}
-        run: gitleaks git --redact --verbose --log-opts="\${BASE_SHA}..\${HEAD_SHA}" .
+        # --diff-merges=first-parent: plain git log -p shows no patch for a merge
+        # commit, so a key added while resolving a merge would go unseen.
+        run: gitleaks git --redact --verbose --log-opts="--diff-merges=first-parent \${BASE_SHA}..\${HEAD_SHA}" .
 EOF
     if $OSV; then
         cat <<EOF
