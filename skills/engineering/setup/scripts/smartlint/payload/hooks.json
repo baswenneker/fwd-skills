@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "test -f \"__HOOK_DIR__/smart-lint-wrapper.sh\" || exit 0; \"__HOOK_DIR__/smart-lint-wrapper.sh\"",
-            "timeout": 180000
+            "timeout": 180
           }
         ]
       }

@@ -105,6 +105,19 @@ fi
 
 if [[ "$ACTION" == "skip-already-present" ]]; then
     echo "✔ Smartlint Stop-hook already installed in $SETTINGS_FILE — refreshing payload only"
+
+    # Older payloads set "timeout": 180000, read by Claude Code as seconds
+    # (50 hours). Bring the installed entry's timeout in line with the payload.
+    WANT_TIMEOUT=$(jq '.hooks.Stop[0].hooks[0].timeout' "$PAYLOAD_DIR/hooks.json")
+    UPDATED=$(jq --arg cmd "$EXPECTED_CMD" --argjson t "$WANT_TIMEOUT" '
+        (.hooks.Stop[]?.hooks[]? | select(.command == $cmd) | .timeout) = $t
+    ' "$SETTINGS_FILE")
+    if [[ "$UPDATED" != "$(jq '.' "$SETTINGS_FILE")" ]]; then
+        TMP_SETTINGS="$(mktemp "$SETTINGS_FILE.XXXXXX")"
+        printf '%s\n' "$UPDATED" > "$TMP_SETTINGS"
+        mv "$TMP_SETTINGS" "$SETTINGS_FILE"
+        echo "✔ Hook timeout set to ${WANT_TIMEOUT}s → $SETTINGS_FILE"
+    fi
 fi
 
 # ── Copy payload (always — keeps bundled scripts up to date on re-runs) ───────
