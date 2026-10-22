@@ -110,10 +110,12 @@ if [[ "$ACTION" == "skip-already-present" ]]; then
     # (50 hours). Bring the installed entry's timeout in line with the payload.
     WANT_TIMEOUT=$(jq '.hooks.Stop[0].hooks[0].timeout' "$PAYLOAD_DIR/hooks.json")
     UPDATED=$(jq --arg cmd "$EXPECTED_CMD" --argjson t "$WANT_TIMEOUT" '
-        .hooks.Stop |= map(.hooks |= map(if .command == $cmd then .timeout = $t else . end))
+        (.hooks.Stop[]?.hooks[]? | select(.command == $cmd) | .timeout) = $t
     ' "$SETTINGS_FILE")
     if [[ "$UPDATED" != "$(jq '.' "$SETTINGS_FILE")" ]]; then
-        printf '%s\n' "$UPDATED" > "$SETTINGS_FILE"
+        TMP_SETTINGS="$(mktemp "$SETTINGS_FILE.XXXXXX")"
+        printf '%s\n' "$UPDATED" > "$TMP_SETTINGS"
+        mv "$TMP_SETTINGS" "$SETTINGS_FILE"
         echo "✔ Hook timeout set to ${WANT_TIMEOUT}s → $SETTINGS_FILE"
     fi
 fi

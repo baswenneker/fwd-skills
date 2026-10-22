@@ -84,14 +84,17 @@ fi
 
 # ── 3. Session started in a subfolder ─────────────────────────────────────────
 
+# A monorepo package: the session's own folder holds its config, so the hook
+# lints that folder's changes, with paths relative to it.
 new_repo "$TMP/sub"
 mkdir -p "$TMP/sub/pkg"
 echo 'w = 1' > "$TMP/sub/pkg/m.py"
+echo 'x = 3' > "$TMP/sub/a.py"
 run_wrapper "$TMP/sub/pkg" "$TMP/sub.log"
-if linted "$TMP/sub.log" pkg/m.py; then
-    pass "wrapper started in a subfolder lints with repo-relative paths"
+if linted "$TMP/sub.log" m.py && ! grep -q 'a\.py' "$TMP/sub.log"; then
+    pass "wrapper started in a subfolder lints that folder's changes, relative to it"
 else
-    fail "wrapper in a subfolder did not lint pkg/m.py: $(tr '\n' '|' < "$TMP/sub.log")"
+    fail "wrapper in a subfolder got: $(tr '\n' '|' < "$TMP/sub.log")"
 fi
 
 # ── 4. Outside a git repo: silent no-op ──────────────────────────────────────
@@ -131,15 +134,18 @@ fi
 export HOME="$TMP/home"
 mkdir -p "$HOME/.claude"
 OLD_CMD="test -f \"\$HOME/.claude/hooks/smart-lint-wrapper.sh\" || exit 0; \"\$HOME/.claude/hooks/smart-lint-wrapper.sh\""
+# A second Stop entry without a hooks array must not break the update.
 jq -n --arg cmd "$OLD_CMD" \
-    '{hooks: {Stop: [{hooks: [{type: "command", command: $cmd, timeout: 180000}]}]}}' \
+    '{hooks: {Stop: [{matcher: "x"}, {hooks: [{type: "command", command: $cmd, timeout: 180000}]}]}}' \
     > "$HOME/.claude/settings.json"
+rm -f "$HOME/.claude/hooks/smart-lint.sh"
 "$SMARTLINT_DIR/install.sh" --scope user > "$TMP/install.out" 2>&1
-INSTALLED=$(jq '[.hooks.Stop[].hooks[] | select(.command | test("smart-lint-wrapper"))]' "$HOME/.claude/settings.json")
-if [[ "$(jq 'length' <<< "$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<< "$INSTALLED")" == "180" ]]; then
-    pass "installer re-run sets an installed hook's timeout to 180 seconds"
+INSTALLED=$(jq '[.hooks.Stop[].hooks[]? | select(.command | test("smart-lint-wrapper"))]' "$HOME/.claude/settings.json")
+if [[ "$(jq 'length' <<< "$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<< "$INSTALLED")" == "180" ]] \
+    && [[ -f "$HOME/.claude/hooks/smart-lint.sh" ]]; then
+    pass "installer re-run sets an installed hook's timeout to 180 seconds and refreshes the payload"
 else
-    fail "installer re-run left: $INSTALLED"
+    fail "installer re-run left: $INSTALLED; output: $(cat "$TMP/install.out")"
 fi
 
 echo

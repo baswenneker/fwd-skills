@@ -23,9 +23,6 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
     exit 0
 fi
 
-# git reports paths relative to the top level; run from there so they resolve.
-cd "$(git rev-parse --show-toplevel)" || exit 0
-
 # Check if smart-lint is disabled in plugin.json
 PLUGIN_JSON="${CLAUDE_PROJECT_DIR:-.}/.claude/fwd/plugin.json"
 if [ -f "$PLUGIN_JSON" ]; then
@@ -51,27 +48,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # stays one argument all the way to the linter.
 RELEVANT_RE='\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$'
 
-# Modified and untracked files (staged + unstaged changes + new files),
-# filtered for relevant code file extensions (no mapfile: bash 3.2 compatible)
+# Untracked, then modified files (staged + unstaged changes), filtered for
+# relevant code file extensions (no mapfile: bash 3.2 compatible). All paths
+# are relative to the current directory and limited to it (--relative, and
+# ls-files' default), so a session in a monorepo package lints that package.
+UNTRACKED_RELEVANT=()
+while IFS= read -r -d '' f; do
+    [[ "$f" =~ $RELEVANT_RE ]] && UNTRACKED_RELEVANT+=("$f")
+done < <(git ls-files -z --others --exclude-standard 2>/dev/null)
+
 RELEVANT_FILES=()
 while IFS= read -r -d '' f; do
     [[ "$f" =~ $RELEVANT_RE ]] && RELEVANT_FILES+=("$f")
 done < <(
     {
-        git diff -z --name-only HEAD
-        git diff -z --cached --name-only
-        git ls-files -z --others --exclude-standard
+        git diff -z --name-only --relative HEAD
+        git diff -z --name-only --relative --cached
+        printf '%s\0' "${UNTRACKED_RELEVANT[@]}"
     } 2>/dev/null | sort -zu
 )
 
 if [ ${#RELEVANT_FILES[@]} -eq 0 ]; then
     exit 0
 fi
-
-UNTRACKED_RELEVANT=()
-while IFS= read -r -d '' f; do
-    [[ "$f" =~ $RELEVANT_RE ]] && UNTRACKED_RELEVANT+=("$f")
-done < <(git ls-files -z --others --exclude-standard 2>/dev/null)
 
 # --- Content hash caching: skip lint if nothing changed since last successful run ---
 
