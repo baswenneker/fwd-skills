@@ -104,11 +104,13 @@ EOF
     if $PRETTIER; then
         cat <<EOF
       # The project's own Prettier and ESLint ($JS_RUNNER), not a second copy.
+      # Prettier checks code, tests included; notes, content and lockfiles are left
+      # as their authors wrote them.
       - id: prettier
         name: prettier --check
         entry: $JS_RUNNER prettier --check --ignore-unknown
         language: system
-        types: [text]
+        types_or: [javascript, jsx, ts, tsx, css, scss]
 EOF
     fi
     if $ESLINT; then
