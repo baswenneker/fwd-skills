@@ -9,8 +9,16 @@ cd "$repo"
 
 stub="$WORK/stub"
 mkdir -p "$stub"
+# --check answers at once with what check-rc says (0 by default); --now hangs.
 cat > "$stub/ssh" <<EOF
 #!/usr/bin/env bash
+if [[ "\$*" == *"reviewer --check"* ]]; then
+    echo "\$*" >> "$WORK/ssh-checks"
+    [[ -f "$WORK/check-slow" ]] && sleep 30
+    rc=\$(cat "$WORK/check-rc" 2>/dev/null || echo 0)
+    [[ \$rc == 0 ]] || { echo "Not ready to review:"; echo "  gitleaks is not installed"; }
+    exit \$rc
+fi
 echo "\$*" > "$WORK/ssh-args"
 sleep 5
 EOF
@@ -43,6 +51,34 @@ PATH="$stub:$PATH" bash "$PUSH"; code=$?
 assert_eq "$code" 0 "gitlab remote exits 0"
 sleep 0.5
 [[ ! -e "$WORK/ssh-args" ]] || fail "ssh called for a tag or a non-GitHub remote"
+
+# A reviewer that cannot run: the warning shows, no review is asked for.
+git remote set-url origin git@github.com:acme/widget.git
+rm -f "$WORK/ssh-args"
+echo 1 > "$WORK/check-rc"
+err="$(PATH="$stub:$PATH" bash "$PUSH" 2>&1 >/dev/null)"; code=$?
+assert_eq "$code" 0 "not-ready reviewer still exits 0"
+assert_contains "$err" "cannot review this push" "warning shows"
+assert_contains "$err" "gitleaks is not installed" "warning says what is missing"
+sleep 0.5
+[[ ! -e "$WORK/ssh-args" ]] || fail "no --now when the reviewer cannot run"
+
+# The Workcenter out of reach (ssh's own 255): silent.
+echo 255 > "$WORK/check-rc"
+err="$(PATH="$stub:$PATH" bash "$PUSH" 2>&1)"; code=$?
+assert_eq "$code" 0 "unreachable exits 0"
+assert_eq "$err" "" "unreachable says nothing"
+
+# A check that hangs: given up after about 5 seconds, silently.
+rm -f "$WORK/check-rc"
+touch "$WORK/check-slow"
+start=$(date +%s)
+err="$(PATH="$stub:$PATH" bash "$PUSH" 2>&1)"; code=$?
+elapsed=$(( $(date +%s) - start ))
+rm -f "$WORK/check-slow"
+assert_eq "$code" 0 "slow check exits 0"
+[[ $elapsed -le 8 ]] || fail "slow check held the push for ${elapsed}s"
+assert_eq "$err" "" "slow check says nothing"
 
 # Failing ssh: still exit 0.
 git remote set-url origin git@github.com:acme/widget.git

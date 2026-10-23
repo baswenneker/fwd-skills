@@ -34,6 +34,19 @@ bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null; code=$?
 assert_eq "$code" 0 "re-run exits 0"
 assert_eq "$(snapshot "$repo")" "$before" "re-run changes no file"
 
+# A config written before the push hook had verbose: it gets it, once.
+assert_contains "$cfg" "verbose: true" "push hook shows its output"
+grep -v 'verbose: true' .pre-commit-config.yaml > old.yaml && mv old.yaml .pre-commit-config.yaml
+out="$(bash "$SCRIPTS/precommit/install.sh" --scope project)"; code=$?
+assert_eq "$code" 0 "upgrade exits 0"
+assert_eq "$(grep -c 'verbose: true' .pre-commit-config.yaml)" 1 "verbose added once"
+assert_contains "$out" "verbose: true" "upgrade says what changed"
+python3 -c 'import sys,yaml; c=yaml.safe_load(open(".pre-commit-config.yaml")); h=[h for r in c["repos"] for h in r["hooks"] if h["id"]=="fwd-review-push"][0]; sys.exit(0 if h.get("verbose") is True else 1)' 2>/dev/null ||
+    { python3 -c 'import yaml' 2>/dev/null && fail "upgraded config is valid YAML with verbose on the push hook"; }
+before="$(snapshot "$repo")"
+bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null
+assert_eq "$(snapshot "$repo")" "$before" "re-run after the upgrade changes no file"
+
 # ── Every stack ────────────────────────────────────────────────────────────────
 repo="$(make_repo stacks)"
 cd "$repo"

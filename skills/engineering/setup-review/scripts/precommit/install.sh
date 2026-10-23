@@ -150,6 +150,9 @@ EOF
         stages: [pre-push]
         pass_filenames: false
         always_run: true
+        # pre-commit hides what a passing hook prints; the reviewer's warning
+        # must show.
+        verbose: true
 EOF
 }
 
@@ -166,7 +169,16 @@ if [[ ! -f "$CONFIG" ]]; then
     echo "✔ gitleaks, push hook${stacks:+ and format checks for$stacks} → $CONFIG"
 elif [[ "$(head -n 1 "$CONFIG")" == "$MARKER"* ]]; then
     OURS=true
-    echo "✔ already written by /fwd:setup-review, no change → $CONFIG"
+    # Written before the push hook said anything: without verbose its warning
+    # stays hidden.
+    if grep -q 'id: fwd-review-push' "$CONFIG" &&
+        ! awk '/id: fwd-review-push/ { in_hook = 1; next } in_hook && /- id:/ { exit } in_hook && /verbose: true/ { found = 1 } END { exit !found }' "$CONFIG"; then
+        awk '{ print } /id: fwd-review-push/ { in_hook = 1 } in_hook && /always_run: true/ { sub(/always_run: true.*/, ""); print $0 "verbose: true"; in_hook = 0 }' \
+            "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+        echo "✔ push hook now shows the reviewer's warnings (verbose: true) → $CONFIG"
+    else
+        echo "✔ already written by /fwd:setup-review, no change → $CONFIG"
+    fi
 else
     echo "↷ $CONFIG belongs to the repo, left alone: gitleaks and the push hook were not added → add them by hand (see /fwd:setup-review)"
 fi
