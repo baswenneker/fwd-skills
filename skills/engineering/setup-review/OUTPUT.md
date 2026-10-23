@@ -13,8 +13,9 @@ sections, reorder, or write a free-form summary instead.
 | `precommit` | pre-commit met gitleaks en push-hook |
 | `workflow` | GitHub Actions-checks |
 | `review-flag` | Reviewer aangezet (review: true) |
+| `baseline` | Bestaande fouten opgeruimd |
 
-List features in this exact order, always all three.
+List features in this exact order, always all four.
 
 ## How to fill each line
 
@@ -30,6 +31,10 @@ List features in this exact order, always all three.
   `stderr:` (the full stderr goes under "Aandachtspunten").
 - any other exit → icon `✗`. Same rule as `⚠`.
 
+`baseline` on a `✔` line → icon `✓`, trailing text = "commit <sha>, <n> bestanden" (the
+sha and count from that line). It wrote no file of its own, so it adds nothing to
+"Bestanden aangepast".
+
 Lines starting with two spaces and `(` are notes (`(no osv-scanner: ...)`); put
 each one, translated, as a sub-bullet under its feature.
 
@@ -37,13 +42,18 @@ each one, translated, as a sub-bullet under its feature.
 `⚠`/`✗` → `⚠️ Review-setup deels voltooid`.
 
 **Bestanden aangepast** — the path after every `→` on a `✔` line, of any feature
-(a `⚠` feature may have written a file before it stopped), deduplicated, one per
-line. Lines with `no change` touched nothing; leave them out.
+(a `⚠` feature may have written a file before it stopped), except `baseline`,
+deduplicated, one per line. Lines with `no change` touched nothing; leave them out.
 No path at all → write `- geen (alles stond er al)`.
 
 **Aandachtspunten** — include when at least one feature is `⚠`/`✗`, or a `✓`
 feature left a non-empty `stderr:`. One bullet per such feature: its Dutch label, the
 full `stderr:` verbatim, then "Los op en draai `/fwd:setup-review` opnieuw."
+
+**Nog met de hand op te lossen** — include when `baseline` printed lines starting
+with `!`. Put every line after the first `!` line in a code block, with the leading
+`!   ` removed, then: "De autofixes konden dit niet oplossen. Los het op en commit het,
+anders faalt de check `pre-commit` op de eerste PR."
 
 **Onder versiebeheer** — when the `### tracked` block is non-empty, list those paths,
 followed by: "Deze staan onder versiebeheer en zijn nu gewijzigd in je werkboom —
@@ -64,6 +74,7 @@ Geïnstalleerd:
 - ✓ pre-commit met gitleaks en push-hook → /pad/.pre-commit-config.yaml
 - ✓ GitHub Actions-checks → /pad/.github/workflows/fwd-review.yml
 - ✓ Reviewer aangezet (review: true) → /pad/.claude/fwd/plugin.json
+- ✓ Bestaande fouten opgeruimd → commit 28bd330, 3 bestanden
 
 Bestanden aangepast:
 - /pad/.pre-commit-config.yaml
@@ -72,9 +83,16 @@ Bestanden aangepast:
 - /pad/.github/workflows/fwd-osv-weekly.yml
 - /pad/.claude/fwd/plugin.json
 
+Nog met de hand op te lossen:
+    eslint: tests/helpers/database.ts
+    eslint:   19:13  error  Without `.where(...)` you will delete all the rows in a table.  drizzle/enforce-delete-with-where
+    eslint: ✖ 1 problem (1 error, 0 warnings)
+
+De autofixes konden dit niet oplossen. Los het op en commit het, anders faalt de check `pre-commit` op de eerste PR.
+
 Commit de nieuwe bestanden: CI, de Workcenter en je andere machines zien ze pas na een push.
 
-Je kan /fwd:setup-review opnieuw draaien — het overschrijft niets wat er al staat.
+Je kan /fwd:setup-review opnieuw draaien — het overschrijft geen config of workflow die er al staat.
 ```
 
 ## Vorm bij een conflict
@@ -88,6 +106,7 @@ Geïnstalleerd:
 - ⚠ pre-commit met gitleaks en push-hook → core.hooksPath staat aan (husky)
 - – GitHub Actions-checks → fwd-review.yml bestond al, niet aangepast
 - ✓ Reviewer aangezet (review: true) → /pad/.claude/fwd/plugin.json
+- – Bestaande fouten opgeruimd → niet-gecommitte wijzigingen, niets aangepast; commit of stash ze en draai opnieuw
 
 Bestanden aangepast:
 - /pad/.pre-commit-config.yaml
@@ -99,5 +118,5 @@ Aandachtspunten:
 
 Commit de nieuwe bestanden: CI, de Workcenter en je andere machines zien ze pas na een push.
 
-Je kan /fwd:setup-review opnieuw draaien — het overschrijft niets wat er al staat.
+Je kan /fwd:setup-review opnieuw draaien — het overschrijft geen config of workflow die er al staat.
 ```

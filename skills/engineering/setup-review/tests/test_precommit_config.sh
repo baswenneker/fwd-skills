@@ -60,6 +60,7 @@ cfg="$(cat .pre-commit-config.yaml)"
 assert_contains "$cfg" "id: ruff-format" "Python format check"
 assert_contains "$cfg" "npx --no-install prettier --check" "Prettier through the project's npx"
 assert_contains "$cfg" "npx --no-install eslint" "ESLint through the project's npx"
+assert_contains "$cfg" "types_or: [javascript, jsx, ts, tsx, css, scss]" "Prettier checks code only, not notes"
 assert_contains "$cfg" "gofmt -l" "Go format check"
 assert_contains "$cfg" "cargo fmt" "Rust format check"
 

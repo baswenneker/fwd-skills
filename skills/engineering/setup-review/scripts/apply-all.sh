@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# apply-all.sh - Run every fwd:setup-review installer at --scope project and print a
+# apply-all.sh - Run every fwd:setup-review installer (baseline last: it fixes and
+# commits what the new checks would fail on) at --scope project and print a
 # per-feature report (exit code + stdout + stderr), then the touched files git tracks.
 #
 # Usage:
@@ -12,7 +13,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FEATURES=(precommit workflow review-flag)
+FEATURES=(precommit workflow review-flag baseline)
 
 for feature in "${FEATURES[@]}"; do
     stdout_file="$(mktemp)"

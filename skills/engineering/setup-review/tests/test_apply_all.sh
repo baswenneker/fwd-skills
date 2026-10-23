@@ -18,8 +18,8 @@ echo '{}' > package-lock.json
 out="$(bash "$SCRIPTS/apply-all.sh")"; code=$?
 assert_eq "$code" 0 "apply-all exits 0"
 order="$(printf '%s\n' "$out" | sed -n 's/^### //p' | tr '\n' ' ')"
-assert_eq "$order" "precommit workflow review-flag tracked " "feature blocks in order"
-assert_eq "$(printf '%s\n' "$out" | grep -c '^exit=0$')" 3 "every feature exit 0"
+assert_eq "$order" "precommit workflow review-flag baseline tracked " "feature blocks in order"
+assert_eq "$(printf '%s\n' "$out" | grep -c '^exit=0$')" 4 "every feature exit 0"
 
 before="$(snapshot "$repo")"
 bash "$SCRIPTS/apply-all.sh" >/dev/null
