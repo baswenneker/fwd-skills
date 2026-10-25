@@ -61,6 +61,12 @@ beslis bewust of ze mee mogen in je volgende commit." Otherwise always add this 
 instead: "Commit de nieuwe bestanden: CI, de Workcenter en je andere machines zien ze
 pas na een push."
 
+**Andere clones** — always add this line, unless `precommit` is `⚠`/`✗`: "Op elke
+andere clone van deze repo (de Workcenter, een andere machine): na de pull één keer
+`pre-commit install`, anders draaien de hooks daar niet. Worktrees van een clone
+delen zijn hooks en hebben dat niet nodig." Do not tell the user to run
+`/fwd:setup-review` there: the files arrive through git.
+
 ---
 
 ## Voorbeeld (exacte vorm)
@@ -79,6 +85,7 @@ Geïnstalleerd:
 Bestanden aangepast:
 - /pad/.pre-commit-config.yaml
 - /pad/.claude/fwd/review-push.sh
+- /pad/.claude/fwd/worktree-deps.sh
 - /pad/.github/workflows/fwd-review.yml
 - /pad/.github/workflows/fwd-osv-weekly.yml
 - /pad/.claude/fwd/plugin.json
@@ -91,6 +98,8 @@ Nog met de hand op te lossen:
 De autofixes konden dit niet oplossen. Los het op en commit het, anders faalt de check `pre-commit` op de eerste PR.
 
 Commit de nieuwe bestanden: CI, de Workcenter en je andere machines zien ze pas na een push.
+
+Op elke andere clone van deze repo (de Workcenter, een andere machine): na de pull één keer `pre-commit install`, anders draaien de hooks daar niet. Worktrees van een clone delen zijn hooks en hebben dat niet nodig.
 
 Je kan /fwd:setup-review opnieuw draaien — het overschrijft geen config of workflow die er al staat.
 ```
