@@ -29,6 +29,9 @@ Print exactly this shape, in Dutch, with these four bold headings:
 **Waar we mee bezig zijn**
 <one sentence: the goal of this piece of work>
 
+- PR #<n> (<url>): <one sentence: what it changes>
+- Issue #<n> (<url>): <one sentence: what it asks>
+
 **Waar we staan**
 - <done, running or stuck — with the fact that proves it>
 - <…>
@@ -45,8 +48,12 @@ Daarna <later steps in one sentence, with who does them>.
 
 Rules per part:
 
+- **Waar we mee bezig zijn** — the goal sentence, then one bullet for every PR
+  and issue the block names anywhere, with its URL and one sentence on what it
+  is. Elsewhere in the block a number stands alone ("PR #15 is gemerged"),
+  without explaining it again. No PR or issue named → no list.
 - **Waar we staan** — one to three bullets. Each bullet names a fact the user
-  can check: "PR #14 gemerged", "branch `feat/x` niet gepusht", "3 van 5 tests
+  can check: "PR #14 is gemerged", "branch `feat/x` niet gepusht", "3 van 5 tests
   rood". Something stuck says what blocks it.
 - **Next steps** — only the steps that come now, at most five. Each step
   starts with who does it: "Ik …" for Claude, "Jij …" for the user, "Ik …, jij
@@ -130,6 +137,8 @@ The user has a step left, with the how-to under it:
 ````
 **Waar we mee bezig zijn**
 De regel die het next-steps-blok vanzelf toont, op de Mac en de Workcenter.
+
+- PR #15 (https://github.com/baswenneker/fwd-skills/pull/15): voegt `fwd:next-steps` toe, plus de regel die `fwd:setup` in `~/.claude/CLAUDE.md` zet.
 
 **Waar we staan**
 - PR #15 is gemerged; `main` staat op versie 1.2.0.
