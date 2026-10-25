@@ -38,8 +38,7 @@ done
 echo "### tracked"
 ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-    for f in .pre-commit-config.yaml .claude/fwd/review-push.sh .claude/fwd/worktree-deps.sh \
-             .claude/fwd/plugin.json \
+    for f in .pre-commit-config.yaml .claude/fwd/review-push.sh .claude/fwd/plugin.json \
              .github/workflows/fwd-review.yml .github/workflows/fwd-osv-weekly.yml; do
         if git -C "$ROOT" ls-files --error-unmatch "$f" >/dev/null 2>&1; then
             echo "$f"
