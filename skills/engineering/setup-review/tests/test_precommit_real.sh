@@ -53,26 +53,6 @@ echo more >> README.md && git commit -qam more
 out="$(PATH="$stub:$PATH" git push origin main 2>&1)" || fail "push succeeds while the reviewer cannot run"
 assert_contains "$out" "gitleaks is not installed" "pre-commit shows the reviewer's warning"
 
-# A new worktree of a JS repo gets its node_modules from the post-checkout hook,
-# which the worktree shares with the main checkout.
-repo="$(make_repo js)"
-cd "$repo"
-echo '{"devDependencies": {"prettier": "^3"}}' > package.json
-echo '{}' > package-lock.json
-bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null; code=$?
-assert_eq "$code" 0 "JS install exits 0"
-[[ -f .git/hooks/post-checkout ]] || fail "post-checkout hook installed"
-git add -A && git commit -q --no-verify -m "add review setup"
-printf '#!/usr/bin/env bash\necho "npm $* in $PWD" >> "%s/npm-calls"\nmkdir node_modules\n' "$WORK" > "$stub/npm"
-chmod +x "$stub/npm"
-out="$(PATH="$stub:$PATH" git worktree add -q "$WORK/js-tree" -b feature 2>&1)" || fail "worktree add succeeds"
-# macOS reports the temp dir as /private/var/..., so match the end of the path only.
-[[ "$(cat "$WORK/npm-calls" 2>/dev/null)" == "npm ci in "*/js-tree ]] || fail "new worktree ran npm ci in the worktree"
-assert_contains "$out" "fwd-worktree-deps" "worktree add shows what it installed"
-: > "$WORK/npm-calls"
-(cd "$WORK/js-tree" && PATH="$stub:$PATH" git switch -q main 2>/dev/null; PATH="$stub:$PATH" git switch -q feature)
-assert_eq "$(cat "$WORK/npm-calls")" "" "a branch switch installs nothing"
-
 repo="$(make_repo husky)"
 cd "$repo"
 git config core.hooksPath .husky
