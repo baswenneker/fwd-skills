@@ -14,8 +14,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution grilling wait-loops codex-review rtk)
-USER_SCOPE=" grilling wait-loops codex-review rtk "
+FEATURES=(smartlint lessons gitignore clear-context-on-plan no-attribution grilling wait-loops codex-review next-steps rtk)
+USER_SCOPE=" grilling wait-loops codex-review next-steps rtk "
 
 for feature in "${FEATURES[@]}"; do
     stdout_file="$(mktemp)"

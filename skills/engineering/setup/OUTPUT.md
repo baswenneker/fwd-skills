@@ -2,7 +2,7 @@
 
 Fixed final-message format for `/fwd:setup`. `scripts/apply-all.sh` prints one
 `### <feature>` block per installer, each with `exit=`, `stdout:`, and
-`stderr:` (`grilling`, `wait-loops`, `codex-review` and `rtk` write to `~/.claude` instead of the project, which is why the `Scope:` line names them), then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
+`stderr:` (`grilling`, `wait-loops`, `codex-review`, `next-steps` and `rtk` write to `~/.claude` instead of the project, which is why the `Scope:` line names them), then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
 last message, in Dutch, exactly as structured here. Do not paraphrase, add
 sections, reorder, or write a free-form summary instead — this is a fixed
 report, not something to compose.
@@ -19,9 +19,10 @@ report, not something to compose.
 | `grilling` | Grilling-regel (globaal) |
 | `wait-loops` | Wachtlus-regel (globaal) |
 | `codex-review` | Codex-review op achtergrond (globaal) |
+| `next-steps` | Next-steps-regel (globaal) |
 | `rtk` | RTK-hook (globaal) |
 
-List features in this exact order, always all nine.
+List features in this exact order, always all ten.
 
 ## How to fill each line
 
@@ -76,7 +77,7 @@ in this order:
 
 Omit a line when the block does not name it; an empty block means no line at
 all. Never invent a follow-up that the block does not name, and never run one —
-this wizard installs nothing outside its own nine features.
+this wizard installs nothing outside its own ten features.
 
 ---
 
@@ -85,7 +86,7 @@ this wizard installs nothing outside its own nine features.
 ```
 ✅ Setup voltooid
 
-Scope: Project-lokaal, behalve vier globale features in ~/.claude
+Scope: Project-lokaal, behalve vijf globale features in ~/.claude
 
 Geïnstalleerde conventies:
 - ✓ Smartlint Stop-hook → /Users/bas/Development/Accounts/Artific/res-202-agent-loop/.claude/hooks/
@@ -96,6 +97,7 @@ Geïnstalleerde conventies:
 - ✓ Grilling-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 - ✓ Wachtlus-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 - ✓ Codex-review op achtergrond (globaal) → /Users/bas/.claude/CLAUDE.md
+- ✓ Next-steps-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 - ✓ RTK-hook (globaal) → /Users/bas/.claude/settings.json
 
 Bestanden aangepast:
@@ -121,7 +123,7 @@ Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de i
 ```
 ⚠️ Setup deels voltooid
 
-Scope: Project-lokaal, behalve vier globale features in ~/.claude
+Scope: Project-lokaal, behalve vijf globale features in ~/.claude
 
 Geïnstalleerde conventies:
 - ✓ Smartlint Stop-hook → /pad/.claude/hooks/
@@ -132,6 +134,7 @@ Geïnstalleerde conventies:
 - ✓ Grilling-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 - ✓ Wachtlus-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 - ✓ Codex-review op achtergrond (globaal) → /pad-naar-home/.claude/CLAUDE.md
+- ✓ Next-steps-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 - – RTK-hook (globaal) → skipped (install RTK, then re-run /fwd:setup)
 
 Bestanden aangepast:
