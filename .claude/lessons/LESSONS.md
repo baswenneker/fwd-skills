@@ -132,3 +132,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Bij het committen van een fix voor fwd:next-steps op een nieuwe branch, terwijl een tweede Claude-sessie in dezelfde checkout aan setup-review werkte.
 **Observation**: `git add -A` nam de ongecommitte worktree-hook-feature en versie 1.3.0 van die andere sessie mee in mijn commit. Via PR #16 kwam die feature op `main` terecht, onder een next-steps-commitbericht. Het hint was er al: `claude plugin list` toonde 1.3.0, terwijl geen commit dat had. En `sed 1.2.0→1.2.1` veranderde stil niets.
 **Lesson**: Stage alleen de bestanden die je zelf hebt aangeraakt (`git add <pad>`), nooit `-A` of `-a`. Draai vóór elke commit `git status --short` en vergelijk de lijst met je eigen wijzigingen. Toont een tool een versie of bestand dat je niet verwacht, zoek dat eerst uit.
+
+### 2026-10-25 | correction | general
+**Context**: De gebruiker vroeg welke repos op de Workcenter de setup-review-vlag hadden; ik probeerde `ssh workcenter`.
+**Observation**: De sessie draaide al op de Workcenter (hostname `workcenter`); ssh faalde met publickey en de gebruiker moest me erop wijzen.
+**Lesson**: Draai eerst `hostname` voordat je naar een genoemde machine ssh't; ben je er al, zoek dan lokaal (ook buiten `~/Development`).
