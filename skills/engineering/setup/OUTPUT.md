@@ -69,10 +69,10 @@ in this order:
   Vervolgstap: draai /mattpocock-skills:setup-matt-pocock-skills — die legt de issue tracker, de triage-labels en de plek van de domain docs vast. Let op: die wizard stelt wel vragen, deze niet.
   ```
 
-- `setup-review`:
+- `setup-precommit`:
 
   ```
-  Vervolgstap: draai /fwd:setup-review — die zet pre-commit met gitleaks, de GitHub Actions-checks en de Workcenter-reviewer op deze repo.
+  Vervolgstap: draai /fwd:setup-precommit — die zet de pre-commit hooks aan (gitleaks, formatters, osv-scanner bij push), of installeert ze in deze clone als de config er al is.
   ```
 
 Omit a line when the block does not name it; an empty block means no line at
