@@ -29,6 +29,9 @@ Print exactly this shape, in Dutch, with these four bold headings:
 **Waar we mee bezig zijn**
 <one sentence: the goal of this piece of work>
 
+- [PR #<n>](<url>): <one sentence: what it changes>
+- [Issue #<n>](<url>): <one sentence: what it asks>
+
 **Waar we staan**
 - <done, running or stuck — with the fact that proves it>
 - <…>
@@ -45,8 +48,13 @@ Daarna <later steps in one sentence, with who does them>.
 
 Rules per part:
 
+- **Waar we mee bezig zijn** — the goal sentence, then one bullet for every PR
+  and issue the block names anywhere: the number as a markdown link to its URL
+  (`[PR #15](https://…/pull/15)`, never the bare URL) and one sentence on what it
+  is. Elsewhere in the block a number stands alone ("PR #15 is gemerged"),
+  without explaining it again. No PR or issue named → no list.
 - **Waar we staan** — one to three bullets. Each bullet names a fact the user
-  can check: "PR #14 gemerged", "branch `feat/x` niet gepusht", "3 van 5 tests
+  can check: "PR #14 is gemerged", "branch `feat/x` niet gepusht", "3 van 5 tests
   rood". Something stuck says what blocks it.
 - **Next steps** — only the steps that come now, at most five. Each step
   starts with who does it: "Ik …" for Claude, "Jij …" for the user, "Ik …, jij
@@ -56,8 +64,28 @@ Rules per part:
   follows.
 - **Closing line** — see below.
 
+## Who does a step
+
+- **Ik first.** A step Claude can do with its own tools is an "Ik" step — also
+  when it runs on another machine over `ssh` (`ssh workcenter '<command>'`) or
+  outside the repo. Look up the real command before handing it over: `<tool>
+  --help`, the installed version, the configured source.
+- **Jij only for what Claude cannot do:** restart Claude Code, open a new
+  session, a decision, a merge the user wants to do themselves, a login, judging
+  the result.
+- **Every "Jij" step says how.** Under the step, indented:
+  - where it happens: the Mac terminal, the Workcenter (`ssh workcenter`), or
+    this Claude Code session with the `!` prefix (`! <command>` runs it here, so
+    the output lands in the conversation);
+  - the exact commands or keystrokes in a code block, ready to copy, with real
+    names and paths — never a placeholder the user has to fill in;
+  - what the user sees when it worked: a version number, a line in a file, a
+    block at the end of a reply.
+
+  For a test, give the exact message to type and what the answer must contain.
+
 No emoji, no status icons, no table, no extra headings. Keep the whole block
-under ~1.000 characters. When the block ends a longer report, "Waar we staan"
+under ~1.500 characters; the how-to under a "Jij" step is what may use the room. When the block ends a longer report, "Waar we staan"
 does not repeat that report: one line per open point is enough.
 
 ## Closing line
@@ -83,7 +111,9 @@ Ends the block with what happens on the user's next reply.
 - **Nothing left** → replace the whole block with one line: `Alles is af:
   <fact>. Er staat niets meer open.` Never invent a step to fill the list.
 
-## Example
+## Examples
+
+Claude does the work, the user only decides:
 
 ```
 **Waar we mee bezig zijn**
@@ -102,3 +132,28 @@ Daarna test jij de skill in een andere sessie met "ok en nu?". Als het goed is, 
 
 Ik begin hier en nu, tenzij je "autocoder", "autocoder nu" of "autocoder vanavond" zegt.
 ```
+
+The user has a step left, with the how-to under it:
+
+````
+**Waar we mee bezig zijn**
+De regel die het next-steps-blok vanzelf toont, op de Mac en de Workcenter.
+
+- [PR #15](https://github.com/baswenneker/fwd-skills/pull/15): voegt `fwd:next-steps` toe, plus de regel die `fwd:setup` in `~/.claude/CLAUDE.md` zet.
+
+**Waar we staan**
+- PR #15 is gemerged; `main` staat op versie 1.2.0.
+- De Workcenter draait nog plugin 1.1.0; de regel staat nergens in `~/.claude/CLAUDE.md`.
+
+**Next steps**
+1. Ik werk de plugin bij en zet de regel in `~/.claude/CLAUDE.md`, op de Mac en via `ssh workcenter`.
+2. Jij herstart Claude Code en test of het blok vanzelf komt.
+   - Waar: een nieuwe Claude Code-sessie in deze repo.
+   - Typ:
+     ```
+     maak een bestand tmp/test.txt met de tekst hallo
+     ```
+   - Goed als: het antwoord eindigt met **Waar we mee bezig zijn** en **Next steps**, zonder dat je erom vroeg.
+
+Zal ik beginnen?
+````

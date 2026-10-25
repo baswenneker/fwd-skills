@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # install.sh - Set the repo up with the pre-commit framework: gitleaks on every commit,
 # a format check per language found, ESLint/Prettier through the project's own npx,
-# and a pre-push hook that asks the Workcenter reviewer to look at the branch.
+# a pre-push hook that asks the Workcenter reviewer to look at the branch, and (with
+# Prettier or ESLint) a post-checkout hook that installs node_modules in a new worktree.
 #
 # Usage:
 #   install.sh --scope project
@@ -9,8 +10,9 @@
 # Behavior:
 #   - no .pre-commit-config.yaml → writes one from the stacks it finds, copies
 #     review-push.sh to .claude/fwd/
-#   - one this installer wrote (first line is the marker) → left as it is, push
-#     script refreshed
+#   - one this installer wrote (first line is the marker) → left as it is, apart from
+#     hooks added since (verbose on the push hook, the worktree install); scripts
+#     refreshed
 #   - one the repo wrote itself → left alone, reported as skipped (↷): gitleaks and
 #     the push hook are then not added
 #   Then makes sure `pre-commit` exists (`uv tool install pre-commit`) and runs
@@ -50,6 +52,7 @@ PAYLOAD_DIR="$SCRIPT_DIR/payload"
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 CONFIG="$PROJECT_ROOT/.pre-commit-config.yaml"
 PUSH_SCRIPT="$PROJECT_ROOT/.claude/fwd/review-push.sh"
+DEPS_SCRIPT="$PROJECT_ROOT/.claude/fwd/worktree-deps.sh"
 MARKER="# Written by /fwd:setup-review."
 
 if ! git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
@@ -72,14 +75,33 @@ if root_has package.json; then
     if pkg_has_dep eslint; then ESLINT=true; fi
 fi
 JS_RUNNER="$(js_runner)"
+# Prettier and ESLint run from node_modules, which a new worktree does not have.
+DEPS=false
+if $PRETTIER || $ESLINT; then DEPS=true; fi
+HOOK_TYPES="pre-commit, pre-push"
+$DEPS && HOOK_TYPES+=", post-checkout"
+
+deps_hook() {
+    cat <<'EOF'
+      # Installs node_modules in a new worktree, so Prettier and ESLint run there.
+      - id: fwd-worktree-deps
+        name: install dependencies in a new worktree
+        entry: .claude/fwd/worktree-deps.sh
+        language: script
+        stages: [post-checkout]
+        pass_filenames: false
+        always_run: true
+        verbose: true
+EOF
+}
 
 # ── Write the config ──────────────────────────────────────────────────────────
 
 write_config() {
     cat <<EOF
 $MARKER Re-running it never overwrites this file.
-# \`pre-commit install\` installs both the commit and the push hook.
-default_install_hook_types: [pre-commit, pre-push]
+# A plain \`pre-commit install\` installs every hook below, on any machine.
+default_install_hook_types: [$HOOK_TYPES]
 default_stages: [pre-commit]
 repos:
   - repo: https://github.com/gitleaks/gitleaks
@@ -156,6 +178,7 @@ EOF
         # must show.
         verbose: true
 EOF
+    if $DEPS; then deps_hook; fi
 }
 
 OURS=false
@@ -168,9 +191,10 @@ if [[ ! -f "$CONFIG" ]]; then
     $ESLINT && stacks+=" ESLint"
     $GO && stacks+=" Go"
     $RUST && stacks+=" Rust"
-    echo "✔ gitleaks, push hook${stacks:+ and format checks for$stacks} → $CONFIG"
+    echo "✔ gitleaks, push hook${stacks:+, format checks for$stacks}$($DEPS && echo ", install in new worktrees") → $CONFIG"
 elif [[ "$(head -n 1 "$CONFIG")" == "$MARKER"* ]]; then
     OURS=true
+    changed=false
     # Written before the push hook said anything: without verbose its warning
     # stays hidden.
     if grep -q 'id: fwd-review-push' "$CONFIG" &&
@@ -178,9 +202,19 @@ elif [[ "$(head -n 1 "$CONFIG")" == "$MARKER"* ]]; then
         awk '{ print } /id: fwd-review-push/ { in_hook = 1 } in_hook && /always_run: true/ { sub(/always_run: true.*/, ""); print $0 "verbose: true"; in_hook = 0 }' \
             "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
         echo "✔ push hook now shows the reviewer's warnings (verbose: true) → $CONFIG"
-    else
-        echo "✔ already written by /fwd:setup-review, no change → $CONFIG"
+        changed=true
     fi
+    # Written before the worktree install existed. Appended only while the local repo
+    # is the last one, so the hook lands in its list.
+    if $DEPS && ! grep -q 'id: fwd-worktree-deps' "$CONFIG" &&
+        [[ "$(grep -E '^  - repo:' "$CONFIG" | tail -n 1)" == "  - repo: local" ]]; then
+        sed -E 's/^default_install_hook_types: \[pre-commit, pre-push\]$/default_install_hook_types: [pre-commit, pre-push, post-checkout]/' \
+            "$CONFIG" > "$CONFIG.tmp" && mv "$CONFIG.tmp" "$CONFIG"
+        deps_hook >> "$CONFIG"
+        echo "✔ node_modules now installed in new worktrees (post-checkout) → $CONFIG"
+        changed=true
+    fi
+    $changed || echo "✔ already written by /fwd:setup-review, no change → $CONFIG"
 else
     echo "↷ $CONFIG belongs to the repo, left alone: gitleaks and the push hook were not added → add them by hand (see /fwd:setup-review)"
 fi
@@ -192,6 +226,13 @@ if $OURS; then
         echo "✔ Push script → $PUSH_SCRIPT"
     fi
     [[ -x "$PUSH_SCRIPT" ]] || chmod +x "$PUSH_SCRIPT"
+    if grep -q 'id: fwd-worktree-deps' "$CONFIG"; then
+        if ! cmp -s "$PAYLOAD_DIR/worktree-deps.sh" "$DEPS_SCRIPT"; then
+            cp "$PAYLOAD_DIR/worktree-deps.sh" "$DEPS_SCRIPT"
+            echo "✔ Worktree install script → $DEPS_SCRIPT"
+        fi
+        [[ -x "$DEPS_SCRIPT" ]] || chmod +x "$DEPS_SCRIPT"
+    fi
 fi
 
 # ── Make sure pre-commit exists ───────────────────────────────────────────────
@@ -224,4 +265,4 @@ if ! out="$(cd "$PROJECT_ROOT" && pre-commit install 2>&1)"; then
     printf '%s\n' "$out" | sed 's/^/   /' >&2
     exit 2
 fi
-echo "✔ Git hooks installed with pre-commit install (pre-commit, pre-push)"
+echo "✔ Git hooks installed with pre-commit install ($HOOK_TYPES)"

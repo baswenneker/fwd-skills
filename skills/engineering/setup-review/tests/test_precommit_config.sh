@@ -25,6 +25,8 @@ assert_contains "$cfg" "stages: [pre-push]" "push hook on pre-push stage"
 assert_contains "$cfg" "default_install_hook_types: [pre-commit, pre-push]" "plain pre-commit install gets both hooks"
 assert_not_contains "$cfg" "ruff" "no Python hook without Python"
 assert_not_contains "$cfg" "prettier" "no Prettier without package.json"
+assert_not_contains "$cfg" "fwd-worktree-deps" "no worktree install without Prettier or ESLint"
+[[ ! -e .claude/fwd/worktree-deps.sh ]] || fail "no worktree install script without Prettier or ESLint"
 [[ -x .claude/fwd/review-push.sh ]] || fail "review-push.sh copied and executable"
 assert_contains "$(cat "$WORK/pre-commit-calls")" "install" "pre-commit install ran"
 assert_contains "$out" "→" "stdout names what changed"
@@ -63,6 +65,33 @@ assert_contains "$cfg" "npx --no-install eslint" "ESLint through the project's n
 assert_contains "$cfg" "types_or: [javascript, jsx, ts, tsx, css, scss]" "Prettier checks code only, not notes"
 assert_contains "$cfg" "gofmt -l" "Go format check"
 assert_contains "$cfg" "cargo fmt" "Rust format check"
+assert_contains "$cfg" "id: fwd-worktree-deps" "worktree install with Prettier or ESLint"
+assert_contains "$cfg" "stages: [post-checkout]" "worktree install on post-checkout"
+assert_contains "$cfg" "default_install_hook_types: [pre-commit, pre-push, post-checkout]" "plain pre-commit install gets the post-checkout hook too"
+[[ -x .claude/fwd/worktree-deps.sh ]] || fail "worktree-deps.sh copied and executable"
+assert_contains "$(tail -n 1 "$WORK/pre-commit-calls")" "install" "pre-commit install ran"
+
+# A config written before the worktree install: it gets the hook, once, inside the
+# local repo, and the scripts stay in sync.
+python3 - <<'EOF'
+import re
+s = open(".pre-commit-config.yaml").read()
+s = s.replace("[pre-commit, pre-push, post-checkout]", "[pre-commit, pre-push]")
+s = s[:s.index("      # Installs node_modules")]
+open(".pre-commit-config.yaml", "w").write(s)
+EOF
+rm .claude/fwd/worktree-deps.sh
+out="$(bash "$SCRIPTS/precommit/install.sh" --scope project)"; code=$?
+assert_eq "$code" 0 "worktree upgrade exits 0"
+assert_contains "$out" "post-checkout" "worktree upgrade says what changed"
+assert_eq "$(grep -c 'id: fwd-worktree-deps' .pre-commit-config.yaml)" 1 "worktree hook added once"
+assert_contains "$(cat .pre-commit-config.yaml)" "[pre-commit, pre-push, post-checkout]" "upgrade adds the hook type"
+[[ -x .claude/fwd/worktree-deps.sh ]] || fail "upgrade copies worktree-deps.sh"
+python3 -c 'import sys,yaml; c=yaml.safe_load(open(".pre-commit-config.yaml")); r=[r for r in c["repos"] if any(h["id"]=="fwd-worktree-deps" for h in r["hooks"])]; sys.exit(0 if r and r[0]["repo"]=="local" else 1)' 2>/dev/null ||
+    { python3 -c 'import yaml' 2>/dev/null && fail "upgraded config is valid YAML with the worktree hook in the local repo"; }
+before="$(snapshot "$repo")"
+bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null
+assert_eq "$(snapshot "$repo")" "$before" "re-run after the worktree upgrade changes no file"
 
 # The gofmt hook fails when gofmt itself fails (missing, or a syntax error), not only
 # when it lists files.
