@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test gate for the fwd:setup-review scripts. Runs every test_*.sh sibling in its own bash
+# Test gate for the fwd:setup-precommit scripts. Runs every test_*.sh sibling in its own bash
 # process (isolation), tallies pass/fail, and exits non-zero if any failed — including
 # the degenerate case of finding no test files at all (a green-but-empty gate is a lie).
 #

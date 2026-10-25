@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for the fwd:setup-review tests. Source this file; it sets SCRIPTS
+# Shared helpers for the fwd:setup-precommit tests. Source this file; it sets SCRIPTS
 # (the skill's scripts/ dir) and gives each test a throwaway repo under a temp dir
 # that is removed on exit.
 set -uo pipefail

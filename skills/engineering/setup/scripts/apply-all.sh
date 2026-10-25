@@ -65,11 +65,18 @@ for candidate in "$CONFIG_DIR"/plugins/cache/*/mattpocock-skills/*/skills/*/setu
         break
     fi
 done
-# fwd:setup-review (pre-commit, gitleaks, CI, the Workcenter reviewer hook) is a
+# fwd:setup-precommit (gitleaks, formatters, osv-scanner as pre-commit hooks) is a
 # separate skill so it can run on its own; point at it while the repo has no
-# pre-commit config yet.
-if [[ ! -f "${CLAUDE_PROJECT_DIR:-$(pwd)}/.pre-commit-config.yaml" ]]; then
-    echo "setup-review"
+# pre-commit config yet, or has one but this clone never ran `pre-commit install`
+# (git runs no hook on a clone, so a fresh clone starts without them).
+ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+if [[ ! -f "$ROOT/.pre-commit-config.yaml" ]]; then
+    echo "setup-precommit"
+else
+    hooks="$(git -C "$ROOT" rev-parse --path-format=absolute --git-path hooks 2>/dev/null || true)"
+    if [[ -n "$hooks" && ! -f "$hooks/pre-commit" ]]; then
+        echo "setup-precommit"
+    fi
 fi
 echo
 
