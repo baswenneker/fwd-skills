@@ -1,6 +1,6 @@
 {
   "name": "fwd",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "skills": [
     "./skills/engineering/changelog",
     "./skills/engineering/git-commit",
@@ -9,6 +9,7 @@
     "./skills/engineering/rules-audit",
     "./skills/productivity/caveman",
     "./skills/productivity/jip-janneke",
-    "./skills/productivity/explainer"
+    "./skills/productivity/explainer",
+    "./skills/productivity/next-steps"
   ]
 }

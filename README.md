@@ -33,7 +33,7 @@ After installing the plugin, run the setup wizard to enable optional HeadingFWD 
 /fwd:setup
 ```
 
-It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`), except four features that go into `~/.claude` because they apply to every repo: the grilling, wait-loops and codex-review rules and the RTK hook. It installs all nine features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you. While the repo has no `.pre-commit-config.yaml`, the report also points at `/fwd:setup-review` (see "Review setup" below).
+It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/settings.local.json`, the project's `CLAUDE.md` and `.gitignore`), except five features that go into `~/.claude` because they apply to every repo: the grilling, wait-loops, codex-review and next-steps rules and the RTK hook. It installs all ten features in one batch and prints a fixed Dutch report. The wizard is idempotent — re-running it is safe; existing entries are detected and refreshed in place. The report lists which touched files are under version control, so you can decide whether they go into your next commit. If Matt Pocock's `setup-matt-pocock-skills` is installed, the report ends with a pointer to it; that wizard is interactive and is never run for you. While the repo has no `.pre-commit-config.yaml`, the report also points at `/fwd:setup-review` (see "Review setup" below).
 
 ### Feature: smartlint Stop-hook
 
@@ -75,6 +75,11 @@ It runs unattended: zero prompts, project-local (`<project>/.claude/`, `.claude/
 - **Why** — `/codex:adversarial-review` first asks whether to wait or run in the background, and a review takes minutes.
 - **What** — a marker-bracketed block (`<!-- fwd:codex-review:start -->` …) in `~/.claude/CLAUDE.md` that always runs it in the background, without asking. Installs only when the codex plugin (openai-codex) is installed; otherwise the report marks it as skipped. Remove with `scripts/codex-review/install.sh --scope user --remove`.
 
+### Feature: next-steps rule (global)
+
+- **Why** — after a piece of work the user kept asking "en nu?" to learn where things stand.
+- **What** — a marker-bracketed block (`<!-- fwd:next-steps:start -->` …) in `~/.claude/CLAUDE.md` that has Claude end every turn that finishes a piece of work with the `/fwd:next-steps` block, unasked. Plain questions, quick back-and-forth and autonomous `/loop` ticks are skipped. Remove with `scripts/next-steps/install.sh --scope user --remove`.
+
 ### Feature: RTK hook (global)
 
 - **Why** — [RTK](https://github.com/rtk-ai/rtk) filters the output of commands such as `git status` before it reaches Claude, which saves many tokens.
@@ -110,6 +115,7 @@ Commit the files it writes: CI, the Workcenter and your other machines only see 
 | productivity | [fwd:caveman](skills/productivity/caveman/SKILL.md) | Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or invokes /fwd:caveman. |
 | productivity | [fwd:jip-janneke](skills/productivity/jip-janneke/SKILL.md) | Rewrites a referenced text into plain, readable language — "jip-en-janneketaal". One pass, chat output only; output is always Dutch unless another language is explicitly requested. Invoke when someone says "maak dit leesbaarder", "schrijf dit in jip-en-janneketaal", "leg uit in jip janneke", "leg dit uit voor een leek", "rewrite in plain language", "make this readable", or invokes /fwd:jip-janneke. Not fwd:caveman (compresses WITH abbreviations, cuts to fragments — opposite direction). fwd:jip-janneke rewrites the full text once, into complete readable sentences. |
 | productivity | [fwd:explainer](skills/productivity/explainer/SKILL.md) | Builds a visual HTML explainer of anything heavy — what happened this session, an architecture, an auth or deployment flow, a plan, review findings, a diff — and publishes it as an artifact whose diagrams are verified by actually rendering them. Fixed shape: framing sentence, a numbered table of contents, In 't kort, a hand-drawn SVG diagram of the mechanism plus a further diagram in every section that has its own sequence, comparison or set of relationships, one running concrete example, term list, "wat ik weglaat". Written for a reader who is a layperson on devops and cloud; English terms allowed, each explained at first use. Invoke when someone says "maak een html explainer", "maak een explainer", "html explainer van ...", "visualiseer wat je gedaan hebt", "maak er een uitlegpagina van", or invokes /fwd:explainer. |
+| productivity | [fwd:next-steps](skills/productivity/next-steps/SKILL.md) | Answers "en nu?" with a short, fixed status block in Dutch — what we are working on, where we stand, the next steps and who does each one — and ends with an offer to start, here or through the autocoder. Looks at the current session only and changes nothing. Invoke when the user asks "en nu?", "ok en nu?", "wat nu?", "wat is de status?", "waar staan we?", "what's next", or invokes /fwd:next-steps; the global next-steps rule from /fwd:setup also has Claude end every turn that finishes a piece of work with this block. |
 
 ## Obsolete skills
 
