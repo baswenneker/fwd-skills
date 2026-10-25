@@ -34,6 +34,19 @@ assert_eq "$(cat notes.txt)" "line" "trailing whitespace removed"
 git add notes.txt
 git commit -q -m "docs: notes" >/dev/null 2>&1 || fail "the fixed file commits"
 
+# A push runs only the push hooks: no fixer that could rewrite files mid-push.
+printf 'f() {\n    echo hi\n}\n' > run.sh
+git add run.sh && git commit -q -m "feat: script" >/dev/null 2>&1
+bash "$SCRIPTS/precommit/install.sh" --scope project >/dev/null
+git add -A && git commit -q -m "chore: shell hooks" >/dev/null 2>&1
+remote="$WORK/remote.git"
+git init -q --bare "$remote"
+git remote set-url origin "$remote"
+out="$(git push -q origin main 2>&1)" || fail "push without push hooks succeeds"
+for name in "trim trailing whitespace" "fix end of files" "check for added large files" shfmt; do
+    assert_not_contains "$out" "$name" "$name does not run on push"
+done
+
 repo="$(make_repo husky)"
 cd "$repo"
 git config core.hooksPath .husky

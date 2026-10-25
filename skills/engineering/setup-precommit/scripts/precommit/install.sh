@@ -87,6 +87,8 @@ $MARKER A re-run rewrites this file; delete this line to keep your own edits.
 # After a clone, \`pre-commit install\` installs all three hooks: commit, commit
 # message and push.
 default_install_hook_types: [pre-commit, commit-msg, pre-push]
+# default_stages covers only hooks whose own definition names no stages; the
+# ones that list pre-push get stages: [pre-commit] here, or they run on push too.
 default_stages: [pre-commit]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -95,10 +97,13 @@ repos:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
         exclude: '$FIXER_EXCLUDE'
+        stages: [pre-commit]
       - id: end-of-file-fixer
         exclude: '$FIXER_EXCLUDE'
+        stages: [pre-commit]
       - id: check-merge-conflict
       - id: check-added-large-files
+        stages: [pre-commit]
       - id: detect-private-key
       # Syntax only: custom tags (!Ref, !!python) and multi-document files pass.
       - id: check-yaml
@@ -136,6 +141,7 @@ EOF
       # -i: the indent the scripts already use, so shfmt does not re-indent them.
       - id: shfmt
         args: [--write, -i, '$SHELL_INDENT']
+        stages: [pre-commit]
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: $SHELLCHECK_REV
     hooks:
