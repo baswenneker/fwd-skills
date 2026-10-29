@@ -1,7 +1,7 @@
 ---
 name: explainer
 description: |
-  Builds a visual HTML explainer of anything heavy. It publishes it as an artifact whose diagrams are verified by actually rendering them. Invoke when someone says "create an html explainer", "create an explainer", "html explainer of"
+  Builds a visual HTML explainer of anything heavy. It publishes it as an artifact with hand-drawn diagrams and, where the subject has them, real screenshots, maps and terminal output, all verified by actually rendering them. Invoke when someone says "create an html explainer", "create an explainer", "html explainer of"
 argument-hint: <subject | file | "diff" | pr N | URL | empty for last block or session>
 allowed-tools: Read, Bash, Glob, Grep, WebFetch, Write, Edit, Artifact
 ---
@@ -56,6 +56,22 @@ Always these parts, in this order:
 A reader grasps a picture faster than a paragraph. The main diagram is therefore the minimum: **give every section its own diagram as soon as it contains something drawable.** That is the case for a sequence or chain, a comparison (two approaches, or before and after), who-talks-to-whom, a structure (what sits inside what, which layers), or a distribution with numbers attached.
 
 Rule of thumb: a page with five sections easily carries two to four diagrams besides the main one. In doubt about a section, draw it. Only a section that purely describes a reason or a trade-off stays without — a picture without a mechanism is decoration and goes out.
+
+### Show the real thing before you draw it
+
+Not every picture is a diagram. When the subject has something real to look at, that
+goes on the page first: a **screenshot** of the screen that changed, the **real output**
+the code produced (its PNGs, a chart from its actual data), a **map** of the real
+positions, the **terminal output** of the real command. A diagram then explains the
+mechanism behind it. Typical cases: a frontend PR gets a before and after screenshot;
+an analysis of ships at sea gets a map of the one vessel the page follows; a bash
+script gets what it printed.
+
+Read [`references/real-visuals.md`](references/real-visuals.md) whenever a section has
+such a thing — it covers which kind to pick, how to capture it, how to embed it as a
+data URI with `scripts/embed.sh`, annotated screenshots, and the pitfalls (secrets in a
+screenshot come first). Never fake one: no mock-up drawn to look like a screen, no
+invented output.
 
 ### Which diagram — and where the recipe lives
 
@@ -127,18 +143,15 @@ Shorter word over longer one, as long as the meaning holds. Except for technical
 ## Step 5 — Build and render
 
 1. Load the `artifact-design` skill (if available) before writing the page; follow its theme rules so the page reads in both light and dark.
-2. Write the page, publish it as an artifact.
-3. **Look at the rendered result before you hand over the link.** The artifact viewer cannot be scrolled by browser automation. Make two copies of your file with the theme fixed, and render those from disk — that is more reliable than `--force-dark-mode`, which follows the operating system theme instead of your tokens:
+2. **Give every explainer its own folder and file name**, named after the subject: `<scratchpad>/explainer-pr117/sentinel-gaps.html`, never a shared `page.html`. Publishing a file path that another explainer already published replaces that artifact. When several agents build explainers in parallel, each gets its folder in its prompt.
+3. Write the page, publish it as an artifact.
+4. **Look at the rendered result before you hand over the link.** The artifact viewer cannot be scrolled by browser automation, so render the file from disk:
 
    ```bash
-   { echo '<html data-theme="dark">';  cat page.html; } > dark.html
-   { echo '<html data-theme="light">'; cat page.html; } > light.html
-   CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-   "$CHROME" --headless=new --hide-scrollbars --window-size=1200,3600 \
-     --screenshot=dark.png "file://$PWD/dark.html"
+   "${CLAUDE_SKILL_DIR}/scripts/render.sh" page.html
    ```
 
-   `--window-size` decides how much of the page you capture: too short and the bottom falls off. Cut out slices with `sips -c <height> <width> --cropOffset <y> 0 …` — that `y` counts from the top — and look at every PNG. Check for: overlapping or clipped labels in **every** diagram, readability in both themes, no horizontally scrolling page. Fix and republish until this holds.
+   It renders the page in both themes (with the theme fixed through `data-theme`, which follows your tokens where `--force-dark-mode` follows the operating system), waits for the fonts, trims the empty bottom, cuts the result into slices and prints their paths. It works on Linux and macOS. Look at **every** slice. Check for: overlapping or clipped labels in every diagram, readability in both themes, images with a visible edge in dark mode, no horizontally scrolling page. Fix and republish until this holds.
 
 ## Step 6 — Count these off, then deliver
 
@@ -147,12 +160,14 @@ Shorter word over longer one, as long as the meaning holds. Except for technical
 3. Does every abstract concept have a concrete case within two sentences? → add one.
 4. Does every diagram show a mechanism (sequence, comparison, structure), not just boxes? → redraw it.
 5. Does every section with something drawable have its own diagram? → draw it.
-6. Is every diagram drawn to the reference card for its type, including the pitfalls listed there? → read the family file and redraw.
-7. Does the one concrete example run through all sections? → extend it.
-8. Does every table-of-contents link point to an existing `id`, does the list cover all sections, and does each item sit on its own line? → fix it.
-9. Is everything the same width — text, cards, tables and diagrams — and do the sections stack with a real `<h2>`? → fix it.
-10. Any fact row or pill left on the page? → remove it.
-11. Any sentence over 25 words? → cut it.
-12. Both themes rendered and inspected, all diagrams included? → render first.
+6. Does a section talk about a screen, an output, a place or a command without showing it? → add the screenshot, the real output, the map or the terminal block. Any secret, e-mail address or customer name visible in an image? → crop it out.
+7. Is every diagram drawn to the reference card for its type, including the pitfalls listed there? → read the family file and redraw.
+8. Does the one concrete example run through all sections? → extend it.
+9. Does every table-of-contents link point to an existing `id`, does the list cover all sections, and does each item sit on its own line? → fix it.
+10. Is everything the same width — text, cards, tables, diagrams and images — and do the sections stack with a real `<h2>`? → fix it.
+11. Any fact row or pill left on the page? → remove it.
+12. Any sentence over 25 words? → cut it.
+13. Does this page have a file path of its own, shared with no other explainer? → move it.
+14. Both themes rendered with `render.sh` and every slice inspected? → render first.
 
 In chat, hand over only the link plus 2-3 sentences about what the page holds — don't repeat the content. Use the language of the conversation.
