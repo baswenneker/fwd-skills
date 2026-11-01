@@ -2,7 +2,7 @@
 
 Fixed final-message format for `/fwd:setup`. `scripts/apply-all.sh` prints one
 `### <feature>` block per installer, each with `exit=`, `stdout:`, and
-`stderr:` (`grilling`, `wait-loops`, `codex-review`, `next-steps` and `rtk` write to `~/.claude` instead of the project, which is why the `Scope:` line names them), then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
+`stderr:` (`grilling`, `wait-loops`, `codex-review`, `output-style` and `rtk` write to `~/.claude` instead of the project, which is why the `Scope:` line names them), then a `### tracked` and a `### followup` block. Turn that into the report below and print it **verbatim** as your
 last message, in Dutch, exactly as structured here. Do not paraphrase, add
 sections, reorder, or write a free-form summary instead — this is a fixed
 report, not something to compose.
@@ -19,7 +19,7 @@ report, not something to compose.
 | `grilling` | Grilling-regel (globaal) |
 | `wait-loops` | Wachtlus-regel (globaal) |
 | `codex-review` | Codex-review op achtergrond (globaal) |
-| `next-steps` | Next-steps-regel (globaal) |
+| `output-style` | Output style fwd-skills-outputstyle (globaal) |
 | `rtk` | RTK-hook (globaal) |
 
 List features in this exact order, always all ten.
@@ -97,7 +97,7 @@ Geïnstalleerde conventies:
 - ✓ Grilling-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 - ✓ Wachtlus-regel (globaal) → /Users/bas/.claude/CLAUDE.md
 - ✓ Codex-review op achtergrond (globaal) → /Users/bas/.claude/CLAUDE.md
-- ✓ Next-steps-regel (globaal) → /Users/bas/.claude/CLAUDE.md
+- ✓ Output style fwd-skills-outputstyle (globaal) → /Users/bas/.claude/output-styles/fwd-skills-outputstyle.md
 - ✓ RTK-hook (globaal) → /Users/bas/.claude/settings.json
 
 Bestanden aangepast:
@@ -105,6 +105,7 @@ Bestanden aangepast:
 - CLAUDE.md (Lessons-sectie toegevoegd)
 - .gitignore
 - /Users/bas/.claude/CLAUDE.md
+- /Users/bas/.claude/output-styles/fwd-skills-outputstyle.md
 - /Users/bas/.claude/settings.json
 
 Onder versiebeheer:
@@ -134,7 +135,7 @@ Geïnstalleerde conventies:
 - ✓ Grilling-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 - ✓ Wachtlus-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
 - ✓ Codex-review op achtergrond (globaal) → /pad-naar-home/.claude/CLAUDE.md
-- ✓ Next-steps-regel (globaal) → /pad-naar-home/.claude/CLAUDE.md
+- ✓ Output style fwd-skills-outputstyle (globaal) → /pad-naar-home/.claude/output-styles/fwd-skills-outputstyle.md
 - – RTK-hook (globaal) → skipped (install RTK, then re-run /fwd:setup)
 
 Bestanden aangepast:
