@@ -23,11 +23,29 @@ fail() { echo "FAIL - $*" >&2; FAILS=$((FAILS + 1)); }
 
 # ── Stub linters ──────────────────────────────────────────────────────────────
 
+# make_stub <path> [fails] [label]: an executable at <path> that appends each
+# argument to $LINT_LOG (one per line) and "<label> <args>" to $LINT_LOG.calls,
+# and exits 1 on its first <fails> calls (default 0). <label> defaults to the
+# file name.
+make_stub() {
+    local path="$1" fails="${2:-0}" label="${3:-$(basename "$1")}"
+    mkdir -p "$(dirname "$path")"
+    cat > "$path" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" >> "\$LINT_LOG"
+echo "$label \$*" >> "\$LINT_LOG.calls"
+count_file="\$LINT_LOG.$label.count"
+n=\$(cat "\$count_file" 2>/dev/null || echo 0)
+echo \$((n + 1)) > "\$count_file"
+[ "\$n" -lt $fails ] && { echo "$label failed (call \$((n + 1)))"; exit 1; }
+exit 0
+EOF
+    chmod +x "$path"
+}
+
 STUBS="$TMP/stubs"
-mkdir -p "$STUBS"
-for tool in ruff black pyright mypy flake8 shellcheck; do
-    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" >> "$LINT_LOG"\n' > "$STUBS/$tool"
-    chmod +x "$STUBS/$tool"
+for tool in ruff black pyright mypy flake8 shellcheck pre-commit npm npx tsc uv; do
+    make_stub "$STUBS/$tool"
 done
 export PATH="$STUBS:$PATH"
 
@@ -52,6 +70,30 @@ run_wrapper() {
 
 # linted <log> <path>: the stub linters got <path> as one argument
 linted() { grep -qxF -- "$2" "$1"; }
+
+# called <log> <line>: a stub recorded exactly "<label> <args>"
+called() { grep -qxF -- "$2" "$1.calls" 2>/dev/null; }
+
+# not_called <log> <label>: no call of the stub labelled <label>
+not_called() { ! grep -qE "^$2( |\$)" "$1.calls" 2>/dev/null; }
+
+# call_count <log> <label>: number of calls of the stub labelled <label>
+call_count() { grep -cE "^$2( |\$)" "$1.calls" 2>/dev/null; }
+
+# calls <log>: the recorded calls on one line, for failure messages
+calls() { tr '\n' '|' < "$1.calls" 2>/dev/null; }
+
+# run_lint <dir> <log> <path> <smart-lint args...>: run smart-lint.sh in <dir>
+# with PATH=<path> (empty: the current PATH). Output goes to <log>.out, the
+# exit code to RC.
+run_lint() {
+    local dir="$1" log="$2" path="${3:-$PATH}"
+    shift 3
+    : > "$log"
+    : > "$log.calls"
+    (cd "$dir" && PATH="$path" LINT_LOG="$log" "$PAYLOAD/smart-lint.sh" "$@") > "$log.out" 2>&1
+    RC=$?
+}
 
 # ── 1. Runs in a git worktree ─────────────────────────────────────────────────
 
@@ -146,6 +188,202 @@ if [[ "$(jq 'length' <<< "$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<< "$INS
     pass "installer re-run sets an installed hook's timeout to 180 seconds and refreshes the payload"
 else
     fail "installer re-run left: $INSTALLED; output: $(cat "$TMP/install.out")"
+fi
+
+# ── A. A pre-commit config hands lint and format to pre-commit ───────────────
+
+# new_pc_repo <dir>: new_repo plus a pre-commit config, a.py changed and s.sh
+new_pc_repo() {
+    new_repo "$1"
+    echo 'repos: []' > "$1/.pre-commit-config.yaml"
+    echo 'x = 2' > "$1/a.py"
+    echo 'echo hi' > "$1/s.sh"
+}
+
+new_pc_repo "$TMP/pcA"
+run_lint "$TMP/pcA" "$TMP/pcA.log" "" --files a.py s.sh
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcA.log" pre-commit)" == "1" ]] \
+    && called "$TMP/pcA.log" "pre-commit run --config .pre-commit-config.yaml --files a.py s.sh" \
+    && not_called "$TMP/pcA.log" ruff && not_called "$TMP/pcA.log" black \
+    && not_called "$TMP/pcA.log" shellcheck && called "$TMP/pcA.log" "pyright ."; then
+    pass "a pre-commit config runs pre-commit on the changed files instead of own linters"
+else
+    fail "pre-commit mode (rc $RC) got: $(calls "$TMP/pcA.log")"
+fi
+
+# Config at the git root, session in a subfolder: pre-commit gets the root config.
+mkdir -p "$TMP/pcA/pkg"
+echo 'w = 1' > "$TMP/pcA/pkg/m.py"
+run_lint "$TMP/pcA/pkg" "$TMP/pcAsub.log" "" --files m.py
+if called "$TMP/pcAsub.log" "pre-commit run --config $(cd "$TMP/pcA" && pwd -P)/.pre-commit-config.yaml --files m.py" \
+    || called "$TMP/pcAsub.log" "pre-commit run --config $TMP/pcA/.pre-commit-config.yaml --files m.py"; then
+    pass "a pre-commit config at the git root is used from a subfolder"
+else
+    fail "pre-commit from a subfolder got: $(calls "$TMP/pcAsub.log")"
+fi
+
+# ── B. pre-commit gets a second run when the first one fails ─────────────────
+
+new_pc_repo "$TMP/pcB1"
+make_stub "$TMP/pcB1-bin/pre-commit" 1
+run_lint "$TMP/pcB1" "$TMP/pcB1.log" "$TMP/pcB1-bin:$PATH" --files a.py
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcB1.log" pre-commit)" == "2" ]] \
+    && grep -q "(auto-fixed)" "$TMP/pcB1.log.out"; then
+    pass "pre-commit failing once (a fixer changed files) passes on the second run"
+else
+    fail "pre-commit failing once: rc $RC, calls $(calls "$TMP/pcB1.log")"
+fi
+
+new_pc_repo "$TMP/pcB2"
+make_stub "$TMP/pcB2-bin/pre-commit" 2
+run_lint "$TMP/pcB2" "$TMP/pcB2.log" "$TMP/pcB2-bin:$PATH" --files a.py
+if [[ $RC -eq 2 ]] && [[ "$(call_count "$TMP/pcB2.log" pre-commit)" == "2" ]] \
+    && grep -q "pre-commit hooks failed" "$TMP/pcB2.log.out" \
+    && grep -q "pre-commit failed (call 2)" "$TMP/pcB2.log.out"; then
+    pass "pre-commit failing twice is an error that shows the hook output"
+else
+    fail "pre-commit failing twice: rc $RC, calls $(calls "$TMP/pcB2.log")"
+fi
+
+# ── C. pre-commit config but no pre-commit: info line, no own linters ────────
+
+# A PATH with the stubs except pre-commit, plus the system tools the script uses
+NOPC="$TMP/nopc-bin"
+mkdir -p "$NOPC"
+for tool in "$STUBS"/*; do
+    [[ "$(basename "$tool")" == pre-commit ]] || ln -s "$tool" "$NOPC/"
+done
+for cmd in bash env git find grep head cat date dirname basename tr sort mkdir rm sed cut; do
+    p="$(command -v "$cmd")" && [[ -n "$p" ]] && ln -sf "$p" "$NOPC/$cmd"
+done
+new_pc_repo "$TMP/pcC"
+run_lint "$TMP/pcC" "$TMP/pcC.log" "$NOPC" --files a.py s.sh
+if [[ $RC -eq 0 ]] && grep -q "pre-commit not found" "$TMP/pcC.log.out" \
+    && not_called "$TMP/pcC.log" ruff && not_called "$TMP/pcC.log" shellcheck \
+    && called "$TMP/pcC.log" "pyright ."; then
+    pass "missing pre-commit skips lint and format, keeps the typecheck"
+else
+    fail "missing pre-commit: rc $RC, calls $(calls "$TMP/pcC.log"), out $(tail -5 "$TMP/pcC.log.out")"
+fi
+
+# ── D. No pre-commit: ruff formats, not black ────────────────────────────────
+
+new_repo "$TMP/pyD"
+echo 'x = 2' > "$TMP/pyD/a.py"
+run_lint "$TMP/pyD" "$TMP/pyD.log" "" --files a.py
+if called "$TMP/pyD.log" "ruff format --check --quiet a.py" && not_called "$TMP/pyD.log" black \
+    && called "$TMP/pyD.log" "ruff check --fix a.py"; then
+    pass "without pre-commit, Python is formatted with ruff format, not black"
+else
+    fail "Python formatter got: $(calls "$TMP/pyD.log")"
+fi
+
+# ── F. A tool in .venv/bin wins over the global one ──────────────────────────
+
+new_repo "$TMP/pyF"
+echo 'x = 2' > "$TMP/pyF/a.py"
+make_stub "$TMP/pyF/.venv/bin/ruff" 0 venv-ruff
+run_lint "$TMP/pyF" "$TMP/pyF.log" "" --files a.py
+if called "$TMP/pyF.log" "venv-ruff check --fix a.py" && not_called "$TMP/pyF.log" ruff; then
+    pass "the project's .venv/bin/ruff is used instead of the global ruff"
+else
+    fail "tool resolution got: $(calls "$TMP/pyF.log")"
+fi
+
+# ── G. A tool in uv.lock runs through uv run --frozen ────────────────────────
+
+new_repo "$TMP/pyG"
+echo 'x = 2' > "$TMP/pyG/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyG/uv.lock"
+run_lint "$TMP/pyG" "$TMP/pyG.log" "" --files a.py
+if called "$TMP/pyG.log" "uv run --frozen pyright ." && not_called "$TMP/pyG.log" pyright; then
+    pass "a tool listed in uv.lock runs through uv run --frozen"
+else
+    fail "uv resolution got: $(calls "$TMP/pyG.log")"
+fi
+
+# ── H. Python typecheck covers the whole project, only after a .py change ─────
+
+new_repo "$TMP/pyH"
+echo 'x = 2' > "$TMP/pyH/a.py"
+echo 'echo hi' > "$TMP/pyH/s.sh"
+run_lint "$TMP/pyH" "$TMP/pyH.log" "" --files a.py
+run_lint "$TMP/pyH" "$TMP/pyHsh.log" "" --files s.sh
+if called "$TMP/pyH.log" "pyright ." && ! called "$TMP/pyH.log" "pyright a.py" \
+    && not_called "$TMP/pyHsh.log" pyright; then
+    pass "Python typecheck runs on the whole project, only when a .py file changed"
+else
+    fail "Python typecheck got: $(calls "$TMP/pyH.log") / $(calls "$TMP/pyHsh.log")"
+fi
+
+# ── I-L. TypeScript typecheck ────────────────────────────────────────────────
+
+# new_ts_repo <dir> <package.json>: git repo with tsconfig.json, a changed a.ts
+new_ts_repo() {
+    new_repo "$1"
+    echo '{}' > "$1/tsconfig.json"
+    echo "$2" > "$1/package.json"
+    echo 'export const a = 1;' > "$1/a.ts"
+    echo 'module.exports = 1;' > "$1/b.js"
+}
+
+new_ts_repo "$TMP/tsI" '{"scripts": {"typecheck": "tsc -b"}}'
+run_lint "$TMP/tsI" "$TMP/tsI.log" "" --files a.ts
+if called "$TMP/tsI.log" "npm run typecheck" && not_called "$TMP/tsI.log" tsc; then
+    pass "TS typecheck runs the package.json typecheck script"
+else
+    fail "TS typecheck with script got: $(calls "$TMP/tsI.log")"
+fi
+
+new_ts_repo "$TMP/tsJ" '{}'
+make_stub "$TMP/tsJ/node_modules/.bin/tsc" 0 local-tsc
+run_lint "$TMP/tsJ" "$TMP/tsJ.log" "" --files a.ts
+if called "$TMP/tsJ.log" "local-tsc --noEmit" && not_called "$TMP/tsJ.log" npx; then
+    pass "TS typecheck uses node_modules/.bin/tsc without a script"
+else
+    fail "TS typecheck with local tsc got: $(calls "$TMP/tsJ.log")"
+fi
+
+new_ts_repo "$TMP/tsK" '{}'
+run_lint "$TMP/tsK" "$TMP/tsK.log" "" --files a.ts
+if called "$TMP/tsK.log" "npx --no-install tsc --noEmit"; then
+    pass "TS typecheck falls back to npx --no-install tsc"
+else
+    fail "TS typecheck fallback got: $(calls "$TMP/tsK.log")"
+fi
+
+new_ts_repo "$TMP/tsL" '{"scripts": {"typecheck": "tsc -b"}}'
+run_lint "$TMP/tsL" "$TMP/tsLjs.log" "" --files b.js
+export CLAUDE_HOOKS_TS_TYPECHECK_ENABLED=false
+run_lint "$TMP/tsL" "$TMP/tsLoff.log" "" --files a.ts
+unset CLAUDE_HOOKS_TS_TYPECHECK_ENABLED
+if not_called "$TMP/tsLjs.log" npm && not_called "$TMP/tsLjs.log" npx \
+    && not_called "$TMP/tsLoff.log" npm && not_called "$TMP/tsLoff.log" npx; then
+    pass "no TS typecheck for a .js-only change or with the switch off"
+else
+    fail "TS typecheck ran: $(calls "$TMP/tsLjs.log") / $(calls "$TMP/tsLoff.log")"
+fi
+
+# ── M. Without pre-commit, the project's own prettier is used ────────────────
+
+new_ts_repo "$TMP/tsM" '{}'
+echo '{}' > "$TMP/tsM/.prettierrc"
+make_stub "$TMP/tsM/node_modules/.bin/prettier" 0 local-prettier
+run_lint "$TMP/tsM" "$TMP/tsM.log" "" --files a.ts
+if called "$TMP/tsM.log" "local-prettier --check a.ts"; then
+    pass "the project's node_modules/.bin/prettier is used"
+else
+    fail "prettier resolution got: $(calls "$TMP/tsM.log")"
+fi
+
+# ── N. The repo's own hook copy matches the payload ──────────────────────────
+
+REPO_ROOT="$(cd "$SMARTLINT_DIR/../../../../.." && pwd)"
+if cmp -s "$PAYLOAD/smart-lint.sh" "$REPO_ROOT/.claude/hooks/smart-lint.sh" \
+    && cmp -s "$PAYLOAD/smart-lint-wrapper.sh" "$REPO_ROOT/.claude/hooks/smart-lint-wrapper.sh"; then
+    pass ".claude/hooks/ holds the same smart-lint scripts as the payload"
+else
+    fail ".claude/hooks/ differs from the payload: copy the payload over"
 fi
 
 echo
