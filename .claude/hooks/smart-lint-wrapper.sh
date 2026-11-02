@@ -14,31 +14,31 @@ INPUT=$(cat)
 # blocked Claude and the lint-fixer has run. Exit cleanly to avoid infinite loops.
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null)
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-    exit 0
+  exit 0
 fi
 
 # Exit gracefully if not in a git repo. In a worktree .git is a file, not a
 # directory, so ask git instead of testing for .git.
 if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
-    exit 0
+  exit 0
 fi
 
 # Check if smart-lint is disabled in plugin.json
 PLUGIN_JSON="${CLAUDE_PROJECT_DIR:-.}/.claude/fwd/plugin.json"
 if [ -f "$PLUGIN_JSON" ]; then
-    SMART_LINT_ENABLED=$(jq -r 'if .["smart-lint"] == false then "false" else "true" end' "$PLUGIN_JSON" 2>/dev/null)
-    if [ "$SMART_LINT_ENABLED" = "false" ]; then
-        exit 0
-    fi
+  SMART_LINT_ENABLED=$(jq -r 'if .["smart-lint"] == false then "false" else "true" end' "$PLUGIN_JSON" 2>/dev/null)
+  if [ "$SMART_LINT_ENABLED" = "false" ]; then
+    exit 0
+  fi
 fi
 
 # Portable hashing command (macOS vs Linux) -- needed for content caching
 if command -v md5 &>/dev/null; then
-    hash_cmd() { md5 -q; }
+  hash_cmd() { md5 -q; }
 elif command -v md5sum &>/dev/null; then
-    hash_cmd() { md5sum | cut -d' ' -f1; }
+  hash_cmd() { md5sum | cut -d' ' -f1; }
 else
-    hash_cmd() { cat; }  # fallback: no hashing, always runs
+  hash_cmd() { cat; } # fallback: no hashing, always runs
 fi
 
 # Get the directory where this script is located
@@ -53,7 +53,7 @@ RELEVANT_RE='\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$'
 # Dockerfiles and more. Then every changed file is relevant.
 GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [ -f ".pre-commit-config.yaml" ] || [ -f "$GIT_ROOT/.pre-commit-config.yaml" ]; then
-    RELEVANT_RE='.'
+  RELEVANT_RE='.'
 fi
 
 # Untracked, then modified files (staged + unstaged changes), filtered for
@@ -62,22 +62,22 @@ fi
 # ls-files' default), so a session in a monorepo package lints that package.
 UNTRACKED_RELEVANT=()
 while IFS= read -r -d '' f; do
-    [[ "$f" =~ $RELEVANT_RE ]] && UNTRACKED_RELEVANT+=("$f")
+  [[ "$f" =~ $RELEVANT_RE ]] && UNTRACKED_RELEVANT+=("$f")
 done < <(git ls-files -z --others --exclude-standard 2>/dev/null)
 
 RELEVANT_FILES=()
 while IFS= read -r -d '' f; do
-    [[ "$f" =~ $RELEVANT_RE ]] && RELEVANT_FILES+=("$f")
+  [[ "$f" =~ $RELEVANT_RE ]] && RELEVANT_FILES+=("$f")
 done < <(
-    {
-        git diff -z --name-only --relative HEAD
-        git diff -z --name-only --relative --cached
-        printf '%s\0' "${UNTRACKED_RELEVANT[@]}"
-    } 2>/dev/null | sort -zu
+  {
+    git diff -z --name-only --relative HEAD
+    git diff -z --name-only --relative --cached
+    printf '%s\0' "${UNTRACKED_RELEVANT[@]}"
+  } 2>/dev/null | sort -zu
 )
 
 if [ ${#RELEVANT_FILES[@]} -eq 0 ]; then
-    exit 0
+  exit 0
 fi
 
 # --- Content hash caching: skip lint if nothing changed since last successful run ---
@@ -91,14 +91,14 @@ PROJECT_HASH=$(echo "$PWD" | hash_cmd)
 # 4. Contents of untracked relevant files
 # --literal-pathspecs: a file name containing * or ? matches only itself.
 CONTENT_HASH=$(
-    {
-        printf '%s\n' "${RELEVANT_FILES[@]}"
-        git --literal-pathspecs diff HEAD -- "${RELEVANT_FILES[@]}" 2>/dev/null
-        git --literal-pathspecs diff --cached -- "${RELEVANT_FILES[@]}" 2>/dev/null
-        for f in "${UNTRACKED_RELEVANT[@]}"; do
-            [ -f "$f" ] && cat "$f"
-        done
-    } | hash_cmd
+  {
+    printf '%s\n' "${RELEVANT_FILES[@]}"
+    git --literal-pathspecs diff HEAD -- "${RELEVANT_FILES[@]}" 2>/dev/null
+    git --literal-pathspecs diff --cached -- "${RELEVANT_FILES[@]}" 2>/dev/null
+    for f in "${UNTRACKED_RELEVANT[@]}"; do
+      [ -f "$f" ] && cat "$f"
+    done
+  } | hash_cmd
 )
 
 # Cache location: /tmp/claude/lint-cache/lint-hash-<project-key>
@@ -106,7 +106,7 @@ CACHE_DIR="/tmp/claude/lint-cache"
 CACHE_FILE="$CACHE_DIR/lint-hash-$PROJECT_HASH"
 
 if [ -f "$CACHE_FILE" ] && [ "$(cat "$CACHE_FILE")" = "$CONTENT_HASH" ]; then
-    exit 0
+  exit 0
 fi
 
 # --- End caching check ---
@@ -125,8 +125,8 @@ EXIT_CODE=$?
 # Exit 1 (missing deps) and exit 2 (lint issues) should NOT be cached,
 # so lint re-runs next time to re-check.
 if [ "$EXIT_CODE" -eq 0 ]; then
-    mkdir -p "$CACHE_DIR"
-    echo "$CONTENT_HASH" > "$CACHE_FILE"
+  mkdir -p "$CACHE_DIR"
+  echo "$CONTENT_HASH" >"$CACHE_FILE"
 fi
 
 exit $EXIT_CODE
