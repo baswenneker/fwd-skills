@@ -376,6 +376,52 @@ else
     fail "prettier resolution got: $(calls "$TMP/tsM.log")"
 fi
 
+# ── O. A change that only deletes a source file still runs the typecheck ────
+
+new_ts_repo "$TMP/delO" '{"scripts": {"typecheck": "tsc -b"}}'
+echo 'y = 1' > "$TMP/delO/b.py"
+git_t -C "$TMP/delO" add -A
+git_t -C "$TMP/delO" commit -q -m files
+rm "$TMP/delO/a.ts" "$TMP/delO/b.py"
+run_lint "$TMP/delO" "$TMP/delO.log" "" --files a.ts b.py
+if called "$TMP/delO.log" "pyright ." && called "$TMP/delO.log" "npm run typecheck" \
+    && not_called "$TMP/delO.log" ruff; then
+    pass "deleting a .py or .ts file still type-checks the project, without per-file tools"
+else
+    fail "delete-only change got: $(calls "$TMP/delO.log")"
+fi
+
+# ── P. npx without a local TypeScript is an info line, not a type error ──────
+
+new_ts_repo "$TMP/tsP" '{}'
+make_stub "$TMP/tsP-bin/npx" 99
+run_lint "$TMP/tsP" "$TMP/tsP.log" "$TMP/tsP-bin:$PATH" --files a.ts
+if [[ $RC -eq 0 ]] && grep -q "tsc not found" "$TMP/tsP.log.out" \
+    && ! called "$TMP/tsP.log" "npx --no-install tsc --noEmit"; then
+    pass "no TypeScript install gives an info line instead of a type error"
+else
+    fail "npx without TypeScript: rc $RC, calls $(calls "$TMP/tsP.log")"
+fi
+
+# ── Q. Fail fast never skips the typecheck after a pre-commit failure ────────
+
+# Python is checked before TypeScript, so the TS typecheck is the one a
+# fail-fast break after the first language would skip.
+new_pc_repo "$TMP/pcQ"
+echo '{}' > "$TMP/pcQ/tsconfig.json"
+echo '{"scripts": {"typecheck": "tsc -b"}}' > "$TMP/pcQ/package.json"
+echo 'export const a = 1;' > "$TMP/pcQ/a.ts"
+make_stub "$TMP/pcQ-bin/pre-commit" 2
+export CLAUDE_HOOKS_FAIL_FAST=true
+run_lint "$TMP/pcQ" "$TMP/pcQ.log" "$TMP/pcQ-bin:$PATH" --files a.py a.ts
+unset CLAUDE_HOOKS_FAIL_FAST
+if [[ $RC -eq 2 ]] && called "$TMP/pcQ.log" "pyright ." \
+    && called "$TMP/pcQ.log" "npm run typecheck"; then
+    pass "fail fast still type-checks after pre-commit fails"
+else
+    fail "fail fast after pre-commit: rc $RC, calls $(calls "$TMP/pcQ.log")"
+fi
+
 # ── N. The repo's own hook copy matches the payload ──────────────────────────
 
 REPO_ROOT="$(cd "$SMARTLINT_DIR/../../../../.." && pwd)"
