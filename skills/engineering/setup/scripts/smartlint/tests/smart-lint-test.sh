@@ -23,11 +23,29 @@ fail() { echo "FAIL - $*" >&2; FAILS=$((FAILS + 1)); }
 
 # ── Stub linters ──────────────────────────────────────────────────────────────
 
+# make_stub <path> [fails] [label]: an executable at <path> that appends each
+# argument to $LINT_LOG (one per line) and "<label> <args>" to $LINT_LOG.calls,
+# and exits 1 on its first <fails> calls (default 0). <label> defaults to the
+# file name.
+make_stub() {
+    local path="$1" fails="${2:-0}" label="${3:-$(basename "$1")}"
+    mkdir -p "$(dirname "$path")"
+    cat > "$path" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" >> "\$LINT_LOG"
+echo "$label \$*" >> "\$LINT_LOG.calls"
+count_file="\$LINT_LOG.$label.count"
+n=\$(cat "\$count_file" 2>/dev/null || echo 0)
+echo \$((n + 1)) > "\$count_file"
+[ "\$n" -lt $fails ] && { echo "$label failed (call \$((n + 1)))"; exit 1; }
+exit 0
+EOF
+    chmod +x "$path"
+}
+
 STUBS="$TMP/stubs"
-mkdir -p "$STUBS"
-for tool in ruff black pyright mypy flake8 shellcheck; do
-    printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" >> "$LINT_LOG"\n' > "$STUBS/$tool"
-    chmod +x "$STUBS/$tool"
+for tool in ruff black pyright mypy flake8 shellcheck pre-commit npm npx tsc uv nbqa; do
+    make_stub "$STUBS/$tool"
 done
 export PATH="$STUBS:$PATH"
 
@@ -52,6 +70,30 @@ run_wrapper() {
 
 # linted <log> <path>: the stub linters got <path> as one argument
 linted() { grep -qxF -- "$2" "$1"; }
+
+# called <log> <line>: a stub recorded exactly "<label> <args>"
+called() { grep -qxF -- "$2" "$1.calls" 2>/dev/null; }
+
+# not_called <log> <label>: no call of the stub labelled <label>
+not_called() { ! grep -qE "^$2( |\$)" "$1.calls" 2>/dev/null; }
+
+# call_count <log> <label>: number of calls of the stub labelled <label>
+call_count() { grep -cE "^$2( |\$)" "$1.calls" 2>/dev/null; }
+
+# calls <log>: the recorded calls on one line, for failure messages
+calls() { tr '\n' '|' < "$1.calls" 2>/dev/null; }
+
+# run_lint <dir> <log> <path> <smart-lint args...>: run smart-lint.sh in <dir>
+# with PATH=<path> (empty: the current PATH). Output goes to <log>.out, the
+# exit code to RC.
+run_lint() {
+    local dir="$1" log="$2" path="${3:-$PATH}"
+    shift 3
+    : > "$log"
+    : > "$log.calls"
+    (cd "$dir" && PATH="$path" LINT_LOG="$log" "$PAYLOAD/smart-lint.sh" "$@") > "$log.out" 2>&1
+    RC=$?
+}
 
 # ── 1. Runs in a git worktree ─────────────────────────────────────────────────
 
@@ -146,6 +188,321 @@ if [[ "$(jq 'length' <<< "$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<< "$INS
     pass "installer re-run sets an installed hook's timeout to 180 seconds and refreshes the payload"
 else
     fail "installer re-run left: $INSTALLED; output: $(cat "$TMP/install.out")"
+fi
+
+# ── A. A pre-commit config hands lint and format to pre-commit ───────────────
+
+# new_pc_repo <dir>: new_repo plus a pre-commit config, a.py changed and s.sh
+new_pc_repo() {
+    new_repo "$1"
+    echo 'repos: []' > "$1/.pre-commit-config.yaml"
+    echo 'x = 2' > "$1/a.py"
+    echo 'echo hi' > "$1/s.sh"
+}
+
+new_pc_repo "$TMP/pcA"
+run_lint "$TMP/pcA" "$TMP/pcA.log" "" --files a.py s.sh
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcA.log" pre-commit)" == "1" ]] \
+    && called "$TMP/pcA.log" "pre-commit run --config .pre-commit-config.yaml --files a.py s.sh" \
+    && not_called "$TMP/pcA.log" ruff && not_called "$TMP/pcA.log" black \
+    && not_called "$TMP/pcA.log" shellcheck && called "$TMP/pcA.log" "pyright ."; then
+    pass "a pre-commit config runs pre-commit on the changed files instead of own linters"
+else
+    fail "pre-commit mode (rc $RC) got: $(calls "$TMP/pcA.log")"
+fi
+
+# Config at the git root, session in a subfolder: pre-commit gets the root config.
+mkdir -p "$TMP/pcA/pkg"
+echo 'w = 1' > "$TMP/pcA/pkg/m.py"
+run_lint "$TMP/pcA/pkg" "$TMP/pcAsub.log" "" --files m.py
+if called "$TMP/pcAsub.log" "pre-commit run --config $(cd "$TMP/pcA" && pwd -P)/.pre-commit-config.yaml --files m.py" \
+    || called "$TMP/pcAsub.log" "pre-commit run --config $TMP/pcA/.pre-commit-config.yaml --files m.py"; then
+    pass "a pre-commit config at the git root is used from a subfolder"
+else
+    fail "pre-commit from a subfolder got: $(calls "$TMP/pcAsub.log")"
+fi
+
+# ── B. pre-commit gets a second run when the first one fails ─────────────────
+
+new_pc_repo "$TMP/pcB1"
+make_stub "$TMP/pcB1-bin/pre-commit" 1
+run_lint "$TMP/pcB1" "$TMP/pcB1.log" "$TMP/pcB1-bin:$PATH" --files a.py
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcB1.log" pre-commit)" == "2" ]] \
+    && grep -q "(auto-fixed)" "$TMP/pcB1.log.out"; then
+    pass "pre-commit failing once (a fixer changed files) passes on the second run"
+else
+    fail "pre-commit failing once: rc $RC, calls $(calls "$TMP/pcB1.log")"
+fi
+
+new_pc_repo "$TMP/pcB2"
+make_stub "$TMP/pcB2-bin/pre-commit" 2
+run_lint "$TMP/pcB2" "$TMP/pcB2.log" "$TMP/pcB2-bin:$PATH" --files a.py
+if [[ $RC -eq 2 ]] && [[ "$(call_count "$TMP/pcB2.log" pre-commit)" == "2" ]] \
+    && grep -q "pre-commit hooks failed" "$TMP/pcB2.log.out" \
+    && grep -q "pre-commit failed (call 2)" "$TMP/pcB2.log.out"; then
+    pass "pre-commit failing twice is an error that shows the hook output"
+else
+    fail "pre-commit failing twice: rc $RC, calls $(calls "$TMP/pcB2.log")"
+fi
+
+# ── C. pre-commit config but no pre-commit: info line, no own linters ────────
+
+# A PATH with the stubs except pre-commit, plus the system tools the script uses
+NOPC="$TMP/nopc-bin"
+mkdir -p "$NOPC"
+for tool in "$STUBS"/*; do
+    [[ "$(basename "$tool")" == pre-commit ]] || ln -s "$tool" "$NOPC/"
+done
+for cmd in bash env git find grep head cat date dirname basename tr sort mkdir rm sed cut; do
+    p="$(command -v "$cmd")" && [[ -n "$p" ]] && ln -sf "$p" "$NOPC/$cmd"
+done
+new_pc_repo "$TMP/pcC"
+run_lint "$TMP/pcC" "$TMP/pcC.log" "$NOPC" --files a.py s.sh
+if [[ $RC -eq 0 ]] && grep -q "pre-commit not found" "$TMP/pcC.log.out" \
+    && not_called "$TMP/pcC.log" ruff && not_called "$TMP/pcC.log" shellcheck \
+    && called "$TMP/pcC.log" "pyright ."; then
+    pass "missing pre-commit skips lint and format, keeps the typecheck"
+else
+    fail "missing pre-commit: rc $RC, calls $(calls "$TMP/pcC.log"), out $(tail -5 "$TMP/pcC.log.out")"
+fi
+
+# ── D. No pre-commit: ruff formats, not black ────────────────────────────────
+
+new_repo "$TMP/pyD"
+echo 'x = 2' > "$TMP/pyD/a.py"
+run_lint "$TMP/pyD" "$TMP/pyD.log" "" --files a.py
+if called "$TMP/pyD.log" "ruff format --check --quiet a.py" && not_called "$TMP/pyD.log" black \
+    && called "$TMP/pyD.log" "ruff check --fix a.py"; then
+    pass "without pre-commit, Python is formatted with ruff format, not black"
+else
+    fail "Python formatter got: $(calls "$TMP/pyD.log")"
+fi
+
+# ── F. A tool in .venv/bin wins over the global one ──────────────────────────
+
+new_repo "$TMP/pyF"
+echo 'x = 2' > "$TMP/pyF/a.py"
+make_stub "$TMP/pyF/.venv/bin/ruff" 0 venv-ruff
+run_lint "$TMP/pyF" "$TMP/pyF.log" "" --files a.py
+if called "$TMP/pyF.log" "venv-ruff check --fix a.py" && not_called "$TMP/pyF.log" ruff; then
+    pass "the project's .venv/bin/ruff is used instead of the global ruff"
+else
+    fail "tool resolution got: $(calls "$TMP/pyF.log")"
+fi
+
+# ── G. A tool in uv.lock runs through uv run --frozen ────────────────────────
+
+new_repo "$TMP/pyG"
+echo 'x = 2' > "$TMP/pyG/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyG/uv.lock"
+run_lint "$TMP/pyG" "$TMP/pyG.log" "" --files a.py
+if called "$TMP/pyG.log" "uv run --frozen pyright ." && not_called "$TMP/pyG.log" pyright; then
+    pass "a tool listed in uv.lock runs through uv run --frozen"
+else
+    fail "uv resolution got: $(calls "$TMP/pyG.log")"
+fi
+
+# ── H. Python typecheck covers the whole project, only after a .py change ─────
+
+new_repo "$TMP/pyH"
+echo 'x = 2' > "$TMP/pyH/a.py"
+echo 'echo hi' > "$TMP/pyH/s.sh"
+run_lint "$TMP/pyH" "$TMP/pyH.log" "" --files a.py
+run_lint "$TMP/pyH" "$TMP/pyHsh.log" "" --files s.sh
+if called "$TMP/pyH.log" "pyright ." && ! called "$TMP/pyH.log" "pyright a.py" \
+    && not_called "$TMP/pyHsh.log" pyright; then
+    pass "Python typecheck runs on the whole project, only when a .py file changed"
+else
+    fail "Python typecheck got: $(calls "$TMP/pyH.log") / $(calls "$TMP/pyHsh.log")"
+fi
+
+# ── I-L. TypeScript typecheck ────────────────────────────────────────────────
+
+# new_ts_repo <dir> <package.json>: git repo with tsconfig.json, a changed a.ts
+new_ts_repo() {
+    new_repo "$1"
+    echo '{}' > "$1/tsconfig.json"
+    echo "$2" > "$1/package.json"
+    echo 'export const a = 1;' > "$1/a.ts"
+    echo 'module.exports = 1;' > "$1/b.js"
+}
+
+new_ts_repo "$TMP/tsI" '{"scripts": {"typecheck": "tsc -b"}}'
+run_lint "$TMP/tsI" "$TMP/tsI.log" "" --files a.ts
+if called "$TMP/tsI.log" "npm run typecheck" && not_called "$TMP/tsI.log" tsc; then
+    pass "TS typecheck runs the package.json typecheck script"
+else
+    fail "TS typecheck with script got: $(calls "$TMP/tsI.log")"
+fi
+
+new_ts_repo "$TMP/tsJ" '{}'
+make_stub "$TMP/tsJ/node_modules/.bin/tsc" 0 local-tsc
+run_lint "$TMP/tsJ" "$TMP/tsJ.log" "" --files a.ts
+if called "$TMP/tsJ.log" "local-tsc --noEmit" && not_called "$TMP/tsJ.log" npx; then
+    pass "TS typecheck uses node_modules/.bin/tsc without a script"
+else
+    fail "TS typecheck with local tsc got: $(calls "$TMP/tsJ.log")"
+fi
+
+new_ts_repo "$TMP/tsK" '{}'
+run_lint "$TMP/tsK" "$TMP/tsK.log" "" --files a.ts
+if called "$TMP/tsK.log" "npx --no-install tsc --noEmit"; then
+    pass "TS typecheck falls back to npx --no-install tsc"
+else
+    fail "TS typecheck fallback got: $(calls "$TMP/tsK.log")"
+fi
+
+new_ts_repo "$TMP/tsL" '{"scripts": {"typecheck": "tsc -b"}}'
+run_lint "$TMP/tsL" "$TMP/tsLjs.log" "" --files b.js
+export CLAUDE_HOOKS_TS_TYPECHECK_ENABLED=false
+run_lint "$TMP/tsL" "$TMP/tsLoff.log" "" --files a.ts
+unset CLAUDE_HOOKS_TS_TYPECHECK_ENABLED
+if not_called "$TMP/tsLjs.log" npm && not_called "$TMP/tsLjs.log" npx \
+    && not_called "$TMP/tsLoff.log" npm && not_called "$TMP/tsLoff.log" npx; then
+    pass "no TS typecheck for a .js-only change or with the switch off"
+else
+    fail "TS typecheck ran: $(calls "$TMP/tsLjs.log") / $(calls "$TMP/tsLoff.log")"
+fi
+
+# ── M. Without pre-commit, the project's own prettier is used ────────────────
+
+new_ts_repo "$TMP/tsM" '{}'
+echo '{}' > "$TMP/tsM/.prettierrc"
+make_stub "$TMP/tsM/node_modules/.bin/prettier" 0 local-prettier
+run_lint "$TMP/tsM" "$TMP/tsM.log" "" --files a.ts
+if called "$TMP/tsM.log" "local-prettier --check a.ts"; then
+    pass "the project's node_modules/.bin/prettier is used"
+else
+    fail "prettier resolution got: $(calls "$TMP/tsM.log")"
+fi
+
+# ── O. A change that only deletes a source file still runs the typecheck ────
+
+new_ts_repo "$TMP/delO" '{"scripts": {"typecheck": "tsc -b"}}'
+echo 'y = 1' > "$TMP/delO/b.py"
+git_t -C "$TMP/delO" add -A
+git_t -C "$TMP/delO" commit -q -m files
+rm "$TMP/delO/a.ts" "$TMP/delO/b.py"
+run_lint "$TMP/delO" "$TMP/delO.log" "" --files a.ts b.py
+if called "$TMP/delO.log" "pyright ." && called "$TMP/delO.log" "npm run typecheck" \
+    && not_called "$TMP/delO.log" ruff; then
+    pass "deleting a .py or .ts file still type-checks the project, without per-file tools"
+else
+    fail "delete-only change got: $(calls "$TMP/delO.log")"
+fi
+
+# ── P. npx without a local TypeScript is an info line, not a type error ──────
+
+new_ts_repo "$TMP/tsP" '{}'
+make_stub "$TMP/tsP-bin/npx" 99
+run_lint "$TMP/tsP" "$TMP/tsP.log" "$TMP/tsP-bin:$PATH" --files a.ts
+if [[ $RC -eq 0 ]] && grep -q "tsc not found" "$TMP/tsP.log.out" \
+    && ! called "$TMP/tsP.log" "npx --no-install tsc --noEmit"; then
+    pass "no TypeScript install gives an info line instead of a type error"
+else
+    fail "npx without TypeScript: rc $RC, calls $(calls "$TMP/tsP.log")"
+fi
+
+# ── Q. Fail fast never skips the typecheck after a pre-commit failure ────────
+
+# Python is checked before TypeScript, so the TS typecheck is the one a
+# fail-fast break after the first language would skip.
+new_pc_repo "$TMP/pcQ"
+echo '{}' > "$TMP/pcQ/tsconfig.json"
+echo '{"scripts": {"typecheck": "tsc -b"}}' > "$TMP/pcQ/package.json"
+echo 'export const a = 1;' > "$TMP/pcQ/a.ts"
+make_stub "$TMP/pcQ-bin/pre-commit" 2
+export CLAUDE_HOOKS_FAIL_FAST=true
+run_lint "$TMP/pcQ" "$TMP/pcQ.log" "$TMP/pcQ-bin:$PATH" --files a.py a.ts
+unset CLAUDE_HOOKS_FAIL_FAST
+if [[ $RC -eq 2 ]] && called "$TMP/pcQ.log" "pyright ." \
+    && called "$TMP/pcQ.log" "npm run typecheck"; then
+    pass "fail fast still type-checks after pre-commit fails"
+else
+    fail "fail fast after pre-commit: rc $RC, calls $(calls "$TMP/pcQ.log")"
+fi
+
+# ── R. With pre-commit, the wrapper hands over non-code files too ────────────
+
+new_pc_repo "$TMP/pcR"
+git_t -C "$TMP/pcR" add -A
+git_t -C "$TMP/pcR" commit -q -m files
+echo '{"a": 1}' > "$TMP/pcR/config.json"
+: > "$TMP/pcR.log.calls"
+run_wrapper "$TMP/pcR" "$TMP/pcR.log"
+if called "$TMP/pcR.log" "pre-commit run --config .pre-commit-config.yaml --files config.json"; then
+    pass "with a pre-commit config, a JSON-only change reaches pre-commit"
+else
+    fail "JSON-only change with pre-commit got: $(calls "$TMP/pcR.log")"
+fi
+
+# ── S. A delete-only change still runs pre-commit, with the deleted path ─────
+
+new_pc_repo "$TMP/pcS"
+git_t -C "$TMP/pcS" add -A
+git_t -C "$TMP/pcS" commit -q -m files
+rm "$TMP/pcS/s.sh"
+run_lint "$TMP/pcS" "$TMP/pcS.log" "" --files s.sh
+if called "$TMP/pcS.log" "pre-commit run --config .pre-commit-config.yaml --files s.sh"; then
+    pass "a delete-only change still runs pre-commit (its always_run hooks)"
+else
+    fail "delete-only change with pre-commit got: $(calls "$TMP/pcS.log")"
+fi
+
+# ── T. A tool locked in uv.lock but not installed falls through ──────────────
+
+new_repo "$TMP/pyT"
+echo 'x = 2' > "$TMP/pyT/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyT/uv.lock"
+make_stub "$TMP/pyT-bin/uv" 99
+run_lint "$TMP/pyT" "$TMP/pyT.log" "$TMP/pyT-bin:$PATH" --files a.py
+if called "$TMP/pyT.log" "pyright ." && ! called "$TMP/pyT.log" "uv run --frozen pyright ."; then
+    pass "a locked tool uv cannot run (non-default group) falls through to the next option"
+else
+    fail "uv probe got: $(calls "$TMP/pyT.log")"
+fi
+
+# ── U. nbqa runs the resolved copy of a tool, not python -m ──────────────────
+
+# This nbqa stub also records which ruff its PATH finds first.
+new_repo "$TMP/nbU"
+echo '{"cells": []}' > "$TMP/nbU/n.ipynb"
+make_stub "$TMP/nbU/.venv/bin/ruff" 0 venv-ruff
+mkdir -p "$TMP/nbU-bin"
+cat > "$TMP/nbU-bin/nbqa" <<'EOF'
+#!/usr/bin/env bash
+echo "nbqa $* | ruff=$(command -v ruff)" >> "$LINT_LOG.calls"
+EOF
+chmod +x "$TMP/nbU-bin/nbqa"
+run_lint "$TMP/nbU" "$TMP/nbU.log" "$TMP/nbU-bin:$PATH" --files n.ipynb
+VENV_RUFF="$(cd "$TMP/nbU" && pwd)/.venv/bin/ruff"
+if called "$TMP/nbU.log" "nbqa --nbqa-shell ruff format n.ipynb --check --quiet | ruff=$VENV_RUFF" \
+    && called "$TMP/nbU.log" "nbqa --nbqa-shell ruff n.ipynb --fix | ruff=$VENV_RUFF"; then
+    pass "nbqa keeps the plain tool name and finds the project's .venv/bin/ruff first"
+else
+    fail "nbqa tool resolution got: $(calls "$TMP/nbU.log")"
+fi
+
+# ── V. A uv tool runs nbqa under uv run ──────────────────────────────────────
+
+new_repo "$TMP/nbV"
+echo '{"cells": []}' > "$TMP/nbV/n.ipynb"
+printf '[[package]]\nname = "ruff"\nversion = "0.6.0"\n' > "$TMP/nbV/uv.lock"
+run_lint "$TMP/nbV" "$TMP/nbV.log" "" --files n.ipynb
+if called "$TMP/nbV.log" "uv run --frozen nbqa --nbqa-shell ruff format n.ipynb --check --quiet"; then
+    pass "a uv-locked tool runs nbqa under uv run, so the project environment comes first"
+else
+    fail "nbqa with a uv tool got: $(calls "$TMP/nbV.log")"
+fi
+
+# ── N. The repo's own hook copy matches the payload ──────────────────────────
+
+REPO_ROOT="$(cd "$SMARTLINT_DIR/../../../../.." && pwd)"
+if cmp -s "$PAYLOAD/smart-lint.sh" "$REPO_ROOT/.claude/hooks/smart-lint.sh" \
+    && cmp -s "$PAYLOAD/smart-lint-wrapper.sh" "$REPO_ROOT/.claude/hooks/smart-lint-wrapper.sh"; then
+    pass ".claude/hooks/ holds the same smart-lint scripts as the payload"
+else
+    fail ".claude/hooks/ differs from the payload: copy the payload over"
 fi
 
 echo

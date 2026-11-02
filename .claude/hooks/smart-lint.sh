@@ -8,6 +8,16 @@
 #   Automatically detects project type and runs ALL quality checks.
 #   Every issue found is blocking - code must be 100% clean to proceed.
 #
+#   With a .pre-commit-config.yaml (current folder or git root), lint and
+#   format go through `pre-commit run` instead of smartlint's own tools, so
+#   the two never rewrite each other's work. Without pre-commit installed,
+#   lint and format are skipped. Type checks always stay with smartlint:
+#   Python (pyright or mypy, whole project, after a .py change) and
+#   TypeScript (package.json typecheck script, else tsc --noEmit, after a
+#   .ts/.tsx change with a tsconfig.json; CLAUDE_HOOKS_TS_TYPECHECK_ENABLED=false
+#   turns it off). Tools come from the project first: .venv/bin,
+#   node_modules/.bin, `uv run --frozen` when uv.lock lists them, then PATH.
+#
 # OPTIONS
 #   --debug       Enable debug output
 #   --fast        Skip slow checks (import cycles, security scans)
@@ -303,15 +313,123 @@ run_formatter() {
 # bash 3.2 (macOS) has no namerefs.
 
 # target_files_matching <regex>
-# Sets TARGET_MATCHES to the --files entries matching <regex> that
-# should_skip_file() does not skip.
+# Sets TARGET_MATCHES to the --files entries matching <regex> that still
+# exist and that should_skip_file() does not skip.
 target_files_matching() {
     TARGET_MATCHES=()
     local f
     for f in "${TARGET_FILES[@]}"; do
         [[ "$f" =~ $1 ]] || continue
+        [[ -e "$f" ]] || continue
         should_skip_file "$f" || TARGET_MATCHES+=("$f")
     done
+}
+
+# target_files_changed <regex>
+# Sets TARGET_CHANGED to the --files entries matching <regex>, deleted files
+# included, that should_skip_file() does not skip. Returns 1 when there are
+# none. Whole-project checks use this: deleting a module can break the files
+# that import it.
+target_files_changed() {
+    TARGET_CHANGED=()
+    local f
+    for f in "${TARGET_FILES[@]}"; do
+        [[ "$f" =~ $1 ]] || continue
+        if [[ ! -e "$f" ]] || ! should_skip_file "$f"; then
+            TARGET_CHANGED+=("$f")
+        fi
+    done
+    [[ ${#TARGET_CHANGED[@]} -gt 0 ]]
+}
+
+# resolve_tool <name>
+# Sets RESOLVED_CMD to the command that runs <name>, preferring the project's
+# own copy, which knows the project's dependencies and pinned version:
+# .venv/bin, node_modules/.bin, `uv run --frozen` when uv.lock lists it, then
+# the global binary. Returns 1 (RESOLVED_CMD empty) when none is found.
+resolve_tool() {
+    local name="$1"
+    RESOLVED_CMD=()
+    if [[ -x ".venv/bin/$name" ]]; then
+        RESOLVED_CMD=(".venv/bin/$name")
+    elif [[ -x "node_modules/.bin/$name" ]]; then
+        RESOLVED_CMD=("node_modules/.bin/$name")
+    elif [[ -f "uv.lock" ]] && command_exists uv \
+        && grep -qxF "name = \"$name\"" uv.lock 2>/dev/null \
+        && uv run --frozen "$name" --version > /dev/null 2>&1; then
+        # The probe: a tool in a non-default group or extra is locked but
+        # not installed, and then the next option must get its turn.
+        RESOLVED_CMD=(uv run --frozen "$name")
+    elif command_exists "$name"; then
+        RESOLVED_CMD=("$name")
+    else
+        return 1
+    fi
+    log_debug "Resolved $name to: ${RESOLVED_CMD[*]}"
+    return 0
+}
+
+# ============================================================================
+# PRE-COMMIT
+# ============================================================================
+
+# With a .pre-commit-config.yaml, pre-commit owns lint and format: smartlint
+# runs it instead of its own formatters and linters, so the two never rewrite
+# each other's work. Typechecks stay with smartlint.
+PRECOMMIT_ACTIVE=false
+
+# precommit_config_found
+# Sets PRECOMMIT_CONFIG to the config in the current folder, else the one at
+# the git root. Returns 1 when neither exists.
+precommit_config_found() {
+    PRECOMMIT_CONFIG=""
+    if [[ -f ".pre-commit-config.yaml" ]]; then
+        PRECOMMIT_CONFIG=".pre-commit-config.yaml"
+        return 0
+    fi
+    local root
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || return 1
+    if [[ -n "$root" && -f "$root/.pre-commit-config.yaml" ]]; then
+        PRECOMMIT_CONFIG="$root/.pre-commit-config.yaml"
+        return 0
+    fi
+    return 1
+}
+
+# run_precommit
+# Runs pre-commit's hooks on the target files (all files without --files).
+# A failing run gets one more run: pre-commit exits 1 both when a fixer
+# changed a file and when a check failed, and only a second run tells them
+# apart.
+run_precommit() {
+    log_info "Running pre-commit hooks ($PRECOMMIT_CONFIG)..."
+
+    if ! resolve_tool pre-commit; then
+        log_info "pre-commit not found - install with: pipx install pre-commit (lint and format skipped)"
+        return 0
+    fi
+
+    local -a cmd=("${RESOLVED_CMD[@]}" run --config "$PRECOMMIT_CONFIG")
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        # Deleted files stay in: pre-commit drops missing paths itself, and
+        # its always_run hooks still run after a delete-only change.
+        if ! target_files_changed '.'; then
+            log_debug "No target files for pre-commit"
+            return 0
+        fi
+        cmd+=(--files "${TARGET_CHANGED[@]}")
+    else
+        cmd+=(--all-files)
+    fi
+
+    if "${cmd[@]}" > /dev/null 2>&1; then
+        add_summary "success" "pre-commit hooks passed"
+    elif run_and_show_errors "${cmd[@]}"; then
+        log_success "pre-commit hooks passed (auto-fixed)"
+        add_summary "success" "pre-commit hooks passed (auto-fixed)"
+    else
+        add_summary "error" "pre-commit hooks failed"
+    fi
 }
 
 # find_files_matching <max> <exclude_regex> <find args...>
@@ -334,28 +452,37 @@ find_files_matching() {
 # ============================================================================
 
 # --- Python helpers (called as fallbacks by run_makefile_or_tool) ---
-# Each lints _PYTHON_TARGET: the target Python files, or "." when linting the
-# whole project.
+# Format and lint take _PYTHON_TARGET: the target Python files, or "." when
+# linting the whole project. Type checking always takes ".".
 
+# ruff format first: it is what /fwd:setup-precommit configures, so a repo
+# without pre-commit gets the same formatting as one with it.
 _python_fmt_fallback() {
-    if command_exists black; then
+    local -a tool=()
+    if resolve_tool ruff; then
+        tool=("${RESOLVED_CMD[@]}")
         run_formatter "Python formatting correct" "Python files formatted" \
-            black "${_PYTHON_TARGET[@]}" --check --quiet -- \
-            black "${_PYTHON_TARGET[@]}" --quiet
+            "${tool[@]}" format --check --quiet "${_PYTHON_TARGET[@]}" -- \
+            "${tool[@]}" format --quiet "${_PYTHON_TARGET[@]}"
+    elif resolve_tool black; then
+        tool=("${RESOLVED_CMD[@]}")
+        run_formatter "Python formatting correct" "Python files formatted" \
+            "${tool[@]}" "${_PYTHON_TARGET[@]}" --check --quiet -- \
+            "${tool[@]}" "${_PYTHON_TARGET[@]}" --quiet
     else
-        log_info "black not found - install with: pip install black"
+        log_info "ruff or black not found - install with: pip install ruff"
     fi
 }
 
 _python_lint_fallback() {
-    if command_exists ruff; then
-        if ! run_and_show_errors ruff check --fix "${_PYTHON_TARGET[@]}"; then
+    if resolve_tool ruff; then
+        if ! run_and_show_errors "${RESOLVED_CMD[@]}" check --fix "${_PYTHON_TARGET[@]}"; then
             add_summary "error" "Ruff found issues"
         else
             add_summary "success" "Ruff check passed"
         fi
-    elif command_exists flake8; then
-        if run_and_show_errors flake8 "${_PYTHON_TARGET[@]}"; then
+    elif resolve_tool flake8; then
+        if run_and_show_errors "${RESOLVED_CMD[@]}" "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Flake8 check passed"
         else
             add_summary "error" "Flake8 found issues"
@@ -365,15 +492,17 @@ _python_lint_fallback() {
     fi
 }
 
+# Type checking always covers the whole project: a change in one file can
+# break the types of another.
 _python_typecheck_fallback() {
-    if command_exists pyright; then
-        if ! run_and_show_errors pyright "${_PYTHON_TARGET[@]}"; then
+    if resolve_tool pyright; then
+        if ! run_and_show_errors "${RESOLVED_CMD[@]}" .; then
             add_summary "error" "Type errors found (pyright)"
         else
             add_summary "success" "Type checking passed (pyright)"
         fi
-    elif command_exists mypy; then
-        if ! run_and_show_errors mypy "${_PYTHON_TARGET[@]}"; then
+    elif resolve_tool mypy; then
+        if ! run_and_show_errors "${RESOLVED_CMD[@]}" .; then
             add_summary "error" "Type errors found (mypy)"
         else
             add_summary "success" "Type checking passed (mypy)"
@@ -390,14 +519,14 @@ _python_doc_check() {
 
     log_info "Running Python docstring checks..."
 
-    if command_exists ruff; then
-        if run_and_show_errors ruff check --select D "${_PYTHON_TARGET[@]}"; then
+    if resolve_tool ruff; then
+        if run_and_show_errors "${RESOLVED_CMD[@]}" check --select D "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Python docstring check passed (ruff/pydocstyle)"
         else
             add_summary "error" "Python docstring issues found (ruff/pydocstyle)"
         fi
-    elif command_exists interrogate; then
-        if run_and_show_errors interrogate "${_PYTHON_TARGET[@]}"; then
+    elif resolve_tool interrogate; then
+        if run_and_show_errors "${RESOLVED_CMD[@]}" "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Python docstring check passed (interrogate)"
         else
             add_summary "error" "Python docstring coverage too low (interrogate)"
@@ -419,20 +548,23 @@ lint_python() {
     # fallback functions
     _PYTHON_TARGET=(.)
     if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
-        target_files_matching '\.py$'
-        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
+        if ! target_files_changed '\.py$'; then
             log_debug "No Python files in target files, skipping Python checks"
             return 0
         fi
-        _PYTHON_TARGET=("${TARGET_MATCHES[@]}")
+        # Per-file tools get the files that still exist; may be none when
+        # the change only deleted Python files.
+        target_files_matching '\.py$'
+        _PYTHON_TARGET=()
+        [[ ${#TARGET_MATCHES[@]} -gt 0 ]] && _PYTHON_TARGET=("${TARGET_MATCHES[@]}")
         log_debug "Checking Python files: ${_PYTHON_TARGET[*]}"
     fi
 
-    # Formatting
-    run_makefile_or_tool "fmt" "Python code formatted" "Python formatting failed (make fmt)" _python_fmt_fallback
-
-    # Linting
-    run_makefile_or_tool "lint" "Python linting passed" "Python linting failed (make lint)" _python_lint_fallback
+    # Formatting and linting, unless pre-commit owns them
+    if [[ "$PRECOMMIT_ACTIVE" != "true" && ${#_PYTHON_TARGET[@]} -gt 0 ]]; then
+        run_makefile_or_tool "fmt" "Python code formatted" "Python formatting failed (make fmt)" _python_fmt_fallback
+        run_makefile_or_tool "lint" "Python linting passed" "Python linting failed (make lint)" _python_lint_fallback
+    fi
 
     # Type checking
     if [[ "${CLAUDE_HOOKS_PYTHON_TYPECHECK_ENABLED:-true}" == "true" ]]; then
@@ -441,7 +573,7 @@ lint_python() {
     fi
 
     # Docstring checking (opt-in)
-    _python_doc_check
+    [[ ${#_PYTHON_TARGET[@]} -gt 0 ]] && _python_doc_check
 
     return 0
 }
@@ -457,20 +589,88 @@ lint_javascript() {
     # Filter for JS/TS files if TARGET_FILES specified
     local -a js_files=()
     if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
-        target_files_matching '\.(js|jsx|ts|tsx)$'
-        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
+        if ! target_files_changed '\.(js|jsx|ts|tsx)$'; then
             log_debug "No JavaScript/TypeScript files in target files, skipping JS checks"
             return 0
         fi
-        js_files=("${TARGET_MATCHES[@]}")
+        target_files_matching '\.(js|jsx|ts|tsx)$'
+        [[ ${#TARGET_MATCHES[@]} -gt 0 ]] && js_files=("${TARGET_MATCHES[@]}")
         log_debug "Checking JS/TS files: ${js_files[*]}"
     fi
+
+    # ESLint and Prettier on the files that still exist (empty js_files means
+    # the whole project), unless pre-commit owns them
+    if [[ "$PRECOMMIT_ACTIVE" != "true" ]] \
+        && [[ ${#TARGET_FILES[@]} -eq 0 || ${#js_files[@]} -gt 0 ]]; then
+        _js_lint_and_format
+    fi
+
+    _ts_typecheck
+
+    return 0
+}
+
+# _pkg_has_script <name>: package.json in the current folder has script <name>
+_pkg_has_script() {
+    [[ -f "package.json" ]] || return 1
+    if command_exists jq; then
+        jq -e --arg n "$1" '.scripts[$n] // empty' package.json > /dev/null 2>&1
+    else
+        grep -qE "\"$1\"[[:space:]]*:" package.json 2>/dev/null
+    fi
+}
+
+# _ts_typecheck: type-check the whole TypeScript project after a .ts/.tsx
+# change. Order: the package.json typecheck/type-check script (it knows
+# solution-style tsconfigs), node_modules/.bin/tsc, then npx --no-install tsc.
+_ts_typecheck() {
+    if [[ "${CLAUDE_HOOKS_TS_TYPECHECK_ENABLED:-true}" != "true" ]]; then
+        log_debug "TypeScript typecheck disabled"
+        return 0
+    fi
+    [[ -f "tsconfig.json" ]] || return 0
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]] && ! target_files_changed '\.(ts|tsx)$'; then
+        log_debug "No TypeScript files in target files, skipping typecheck"
+        return 0
+    fi
+
+    log_info "Running TypeScript type checking..."
+    local -a cmd=()
+    if _pkg_has_script typecheck && command_exists npm; then
+        cmd=(npm run typecheck)
+    elif _pkg_has_script type-check && command_exists npm; then
+        cmd=(npm run type-check)
+    elif [[ -x "node_modules/.bin/tsc" ]]; then
+        cmd=(node_modules/.bin/tsc --noEmit)
+    elif command_exists npx && npx --no-install tsc --version > /dev/null 2>&1; then
+        cmd=(npx --no-install tsc --noEmit)
+    else
+        log_info "tsc not found - install with: npm install --save-dev typescript"
+        return 0
+    fi
+
+    if run_and_show_errors "${cmd[@]}"; then
+        add_summary "success" "TypeScript type checking passed"
+    else
+        add_summary "error" "TypeScript type errors found (${cmd[*]})"
+    fi
+}
+
+# _js_lint_and_format: ESLint and Prettier on js_files (lint_javascript's
+# local array; empty means the whole project).
+_js_lint_and_format() {
+    local -a tool=()
 
     # Check for ESLint
     if [[ -f "package.json" ]] && grep -q "eslint" package.json 2>/dev/null; then
         if command_exists npm; then
             if [[ ${#js_files[@]} -gt 0 ]]; then
-                if run_and_show_errors npx eslint "${js_files[@]}"; then
+                if resolve_tool eslint; then
+                    tool=("${RESOLVED_CMD[@]}")
+                else
+                    tool=(npx eslint)
+                fi
+                if run_and_show_errors "${tool[@]}" "${js_files[@]}"; then
                     add_summary "success" "ESLint check passed"
                 else
                     add_summary "error" "ESLint found issues"
@@ -498,27 +698,32 @@ lint_javascript() {
     if [[ -f ".prettierrc" ]] || [[ -f "prettier.config.js" ]] || [[ -f ".prettierrc.json" ]]; then
         local -a prettier_target=(.)
         [[ ${#js_files[@]} -gt 0 ]] && prettier_target=("${js_files[@]}")
-        if command_exists prettier; then
-            run_formatter "Prettier formatting correct" "Prettier formatting fixed" \
-                prettier --check "${prettier_target[@]}" -- \
-                prettier --write "${prettier_target[@]}"
+        if resolve_tool prettier; then
+            tool=("${RESOLVED_CMD[@]}")
         elif command_exists npx; then
-            run_formatter "Prettier formatting correct" "Prettier formatting fixed" \
-                npx prettier --check "${prettier_target[@]}" -- \
-                npx prettier --write "${prettier_target[@]}"
+            tool=(npx prettier)
         else
+            tool=()
             log_info "prettier not found - install with: npm install -g prettier"
+        fi
+        if [[ ${#tool[@]} -gt 0 ]]; then
+            run_formatter "Prettier formatting correct" "Prettier formatting fixed" \
+                "${tool[@]}" --check "${prettier_target[@]}" -- \
+                "${tool[@]}" --write "${prettier_target[@]}"
         fi
     else
         log_debug "No Prettier configuration found, skipping Prettier"
     fi
-
-    return 0
 }
 
 lint_nix() {
     if [[ "${CLAUDE_HOOKS_NIX_ENABLED:-true}" != "true" ]]; then
         log_debug "Nix linting disabled"
+        return 0
+    fi
+
+    if [[ "$PRECOMMIT_ACTIVE" == "true" ]]; then
+        log_debug "pre-commit owns Nix lint and format"
         return 0
     fi
 
@@ -572,6 +777,69 @@ lint_nix() {
     return 0
 }
 
+# _nbqa_tool <name> [subcommand]
+# Sets NBQA_RUN to the nbqa call (NBQA_CMD) that runs the copy of <name>
+# resolve_tool picks. nbqa runs `python -m <name>` from its own environment
+# by default; --nbqa-shell makes it look <name> up on PATH instead. The
+# command stays the plain name, because nbqa keys its config (exclude,
+# addopts, skip_celltags) on it; only PATH changes: the project's .venv/bin
+# or node_modules/.bin goes first, and a `uv run` tool runs nbqa under
+# `uv run`, which puts the project environment first. Returns 1 when <name>
+# is not found.
+_nbqa_tool() {
+    resolve_tool "$1" || return 1
+    case "${RESOLVED_CMD[0]}" in
+        .venv/bin/*) NBQA_RUN=(env "PATH=$PWD/.venv/bin:$PATH" "${NBQA_CMD[@]}") ;;
+        node_modules/.bin/*) NBQA_RUN=(env "PATH=$PWD/node_modules/.bin:$PATH" "${NBQA_CMD[@]}") ;;
+        uv)
+            if [[ "${NBQA_CMD[0]}" == uv ]]; then
+                NBQA_RUN=("${NBQA_CMD[@]}")
+            else
+                NBQA_RUN=(uv run --frozen "${NBQA_CMD[@]}")
+            fi
+            ;;
+        *) NBQA_RUN=("${NBQA_CMD[@]}") ;;
+    esac
+    NBQA_RUN+=(--nbqa-shell "$1${2:+ $2}")
+}
+
+# _notebook_lint_and_format: nbqa formatting and linting on notebook_files
+# (lint_notebook's local array). ruff format first, as for .py files.
+_notebook_lint_and_format() {
+    if _nbqa_tool ruff format; then
+        log_debug "Running nbqa ruff format on notebooks..."
+        run_formatter "Notebook formatting correct (ruff)" "Notebook files formatted (ruff)" \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --check --quiet -- \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --quiet
+    elif _nbqa_tool black; then
+        log_debug "Running nbqa black on notebooks..."
+        run_formatter "Notebook formatting correct (black)" "Notebook files formatted (black)" \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --check --quiet -- \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --quiet
+    else
+        log_debug "ruff/black not found, skipping notebook formatting"
+    fi
+
+    # Plain "ruff": nbqa keys its config on it and adds "check" itself.
+    if _nbqa_tool ruff; then
+        log_debug "Running nbqa ruff on notebooks..."
+        if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}" --fix; then
+            add_summary "success" "Notebook lint check passed (ruff)"
+        else
+            add_summary "error" "Notebook lint issues found (ruff)"
+        fi
+    elif _nbqa_tool flake8; then
+        log_debug "Running nbqa flake8 on notebooks..."
+        if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
+            add_summary "success" "Notebook lint check passed (flake8)"
+        else
+            add_summary "error" "Notebook lint issues found (flake8)"
+        fi
+    else
+        log_debug "ruff/flake8 not found, skipping notebook linting"
+    fi
+}
+
 lint_notebook() {
     if [[ "${CLAUDE_HOOKS_NOTEBOOK_ENABLED:-true}" != "true" ]]; then
         log_debug "Notebook linting disabled"
@@ -602,53 +870,30 @@ lint_notebook() {
     fi
 
     # Check if nbqa is available
-    if ! command_exists nbqa; then
+    if ! resolve_tool nbqa; then
         log_info "nbqa not found - install with: pip install nbqa"
         log_info "   nbqa allows running Python linters (black, ruff, pyright) on Jupyter notebooks"
         return 0
     fi
+    NBQA_CMD=("${RESOLVED_CMD[@]}")
 
-    # Black formatting via nbqa
-    if command_exists black; then
-        log_debug "Running nbqa black on notebooks..."
-        run_formatter "Notebook formatting correct (black)" "Notebook files formatted (black)" \
-            nbqa black "${notebook_files[@]}" --check --quiet -- \
-            nbqa black "${notebook_files[@]}" --quiet
-    else
-        log_debug "black not found, skipping notebook formatting"
-    fi
-
-    # Ruff linting via nbqa
-    if command_exists ruff; then
-        log_debug "Running nbqa ruff on notebooks..."
-        if run_and_show_errors nbqa ruff check --fix "${notebook_files[@]}"; then
-            add_summary "success" "Notebook lint check passed (ruff)"
-        else
-            add_summary "error" "Notebook lint issues found (ruff)"
-        fi
-    elif command_exists flake8; then
-        log_debug "Running nbqa flake8 on notebooks..."
-        if run_and_show_errors nbqa flake8 "${notebook_files[@]}"; then
-            add_summary "success" "Notebook lint check passed (flake8)"
-        else
-            add_summary "error" "Notebook lint issues found (flake8)"
-        fi
-    else
-        log_debug "ruff/flake8 not found, skipping notebook linting"
+    # Formatting and linting, unless pre-commit owns them
+    if [[ "$PRECOMMIT_ACTIVE" != "true" ]]; then
+        _notebook_lint_and_format
     fi
 
     # Type checking via nbqa (disabled by default for notebooks)
     if [[ "${CLAUDE_HOOKS_NOTEBOOK_TYPECHECK_ENABLED:-false}" == "true" ]]; then
-        if command_exists pyright; then
+        if _nbqa_tool pyright; then
             log_debug "Running nbqa pyright on notebooks..."
-            if run_and_show_errors nbqa pyright "${notebook_files[@]}"; then
+            if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (pyright)"
             else
                 add_summary "error" "Notebook type errors found (pyright)"
             fi
-        elif command_exists mypy; then
+        elif _nbqa_tool mypy; then
             log_debug "Running nbqa mypy on notebooks..."
-            if run_and_show_errors nbqa mypy "${notebook_files[@]}"; then
+            if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (mypy)"
             else
                 add_summary "error" "Notebook type errors found (mypy)"
@@ -664,6 +909,11 @@ lint_notebook() {
 lint_shell() {
     if [[ "${CLAUDE_HOOKS_SHELL_ENABLED:-true}" != "true" ]]; then
         log_debug "Shell linting disabled"
+        return 0
+    fi
+
+    if [[ "$PRECOMMIT_ACTIVE" == "true" ]]; then
+        log_debug "pre-commit owns shell lint"
         return 0
     fi
 
@@ -768,6 +1018,15 @@ run_linter_for_type() {
 
 # Main execution
 main() {
+    # pre-commit first: it owns lint and format when the repo configures it
+    if precommit_config_found; then
+        PRECOMMIT_ACTIVE=true
+        run_precommit
+    fi
+    # Fail fast counts only errors from the language checks below, so a
+    # pre-commit failure never skips the type checks.
+    local errors_before=$CLAUDE_HOOKS_ERROR_COUNT
+
     # Handle mixed project types
     if [[ "$PROJECT_TYPE" == mixed:* ]]; then
         local types="${PROJECT_TYPE#mixed:}"
@@ -777,7 +1036,7 @@ main() {
             run_linter_for_type "$type"
 
             # Fail fast if configured
-            if [[ "$CLAUDE_HOOKS_FAIL_FAST" == "true" && $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
+            if [[ "$CLAUDE_HOOKS_FAIL_FAST" == "true" && $CLAUDE_HOOKS_ERROR_COUNT -gt $errors_before ]]; then
                 break
             fi
         done

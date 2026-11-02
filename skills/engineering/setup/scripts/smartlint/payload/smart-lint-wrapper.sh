@@ -48,6 +48,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # stays one argument all the way to the linter.
 RELEVANT_RE='\.(ts|tsx|py|js|jsx|nix|ipynb|sh)$'
 
+# With a pre-commit config (here or at the git root), smart-lint.sh hands
+# every changed file to pre-commit, whose hooks also cover JSON, YAML,
+# Dockerfiles and more. Then every changed file is relevant.
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -f ".pre-commit-config.yaml" ] || [ -f "$GIT_ROOT/.pre-commit-config.yaml" ]; then
+    RELEVANT_RE='.'
+fi
+
 # Untracked, then modified files (staged + unstaged changes), filtered for
 # relevant code file extensions (no mapfile: bash 3.2 compatible). All paths
 # are relative to the current directory and limited to it (--relative, and
