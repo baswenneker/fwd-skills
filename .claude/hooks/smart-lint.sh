@@ -355,7 +355,10 @@ resolve_tool() {
     elif [[ -x "node_modules/.bin/$name" ]]; then
         RESOLVED_CMD=("node_modules/.bin/$name")
     elif [[ -f "uv.lock" ]] && command_exists uv \
-        && grep -qxF "name = \"$name\"" uv.lock 2>/dev/null; then
+        && grep -qxF "name = \"$name\"" uv.lock 2>/dev/null \
+        && uv run --frozen "$name" --version > /dev/null 2>&1; then
+        # The probe: a tool in a non-default group or extra is locked but
+        # not installed, and then the next option must get its turn.
         RESOLVED_CMD=(uv run --frozen "$name")
     elif command_exists "$name"; then
         RESOLVED_CMD=("$name")
@@ -774,34 +777,51 @@ lint_nix() {
     return 0
 }
 
-# _notebook_lint_and_format: nbqa (NBQA_CMD) formatting and linting on
-# notebook_files (lint_notebook's local array). ruff format first, as for
-# .py files.
+# _nbqa_tool <name> [subcommand]
+# Sets NBQA_RUN to the nbqa call (NBQA_CMD) that runs the copy of <name>
+# resolve_tool picks. nbqa runs `python -m <name>` from its own environment
+# by default; for a single executable (.venv/bin, node_modules/.bin, PATH)
+# --nbqa-shell makes it run that file instead. A `uv run` tool keeps the
+# default, which uses the project environment when nbqa comes from uv too.
+# Returns 1 when <name> is not found.
+_nbqa_tool() {
+    resolve_tool "$1" || return 1
+    local tool="$1"
+    NBQA_RUN=("${NBQA_CMD[@]}")
+    if [[ ${#RESOLVED_CMD[@]} -eq 1 && "${RESOLVED_CMD[0]}" != *" "* ]]; then
+        NBQA_RUN+=(--nbqa-shell)
+        tool="${RESOLVED_CMD[0]}"
+    fi
+    NBQA_RUN+=("$tool${2:+ $2}")
+}
+
+# _notebook_lint_and_format: nbqa formatting and linting on notebook_files
+# (lint_notebook's local array). ruff format first, as for .py files.
 _notebook_lint_and_format() {
-    if resolve_tool ruff; then
+    if _nbqa_tool ruff format; then
         log_debug "Running nbqa ruff format on notebooks..."
         run_formatter "Notebook formatting correct (ruff)" "Notebook files formatted (ruff)" \
-            "${NBQA_CMD[@]}" "ruff format" "${notebook_files[@]}" --check --quiet -- \
-            "${NBQA_CMD[@]}" "ruff format" "${notebook_files[@]}" --quiet
-    elif resolve_tool black; then
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --check --quiet -- \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --quiet
+    elif _nbqa_tool black; then
         log_debug "Running nbqa black on notebooks..."
         run_formatter "Notebook formatting correct (black)" "Notebook files formatted (black)" \
-            "${NBQA_CMD[@]}" black "${notebook_files[@]}" --check --quiet -- \
-            "${NBQA_CMD[@]}" black "${notebook_files[@]}" --quiet
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --check --quiet -- \
+            "${NBQA_RUN[@]}" "${notebook_files[@]}" --quiet
     else
         log_debug "ruff/black not found, skipping notebook formatting"
     fi
 
-    if resolve_tool ruff; then
+    if _nbqa_tool ruff check; then
         log_debug "Running nbqa ruff on notebooks..."
-        if run_and_show_errors "${NBQA_CMD[@]}" ruff check --fix "${notebook_files[@]}"; then
+        if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}" --fix; then
             add_summary "success" "Notebook lint check passed (ruff)"
         else
             add_summary "error" "Notebook lint issues found (ruff)"
         fi
-    elif resolve_tool flake8; then
+    elif _nbqa_tool flake8; then
         log_debug "Running nbqa flake8 on notebooks..."
-        if run_and_show_errors "${NBQA_CMD[@]}" flake8 "${notebook_files[@]}"; then
+        if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
             add_summary "success" "Notebook lint check passed (flake8)"
         else
             add_summary "error" "Notebook lint issues found (flake8)"
@@ -855,16 +875,16 @@ lint_notebook() {
 
     # Type checking via nbqa (disabled by default for notebooks)
     if [[ "${CLAUDE_HOOKS_NOTEBOOK_TYPECHECK_ENABLED:-false}" == "true" ]]; then
-        if resolve_tool pyright; then
+        if _nbqa_tool pyright; then
             log_debug "Running nbqa pyright on notebooks..."
-            if run_and_show_errors "${NBQA_CMD[@]}" pyright "${notebook_files[@]}"; then
+            if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (pyright)"
             else
                 add_summary "error" "Notebook type errors found (pyright)"
             fi
-        elif resolve_tool mypy; then
+        elif _nbqa_tool mypy; then
             log_debug "Running nbqa mypy on notebooks..."
-            if run_and_show_errors "${NBQA_CMD[@]}" mypy "${notebook_files[@]}"; then
+            if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (mypy)"
             else
                 add_summary "error" "Notebook type errors found (mypy)"

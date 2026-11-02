@@ -44,7 +44,7 @@ EOF
 }
 
 STUBS="$TMP/stubs"
-for tool in ruff black pyright mypy flake8 shellcheck pre-commit npm npx tsc uv; do
+for tool in ruff black pyright mypy flake8 shellcheck pre-commit npm npx tsc uv nbqa; do
     make_stub "$STUBS/$tool"
 done
 export PATH="$STUBS:$PATH"
@@ -447,6 +447,32 @@ if called "$TMP/pcS.log" "pre-commit run --config .pre-commit-config.yaml --file
     pass "a delete-only change still runs pre-commit (its always_run hooks)"
 else
     fail "delete-only change with pre-commit got: $(calls "$TMP/pcS.log")"
+fi
+
+# ── T. A tool locked in uv.lock but not installed falls through ──────────────
+
+new_repo "$TMP/pyT"
+echo 'x = 2' > "$TMP/pyT/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyT/uv.lock"
+make_stub "$TMP/pyT-bin/uv" 99
+run_lint "$TMP/pyT" "$TMP/pyT.log" "$TMP/pyT-bin:$PATH" --files a.py
+if called "$TMP/pyT.log" "pyright ." && ! called "$TMP/pyT.log" "uv run --frozen pyright ."; then
+    pass "a locked tool uv cannot run (non-default group) falls through to the next option"
+else
+    fail "uv probe got: $(calls "$TMP/pyT.log")"
+fi
+
+# ── U. nbqa runs the resolved copy of a tool, not python -m ──────────────────
+
+new_repo "$TMP/nbU"
+echo '{"cells": []}' > "$TMP/nbU/n.ipynb"
+make_stub "$TMP/nbU/.venv/bin/ruff" 0 venv-ruff
+run_lint "$TMP/nbU" "$TMP/nbU.log" "" --files n.ipynb
+if called "$TMP/nbU.log" "nbqa --nbqa-shell .venv/bin/ruff format n.ipynb --check --quiet" \
+    && called "$TMP/nbU.log" "nbqa --nbqa-shell .venv/bin/ruff check n.ipynb --fix"; then
+    pass "nbqa runs the project's .venv/bin/ruff through --nbqa-shell"
+else
+    fail "nbqa tool resolution got: $(calls "$TMP/nbU.log")"
 fi
 
 # ── N. The repo's own hook copy matches the payload ──────────────────────────
