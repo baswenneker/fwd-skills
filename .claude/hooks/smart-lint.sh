@@ -326,17 +326,20 @@ target_files_matching() {
 }
 
 # target_files_changed <regex>
-# Returns 0 when a --files entry matches <regex>, deleted files included, and
-# should_skip_file() does not skip it. Whole-project checks (type checking)
-# use this: deleting a module can break the files that import it.
+# Sets TARGET_CHANGED to the --files entries matching <regex>, deleted files
+# included, that should_skip_file() does not skip. Returns 1 when there are
+# none. Whole-project checks use this: deleting a module can break the files
+# that import it.
 target_files_changed() {
+    TARGET_CHANGED=()
     local f
     for f in "${TARGET_FILES[@]}"; do
         [[ "$f" =~ $1 ]] || continue
-        [[ -e "$f" ]] || return 0
-        should_skip_file "$f" || return 0
+        if [[ ! -e "$f" ]] || ! should_skip_file "$f"; then
+            TARGET_CHANGED+=("$f")
+        fi
     done
-    return 1
+    [[ ${#TARGET_CHANGED[@]} -gt 0 ]]
 }
 
 # resolve_tool <name>
@@ -405,12 +408,13 @@ run_precommit() {
 
     local -a cmd=("${RESOLVED_CMD[@]}" run --config "$PRECOMMIT_CONFIG")
     if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
-        target_files_matching '.'
-        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
-            log_debug "No existing target files for pre-commit"
+        # Deleted files stay in: pre-commit drops missing paths itself, and
+        # its always_run hooks still run after a delete-only change.
+        if ! target_files_changed '.'; then
+            log_debug "No target files for pre-commit"
             return 0
         fi
-        cmd+=(--files "${TARGET_MATCHES[@]}")
+        cmd+=(--files "${TARGET_CHANGED[@]}")
     else
         cmd+=(--all-files)
     fi

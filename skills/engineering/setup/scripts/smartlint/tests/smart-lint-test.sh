@@ -422,6 +422,33 @@ else
     fail "fail fast after pre-commit: rc $RC, calls $(calls "$TMP/pcQ.log")"
 fi
 
+# ── R. With pre-commit, the wrapper hands over non-code files too ────────────
+
+new_pc_repo "$TMP/pcR"
+git_t -C "$TMP/pcR" add -A
+git_t -C "$TMP/pcR" commit -q -m files
+echo '{"a": 1}' > "$TMP/pcR/config.json"
+: > "$TMP/pcR.log.calls"
+run_wrapper "$TMP/pcR" "$TMP/pcR.log"
+if called "$TMP/pcR.log" "pre-commit run --config .pre-commit-config.yaml --files config.json"; then
+    pass "with a pre-commit config, a JSON-only change reaches pre-commit"
+else
+    fail "JSON-only change with pre-commit got: $(calls "$TMP/pcR.log")"
+fi
+
+# ── S. A delete-only change still runs pre-commit, with the deleted path ─────
+
+new_pc_repo "$TMP/pcS"
+git_t -C "$TMP/pcS" add -A
+git_t -C "$TMP/pcS" commit -q -m files
+rm "$TMP/pcS/s.sh"
+run_lint "$TMP/pcS" "$TMP/pcS.log" "" --files s.sh
+if called "$TMP/pcS.log" "pre-commit run --config .pre-commit-config.yaml --files s.sh"; then
+    pass "a delete-only change still runs pre-commit (its always_run hooks)"
+else
+    fail "delete-only change with pre-commit got: $(calls "$TMP/pcS.log")"
+fi
+
 # ── N. The repo's own hook copy matches the payload ──────────────────────────
 
 REPO_ROOT="$(cd "$SMARTLINT_DIR/../../../../.." && pwd)"
