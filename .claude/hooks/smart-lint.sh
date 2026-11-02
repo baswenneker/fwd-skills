@@ -298,17 +298,35 @@ run_formatter() {
     fi
 }
 
-# filter_skippable_files <file_list_string>
-# Applies should_skip_file() to filter file lists. Returns filtered list.
-filter_skippable_files() {
-    local files="$1"
-    local filtered=""
-    for f in $files; do
-        if ! should_skip_file "$f"; then
-            filtered="$filtered $f"
-        fi
+# File lists are bash arrays throughout, so a path with spaces stays one
+# argument. Arrays are passed between functions through globals because
+# bash 3.2 (macOS) has no namerefs.
+
+# target_files_matching <regex>
+# Sets TARGET_MATCHES to the --files entries matching <regex> that
+# should_skip_file() does not skip.
+target_files_matching() {
+    TARGET_MATCHES=()
+    local f
+    for f in "${TARGET_FILES[@]}"; do
+        [[ "$f" =~ $1 ]] || continue
+        should_skip_file "$f" || TARGET_MATCHES+=("$f")
     done
-    echo "${filtered# }"
+}
+
+# find_files_matching <max> <exclude_regex> <find args...>
+# Sets FOUND_FILES to at most <max> paths found by `find . <find args> -type f`
+# that do not match <exclude_regex>.
+find_files_matching() {
+    local max="$1"
+    local exclude="$2"
+    shift 2
+    FOUND_FILES=()
+    local f
+    while [[ ${#FOUND_FILES[@]} -lt $max ]] && IFS= read -r -d '' f; do
+        [[ "$f" =~ $exclude ]] && continue
+        FOUND_FILES+=("$f")
+    done < <(find . "$@" -type f -print0 2>/dev/null)
 }
 
 # ============================================================================
@@ -316,34 +334,28 @@ filter_skippable_files() {
 # ============================================================================
 
 # --- Python helpers (called as fallbacks by run_makefile_or_tool) ---
+# Each lints _PYTHON_TARGET: the target Python files, or "." when linting the
+# whole project.
 
 _python_fmt_fallback() {
-    local python_files="${_CURRENT_PYTHON_FILES}"
     if command_exists black; then
-        local black_target="${python_files:-.}"
-        # shellcheck disable=SC2086
         run_formatter "Python formatting correct" "Python files formatted" \
-            black $black_target --check --quiet -- \
-            black $black_target --quiet
+            black "${_PYTHON_TARGET[@]}" --check --quiet -- \
+            black "${_PYTHON_TARGET[@]}" --quiet
     else
         log_info "black not found - install with: pip install black"
     fi
 }
 
 _python_lint_fallback() {
-    local python_files="${_CURRENT_PYTHON_FILES}"
     if command_exists ruff; then
-        local ruff_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if ! run_and_show_errors ruff check --fix $ruff_target; then
+        if ! run_and_show_errors ruff check --fix "${_PYTHON_TARGET[@]}"; then
             add_summary "error" "Ruff found issues"
         else
             add_summary "success" "Ruff check passed"
         fi
     elif command_exists flake8; then
-        local flake8_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if run_and_show_errors flake8 $flake8_target; then
+        if run_and_show_errors flake8 "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Flake8 check passed"
         else
             add_summary "error" "Flake8 found issues"
@@ -354,19 +366,14 @@ _python_lint_fallback() {
 }
 
 _python_typecheck_fallback() {
-    local python_files="${_CURRENT_PYTHON_FILES}"
     if command_exists pyright; then
-        local pyright_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if ! run_and_show_errors pyright $pyright_target; then
+        if ! run_and_show_errors pyright "${_PYTHON_TARGET[@]}"; then
             add_summary "error" "Type errors found (pyright)"
         else
             add_summary "success" "Type checking passed (pyright)"
         fi
     elif command_exists mypy; then
-        local mypy_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if ! run_and_show_errors mypy $mypy_target; then
+        if ! run_and_show_errors mypy "${_PYTHON_TARGET[@]}"; then
             add_summary "error" "Type errors found (mypy)"
         else
             add_summary "success" "Type checking passed (mypy)"
@@ -381,21 +388,16 @@ _python_doc_check() {
         return 0
     fi
 
-    local python_files="${_CURRENT_PYTHON_FILES}"
     log_info "Running Python docstring checks..."
 
     if command_exists ruff; then
-        local ruff_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if run_and_show_errors ruff check --select D $ruff_target; then
+        if run_and_show_errors ruff check --select D "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Python docstring check passed (ruff/pydocstyle)"
         else
             add_summary "error" "Python docstring issues found (ruff/pydocstyle)"
         fi
     elif command_exists interrogate; then
-        local interrogate_target="${python_files:-.}"
-        # shellcheck disable=SC2086
-        if run_and_show_errors interrogate $interrogate_target; then
+        if run_and_show_errors interrogate "${_PYTHON_TARGET[@]}"; then
             add_summary "success" "Python docstring check passed (interrogate)"
         else
             add_summary "error" "Python docstring coverage too low (interrogate)"
@@ -413,20 +415,18 @@ lint_python() {
 
     log_info "Running Python linters..."
 
-    # Filter for Python files if TARGET_FILES specified
-    local python_files=""
-    if [[ -n "$CLAUDE_HOOKS_TARGET_FILES" ]]; then
-        python_files=$(echo "$CLAUDE_HOOKS_TARGET_FILES" | tr ' ' '\n' | grep -E '\.py$' | tr '\n' ' ')
-        python_files=$(filter_skippable_files "$python_files")
-        if [[ -z "$python_files" ]]; then
+    # Filter for Python files if TARGET_FILES specified; store for use by
+    # fallback functions
+    _PYTHON_TARGET=(.)
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        target_files_matching '\.py$'
+        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
             log_debug "No Python files in target files, skipping Python checks"
             return 0
         fi
-        log_debug "Checking Python files: $python_files"
+        _PYTHON_TARGET=("${TARGET_MATCHES[@]}")
+        log_debug "Checking Python files: ${_PYTHON_TARGET[*]}"
     fi
-
-    # Store for use by fallback functions
-    _CURRENT_PYTHON_FILES="$python_files"
 
     # Formatting
     run_makefile_or_tool "fmt" "Python code formatted" "Python formatting failed (make fmt)" _python_fmt_fallback
@@ -455,23 +455,22 @@ lint_javascript() {
     log_info "Running JavaScript/TypeScript linters..."
 
     # Filter for JS/TS files if TARGET_FILES specified
-    local js_files=""
-    if [[ -n "$CLAUDE_HOOKS_TARGET_FILES" ]]; then
-        js_files=$(echo "$CLAUDE_HOOKS_TARGET_FILES" | tr ' ' '\n' | grep -E '\.(js|jsx|ts|tsx)$' | tr '\n' ' ')
-        js_files=$(filter_skippable_files "$js_files")
-        if [[ -z "$js_files" ]]; then
+    local -a js_files=()
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        target_files_matching '\.(js|jsx|ts|tsx)$'
+        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
             log_debug "No JavaScript/TypeScript files in target files, skipping JS checks"
             return 0
         fi
-        log_debug "Checking JS/TS files: $js_files"
+        js_files=("${TARGET_MATCHES[@]}")
+        log_debug "Checking JS/TS files: ${js_files[*]}"
     fi
 
     # Check for ESLint
     if [[ -f "package.json" ]] && grep -q "eslint" package.json 2>/dev/null; then
         if command_exists npm; then
-            if [[ -n "$js_files" ]]; then
-                # shellcheck disable=SC2086
-                if run_and_show_errors npx eslint $js_files; then
+            if [[ ${#js_files[@]} -gt 0 ]]; then
+                if run_and_show_errors npx eslint "${js_files[@]}"; then
                     add_summary "success" "ESLint check passed"
                 else
                     add_summary "error" "ESLint found issues"
@@ -497,17 +496,16 @@ lint_javascript() {
 
     # Prettier
     if [[ -f ".prettierrc" ]] || [[ -f "prettier.config.js" ]] || [[ -f ".prettierrc.json" ]]; then
-        local prettier_target="${js_files:-.}"
+        local -a prettier_target=(.)
+        [[ ${#js_files[@]} -gt 0 ]] && prettier_target=("${js_files[@]}")
         if command_exists prettier; then
-            # shellcheck disable=SC2086
             run_formatter "Prettier formatting correct" "Prettier formatting fixed" \
-                prettier --check $prettier_target -- \
-                prettier --write $prettier_target
+                prettier --check "${prettier_target[@]}" -- \
+                prettier --write "${prettier_target[@]}"
         elif command_exists npx; then
-            # shellcheck disable=SC2086
             run_formatter "Prettier formatting correct" "Prettier formatting fixed" \
-                npx prettier --check $prettier_target -- \
-                npx prettier --write $prettier_target
+                npx prettier --check "${prettier_target[@]}" -- \
+                npx prettier --write "${prettier_target[@]}"
         else
             log_info "prettier not found - install with: npm install -g prettier"
         fi
@@ -527,36 +525,35 @@ lint_nix() {
     log_info "Running Nix linters..."
 
     # Filter for Nix files if TARGET_FILES specified
-    local nix_files=""
-    if [[ -n "$CLAUDE_HOOKS_TARGET_FILES" ]]; then
-        nix_files=$(echo "$CLAUDE_HOOKS_TARGET_FILES" | tr ' ' '\n' | grep -E '\.nix$' | tr '\n' ' ')
-        nix_files=$(filter_skippable_files "$nix_files")
-        if [[ -z "$nix_files" ]]; then
+    local -a nix_files=()
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        target_files_matching '\.nix$'
+        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
             log_debug "No Nix files in target files, skipping Nix checks"
             return 0
         fi
-        log_debug "Checking Nix files: $nix_files"
+        nix_files=("${TARGET_MATCHES[@]}")
+        log_debug "Checking Nix files: ${nix_files[*]}"
     else
         # Find all .nix files
-        nix_files=$(find . -name "*.nix" -type f | grep -v -E "(result/|/nix/store/)" | head -20 | tr '\n' ' ')
+        find_files_matching 20 '(result/|/nix/store/)' -name "*.nix"
+        nix_files=("${FOUND_FILES[@]}")
     fi
 
-    if [[ -z "$nix_files" ]]; then
+    if [[ ${#nix_files[@]} -eq 0 ]]; then
         log_debug "No Nix files found"
         return 0
     fi
 
     # Check formatting with nixpkgs-fmt or alejandra
     if command_exists nixpkgs-fmt; then
-        # shellcheck disable=SC2086
         run_formatter "Nix formatting correct" "Nix files formatted" \
-            nixpkgs-fmt --check $nix_files -- \
-            nixpkgs-fmt $nix_files
+            nixpkgs-fmt --check "${nix_files[@]}" -- \
+            nixpkgs-fmt "${nix_files[@]}"
     elif command_exists alejandra; then
-        # shellcheck disable=SC2086
         run_formatter "Nix formatting correct" "Nix files formatted" \
-            alejandra --check $nix_files -- \
-            alejandra --quiet $nix_files
+            alejandra --check "${nix_files[@]}" -- \
+            alejandra --quiet "${nix_files[@]}"
     else
         log_info "nixpkgs-fmt or alejandra not found - install with: nix-env -iA nixpkgs.nixpkgs-fmt"
     fi
@@ -584,21 +581,22 @@ lint_notebook() {
     log_info "Running Jupyter Notebook linters..."
 
     # Filter for notebook files if TARGET_FILES specified
-    local notebook_files=""
-    if [[ -n "$CLAUDE_HOOKS_TARGET_FILES" ]]; then
-        notebook_files=$(echo "$CLAUDE_HOOKS_TARGET_FILES" | tr ' ' '\n' | grep -E '\.ipynb$' | tr '\n' ' ')
-        notebook_files=$(filter_skippable_files "$notebook_files")
-        if [[ -z "$notebook_files" ]]; then
+    local -a notebook_files=()
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        target_files_matching '\.ipynb$'
+        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
             log_debug "No Jupyter notebook files in target files, skipping notebook checks"
             return 0
         fi
-        log_debug "Checking notebook files: $notebook_files"
+        notebook_files=("${TARGET_MATCHES[@]}")
+        log_debug "Checking notebook files: ${notebook_files[*]}"
     else
         # Find all .ipynb files (exclude checkpoints)
-        notebook_files=$(find . -name "*.ipynb" -type f | grep -v ".ipynb_checkpoints" | head -20 | tr '\n' ' ')
+        find_files_matching 20 '\.ipynb_checkpoints' -name "*.ipynb"
+        notebook_files=("${FOUND_FILES[@]}")
     fi
 
-    if [[ -z "$notebook_files" ]]; then
+    if [[ ${#notebook_files[@]} -eq 0 ]]; then
         log_debug "No Jupyter notebook files found"
         return 0
     fi
@@ -613,10 +611,9 @@ lint_notebook() {
     # Black formatting via nbqa
     if command_exists black; then
         log_debug "Running nbqa black on notebooks..."
-        # shellcheck disable=SC2086
         run_formatter "Notebook formatting correct (black)" "Notebook files formatted (black)" \
-            nbqa black $notebook_files --check --quiet -- \
-            nbqa black $notebook_files --quiet
+            nbqa black "${notebook_files[@]}" --check --quiet -- \
+            nbqa black "${notebook_files[@]}" --quiet
     else
         log_debug "black not found, skipping notebook formatting"
     fi
@@ -624,16 +621,14 @@ lint_notebook() {
     # Ruff linting via nbqa
     if command_exists ruff; then
         log_debug "Running nbqa ruff on notebooks..."
-        # shellcheck disable=SC2086
-        if run_and_show_errors nbqa ruff check --fix $notebook_files; then
+        if run_and_show_errors nbqa ruff check --fix "${notebook_files[@]}"; then
             add_summary "success" "Notebook lint check passed (ruff)"
         else
             add_summary "error" "Notebook lint issues found (ruff)"
         fi
     elif command_exists flake8; then
         log_debug "Running nbqa flake8 on notebooks..."
-        # shellcheck disable=SC2086
-        if run_and_show_errors nbqa flake8 $notebook_files; then
+        if run_and_show_errors nbqa flake8 "${notebook_files[@]}"; then
             add_summary "success" "Notebook lint check passed (flake8)"
         else
             add_summary "error" "Notebook lint issues found (flake8)"
@@ -646,16 +641,14 @@ lint_notebook() {
     if [[ "${CLAUDE_HOOKS_NOTEBOOK_TYPECHECK_ENABLED:-false}" == "true" ]]; then
         if command_exists pyright; then
             log_debug "Running nbqa pyright on notebooks..."
-            # shellcheck disable=SC2086
-            if run_and_show_errors nbqa pyright $notebook_files; then
+            if run_and_show_errors nbqa pyright "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (pyright)"
             else
                 add_summary "error" "Notebook type errors found (pyright)"
             fi
         elif command_exists mypy; then
             log_debug "Running nbqa mypy on notebooks..."
-            # shellcheck disable=SC2086
-            if run_and_show_errors nbqa mypy $notebook_files; then
+            if run_and_show_errors nbqa mypy "${notebook_files[@]}"; then
                 add_summary "success" "Notebook type check passed (mypy)"
             else
                 add_summary "error" "Notebook type errors found (mypy)"
@@ -677,28 +670,28 @@ lint_shell() {
     log_info "Running shell script linters..."
 
     # Filter for shell files if TARGET_FILES specified
-    local shell_files=""
-    if [[ -n "$CLAUDE_HOOKS_TARGET_FILES" ]]; then
-        shell_files=$(echo "$CLAUDE_HOOKS_TARGET_FILES" | tr ' ' '\n' | grep -E '\.sh$' | tr '\n' ' ')
-        shell_files=$(filter_skippable_files "$shell_files")
-        if [[ -z "$shell_files" ]]; then
+    local -a shell_files=()
+    if [[ ${#TARGET_FILES[@]} -gt 0 ]]; then
+        target_files_matching '\.sh$'
+        if [[ ${#TARGET_MATCHES[@]} -eq 0 ]]; then
             log_debug "No shell files in target files, skipping shell checks"
             return 0
         fi
-        log_debug "Checking shell files: $shell_files"
+        shell_files=("${TARGET_MATCHES[@]}")
+        log_debug "Checking shell files: ${shell_files[*]}"
     else
         # Find all .sh files (exclude node_modules, .git, vendor)
-        shell_files=$(find . -name "*.sh" -type f | grep -v -E "(node_modules/|\.git/|vendor/)" | head -50 | tr '\n' ' ')
+        find_files_matching 50 '(node_modules/|\.git/|vendor/)' -name "*.sh"
+        shell_files=("${FOUND_FILES[@]}")
     fi
 
-    if [[ -z "$shell_files" ]]; then
+    if [[ ${#shell_files[@]} -eq 0 ]]; then
         log_debug "No shell files found"
         return 0
     fi
 
     if command_exists shellcheck; then
-        # shellcheck disable=SC2086
-        if run_and_show_errors shellcheck --severity=warning $shell_files; then
+        if run_and_show_errors shellcheck --severity=warning "${shell_files[@]}"; then
             add_summary "success" "ShellCheck passed"
         else
             add_summary "error" "ShellCheck found issues"
@@ -742,7 +735,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Export target files for use in lint functions
+# Space-joined copy for .claude-hooks-config.sh; lint functions read the
+# TARGET_FILES array, which keeps paths with spaces intact
 export CLAUDE_HOOKS_TARGET_FILES="${TARGET_FILES[*]}"
 log_debug "Target files: ${CLAUDE_HOOKS_TARGET_FILES:-all files}"
 
