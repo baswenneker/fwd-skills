@@ -820,7 +820,8 @@ _notebook_lint_and_format() {
         log_debug "ruff/black not found, skipping notebook formatting"
     fi
 
-    if _nbqa_tool ruff check; then
+    # Plain "ruff": nbqa keys its config on it and adds "check" itself.
+    if _nbqa_tool ruff; then
         log_debug "Running nbqa ruff on notebooks..."
         if run_and_show_errors "${NBQA_RUN[@]}" "${notebook_files[@]}" --fix; then
             add_summary "success" "Notebook lint check passed (ruff)"

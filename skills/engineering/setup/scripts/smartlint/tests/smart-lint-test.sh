@@ -477,7 +477,7 @@ chmod +x "$TMP/nbU-bin/nbqa"
 run_lint "$TMP/nbU" "$TMP/nbU.log" "$TMP/nbU-bin:$PATH" --files n.ipynb
 VENV_RUFF="$(cd "$TMP/nbU" && pwd)/.venv/bin/ruff"
 if called "$TMP/nbU.log" "nbqa --nbqa-shell ruff format n.ipynb --check --quiet | ruff=$VENV_RUFF" \
-    && called "$TMP/nbU.log" "nbqa --nbqa-shell ruff check n.ipynb --fix | ruff=$VENV_RUFF"; then
+    && called "$TMP/nbU.log" "nbqa --nbqa-shell ruff n.ipynb --fix | ruff=$VENV_RUFF"; then
     pass "nbqa keeps the plain tool name and finds the project's .venv/bin/ruff first"
 else
     fail "nbqa tool resolution got: $(calls "$TMP/nbU.log")"
