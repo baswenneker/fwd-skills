@@ -16,3 +16,6 @@ repo-structure.md
 # Scratch output from skills and ad-hoc experiments.
 tmp/
 # fwd:setup:gitignore:end
+
+# Claude Code worktrees: machine-specific, never shared.
+.claude/worktrees/
