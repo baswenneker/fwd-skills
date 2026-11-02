@@ -464,15 +464,35 @@ fi
 
 # ── U. nbqa runs the resolved copy of a tool, not python -m ──────────────────
 
+# This nbqa stub also records which ruff its PATH finds first.
 new_repo "$TMP/nbU"
 echo '{"cells": []}' > "$TMP/nbU/n.ipynb"
 make_stub "$TMP/nbU/.venv/bin/ruff" 0 venv-ruff
-run_lint "$TMP/nbU" "$TMP/nbU.log" "" --files n.ipynb
-if called "$TMP/nbU.log" "nbqa --nbqa-shell .venv/bin/ruff format n.ipynb --check --quiet" \
-    && called "$TMP/nbU.log" "nbqa --nbqa-shell .venv/bin/ruff check n.ipynb --fix"; then
-    pass "nbqa runs the project's .venv/bin/ruff through --nbqa-shell"
+mkdir -p "$TMP/nbU-bin"
+cat > "$TMP/nbU-bin/nbqa" <<'EOF'
+#!/usr/bin/env bash
+echo "nbqa $* | ruff=$(command -v ruff)" >> "$LINT_LOG.calls"
+EOF
+chmod +x "$TMP/nbU-bin/nbqa"
+run_lint "$TMP/nbU" "$TMP/nbU.log" "$TMP/nbU-bin:$PATH" --files n.ipynb
+VENV_RUFF="$(cd "$TMP/nbU" && pwd)/.venv/bin/ruff"
+if called "$TMP/nbU.log" "nbqa --nbqa-shell ruff format n.ipynb --check --quiet | ruff=$VENV_RUFF" \
+    && called "$TMP/nbU.log" "nbqa --nbqa-shell ruff check n.ipynb --fix | ruff=$VENV_RUFF"; then
+    pass "nbqa keeps the plain tool name and finds the project's .venv/bin/ruff first"
 else
     fail "nbqa tool resolution got: $(calls "$TMP/nbU.log")"
+fi
+
+# ── V. A uv tool runs nbqa under uv run ──────────────────────────────────────
+
+new_repo "$TMP/nbV"
+echo '{"cells": []}' > "$TMP/nbV/n.ipynb"
+printf '[[package]]\nname = "ruff"\nversion = "0.6.0"\n' > "$TMP/nbV/uv.lock"
+run_lint "$TMP/nbV" "$TMP/nbV.log" "" --files n.ipynb
+if called "$TMP/nbV.log" "uv run --frozen nbqa --nbqa-shell ruff format n.ipynb --check --quiet"; then
+    pass "a uv-locked tool runs nbqa under uv run, so the project environment comes first"
+else
+    fail "nbqa with a uv tool got: $(calls "$TMP/nbV.log")"
 fi
 
 # ── N. The repo's own hook copy matches the payload ──────────────────────────

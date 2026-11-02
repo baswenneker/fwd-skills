@@ -780,19 +780,27 @@ lint_nix() {
 # _nbqa_tool <name> [subcommand]
 # Sets NBQA_RUN to the nbqa call (NBQA_CMD) that runs the copy of <name>
 # resolve_tool picks. nbqa runs `python -m <name>` from its own environment
-# by default; for a single executable (.venv/bin, node_modules/.bin, PATH)
-# --nbqa-shell makes it run that file instead. A `uv run` tool keeps the
-# default, which uses the project environment when nbqa comes from uv too.
-# Returns 1 when <name> is not found.
+# by default; --nbqa-shell makes it look <name> up on PATH instead. The
+# command stays the plain name, because nbqa keys its config (exclude,
+# addopts, skip_celltags) on it; only PATH changes: the project's .venv/bin
+# or node_modules/.bin goes first, and a `uv run` tool runs nbqa under
+# `uv run`, which puts the project environment first. Returns 1 when <name>
+# is not found.
 _nbqa_tool() {
     resolve_tool "$1" || return 1
-    local tool="$1"
-    NBQA_RUN=("${NBQA_CMD[@]}")
-    if [[ ${#RESOLVED_CMD[@]} -eq 1 && "${RESOLVED_CMD[0]}" != *" "* ]]; then
-        NBQA_RUN+=(--nbqa-shell)
-        tool="${RESOLVED_CMD[0]}"
-    fi
-    NBQA_RUN+=("$tool${2:+ $2}")
+    case "${RESOLVED_CMD[0]}" in
+        .venv/bin/*) NBQA_RUN=(env "PATH=$PWD/.venv/bin:$PATH" "${NBQA_CMD[@]}") ;;
+        node_modules/.bin/*) NBQA_RUN=(env "PATH=$PWD/node_modules/.bin:$PATH" "${NBQA_CMD[@]}") ;;
+        uv)
+            if [[ "${NBQA_CMD[0]}" == uv ]]; then
+                NBQA_RUN=("${NBQA_CMD[@]}")
+            else
+                NBQA_RUN=(uv run --frozen "${NBQA_CMD[@]}")
+            fi
+            ;;
+        *) NBQA_RUN=("${NBQA_CMD[@]}") ;;
+    esac
+    NBQA_RUN+=(--nbqa-shell "$1${2:+ $2}")
 }
 
 # _notebook_lint_and_format: nbqa formatting and linting on notebook_files
