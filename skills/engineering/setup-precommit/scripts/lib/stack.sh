@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034 # a sourced library: its callers use these variables
 # stack.sh - Pinned hook versions and what the repo is made of. Source it after
 # setting PROJECT_ROOT.
 #
@@ -41,6 +42,19 @@ DOCKER_MARKERS='(^|/)(Dockerfile|Containerfile)[^/]*$|\.[Dd]ockerfile$'
 # The files osv-scanner reads. Without one it exits 128 ("no packages found"),
 # which would block every push.
 LOCKFILE_MARKERS='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lock|uv\.lock|poetry\.lock|Pipfile\.lock|pdm\.lock|pylock\.toml|requirements[^/]*\.txt|go\.mod|Cargo\.lock|Gemfile\.lock|composer\.lock|pom\.xml|gradle\.lockfile|packages\.lock\.json|pubspec\.lock|mix\.lock)$'
+
+# Generated and vendored files the fixers must not rewrite.
+FIXER_EXCLUDE='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lock|uv\.lock|poetry\.lock|Pipfile\.lock|Cargo\.lock|composer\.lock|vendor/.*|.*\.min\.(js|css))$'
+# The files the Prettier hook formats (its types_or), as a path pattern.
+PRETTIER_FILE_MARKERS='\.(js|jsx|mjs|cjs|ts|tsx|mts|cts|css|scss|less|html|vue|json)$'
+# The line width the Prettier baseline writes into .prettierrc.json.
+PRETTIER_PRINT_WIDTH=120
+
+# Any file or package.json key Prettier reads its options from.
+has_prettier_config() {
+    has_file '^(\.prettierrc(\.(json|json5|ya?ml|toml|js|cjs|mjs|ts|cts|mts))?|prettier\.config\.(js|cjs|mjs|ts|cts|mts))$' && return 0
+    root_has package.json && jq -e 'has("prettier")' "$PROJECT_ROOT/package.json" >/dev/null 2>&1
+}
 
 pkg_has_dep() {
     jq -e --arg d "$1" '[.dependencies, .devDependencies] | map(. // {} | has($d)) | any' \

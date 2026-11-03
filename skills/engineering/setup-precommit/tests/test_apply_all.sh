@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2164 # make_repo just created the directory
 # apply-all: one report block per feature in a fixed order, exit 0, and a second run
 # changes nothing. Also: fwd:setup names fwd:setup-precommit in its follow-up block
 # while the repo has no pre-commit config, or has one whose hook is not installed.
@@ -15,8 +16,8 @@ cd "$repo"
 out="$(bash "$SCRIPTS/apply-all.sh")"; code=$?
 assert_eq "$code" 0 "apply-all exits 0"
 order="$(printf '%s\n' "$out" | sed -n 's/^### //p' | tr '\n' ' ')"
-assert_eq "$order" "precommit readme legacy tracked " "feature blocks in order"
-assert_eq "$(printf '%s\n' "$out" | grep -c '^exit=0$')" 3 "every feature exit 0"
+assert_eq "$order" "prettier precommit readme legacy tracked " "feature blocks in order"
+assert_eq "$(printf '%s\n' "$out" | grep -c '^exit=0$')" 4 "every feature exit 0"
 
 before="$(snapshot "$repo")"
 bash "$SCRIPTS/apply-all.sh" >/dev/null

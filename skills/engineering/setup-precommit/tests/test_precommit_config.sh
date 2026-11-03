@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2164 # make_repo just created the directory
 # precommit: writes .pre-commit-config.yaml from the stacks it finds, rewrites a
 # config it (or the old setup-review) wrote, never touches one the repo wrote, and
 # runs `pre-commit install`. Uses a stub pre-commit, so it needs no network.
@@ -49,6 +50,7 @@ echo 'on: push' > .github/workflows/ci.yml
 echo 'FROM alpine' > Dockerfile
 echo '<p>hi</p>' > web/index.html
 echo 'requests==2.32.3' > requirements.txt
+echo '{}' > .prettierrc.json
 install >/dev/null; code=$?
 assert_eq "$code" 0 "all stacks exit 0"
 cfg="$(cat .pre-commit-config.yaml)"
@@ -58,6 +60,7 @@ done
 assert_contains "$cfg" "args: [--fix]" "ruff fixes what it can"
 assert_contains "$cfg" "args: [--write, -i, '4']" "shfmt keeps the 4-space indent"
 assert_contains "$cfg" "https://github.com/rbubley/mirrors-prettier" "Prettier from the mirror without a package.json"
+
 assert_contains "$cfg" "stages: [pre-push]" "osv-scanner on push"
 assert_not_contains "$cfg" "eslint" "no ESLint without package.json"
 python3 -c 'import yaml' 2>/dev/null && {
@@ -73,6 +76,17 @@ printf '#!/usr/bin/env bash\nexit 128\n' > "$fake/osv-scanner"; chmod +x "$fake/
 PATH="$fake:$PATH" eval "$entry scan" >/dev/null 2>&1 || fail "osv-scanner hook passes on 'no packages found'"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$fake/osv-scanner"
 PATH="$fake:$PATH" eval "$entry scan" >/dev/null 2>&1 && fail "osv-scanner hook fails on a vulnerability"
+
+# Web files without a Prettier config: no Prettier hook, or it would rewrite
+# every file a commit touches in code that was never formatted that way.
+repo="$(make_repo noprettierrc)"
+cd "$repo"
+echo 'export const a = 1' > a.ts
+install >/dev/null
+assert_not_contains "$(cat .pre-commit-config.yaml)" "id: prettier" "no Prettier hook without a Prettier config"
+echo '{"prettier": {"semi": false}}' > package.json
+install >/dev/null
+assert_contains "$(cat .pre-commit-config.yaml)" "mirrors-prettier" "a prettier key in package.json counts as a config"
 
 # Shell scripts indented with tabs, or with 2 spaces, keep that indent.
 repo="$(make_repo tabs)"

@@ -12,7 +12,9 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FEATURES=(precommit readme legacy)
+# prettier before precommit: the config adds the Prettier hook only once a
+# Prettier config exists.
+FEATURES=(prettier precommit readme legacy)
 
 for feature in "${FEATURES[@]}"; do
     stdout_file="$(mktemp)"
