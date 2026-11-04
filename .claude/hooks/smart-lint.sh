@@ -496,6 +496,8 @@ _python_lint_fallback() {
 # shellcheck disable=SC2329
 _python_typecheck_fallback() {
   if resolve_tool pyright; then
+    # pyright takes its import paths from the first python on PATH, not from the venv it is installed in.
+    [[ -x ".venv/bin/python" ]] && RESOLVED_CMD+=(--pythonpath .venv/bin/python)
     if ! run_and_show_errors "${RESOLVED_CMD[@]}" .; then
       add_summary "error" "Type errors found (pyright)"
     else
