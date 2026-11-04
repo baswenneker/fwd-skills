@@ -5,7 +5,9 @@
 # or a failing Prettier gets nothing. A stub stands in for Prettier, so no network.
 source "$(dirname "$0")/lib.sh"
 
-# Stub Prettier: appends a marker line to every file it gets (fail on demand).
+# Stub Prettier: adds a marker line to every file that lacks it, so a second
+# pass changes nothing (fail on demand; STUB_SECOND adds a line on pass two,
+# STUB_NEVER on every pass).
 stub="$WORK/prettier-stub"
 cat >"$stub" <<'EOF'
 #!/usr/bin/env bash
@@ -13,7 +15,10 @@ cat >"$stub" <<'EOF'
 for a in "$@"; do
     [[ "$a" == -* || "$a" == warn ]] && continue
     [[ "$a" == *.json ]] && continue
-    echo "// formatted" >>"$a"
+    if ! grep -q "// formatted" "$a"; then echo "// formatted" >>"$a"
+    elif [[ -n "${STUB_SECOND:-}" ]] && ! grep -q "// second" "$a"; then echo "// second" >>"$a"
+    elif [[ -n "${STUB_NEVER:-}" ]]; then echo "// again" >>"$a"
+    fi
 done
 EOF
 chmod +x "$stub"
@@ -95,6 +100,43 @@ err="$(STUB_FAIL=1 install 2>&1 >/dev/null)"; code=$?
 assert_eq "$code" 2 "Prettier failure is a collision"
 assert_contains "$err" "broken.ts" "stderr shows Prettier's error"
 assert_eq "$(git status --porcelain)" "" "files restored after a failure"
+
+# A file that settles only on Prettier's second pass is committed settled.
+repo="$(make_repo twopass)"
+cd "$repo"
+echo 'export const a = 1' >a.ts
+git add -A && git commit -q -m "feat: code"
+STUB_SECOND=1 install >/dev/null 2>&1
+assert_contains "$(cat a.ts)" "// second" "second pass is in the formatting commit"
+assert_eq "$(git status --porcelain)" "" "nothing left after the second pass"
+
+repo="$(make_repo unstable)"
+cd "$repo"
+echo 'export const a = 1' >a.ts
+git add -A && git commit -q -m "feat: code"
+head_before="$(git rev-parse HEAD)"
+err="$(STUB_NEVER=1 install 2>&1 >/dev/null)"; code=$?
+assert_eq "$code" 2 "Prettier that never settles is a collision"
+assert_contains "$err" "4 passes" "stderr says it did not settle"
+assert_eq "$(git rev-parse HEAD)" "$head_before" "no commit when Prettier never settles"
+assert_eq "$(git status --porcelain)" "" "files restored when Prettier never settles"
+
+repo="$(make_repo biome)"
+cd "$repo"
+echo '{}' >biome.json
+echo 'export const a = 1' >a.ts
+git add -A && git commit -q -m "feat: code"
+out="$(install)"
+assert_contains "$out" "Biome" "Biome repo: skipped"
+[[ -f .prettierrc.json ]] && fail "no Prettier config next to Biome"
+
+repo="$(make_repo biomelint)"
+cd "$repo"
+echo '{"formatter": {"enabled": false}}' >biome.json
+echo 'export const a = 1' >a.ts
+git add -A && git commit -q -m "feat: code"
+install >/dev/null 2>&1
+[[ -f .prettierrc.json ]] || fail "Biome as linter only: Prettier baseline written"
 
 # ── With the precommit installer: the hook follows the config ────────────────
 pcstub="$WORK/pc"

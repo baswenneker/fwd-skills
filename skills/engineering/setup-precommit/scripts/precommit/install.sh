@@ -72,7 +72,7 @@ if has_file "$LOCKFILE_MARKERS"; then LOCKFILE=true; fi
 # code was never formatted that way, and the hook would rewrite every file a
 # commit touches. The prettier installer writes that config with a one-off
 # formatting commit.
-if has_prettier_config; then PRETTIER_CONFIG=true; fi
+if has_prettier_config && ! has_biome; then PRETTIER_CONFIG=true; fi
 if root_has package.json; then
     if pkg_has_dep prettier; then PKG_PRETTIER=true; fi
     if pkg_has_dep eslint; then PKG_ESLINT=true; fi
@@ -81,6 +81,12 @@ JS_RUNNER="$(js_runner)"
 SHELL_INDENT="$(shell_indent)"
 
 PRETTIER_TYPES='[javascript, jsx, ts, tsx, css, scss, less, html, vue, json]'
+
+if has_lefthook; then
+    echo "⚠  The repo runs its git hooks with lefthook (lefthook.yml); pre-commit would replace them, and lefthook install would replace pre-commit's." >&2
+    echo "   Add the checks to lefthook.yml instead, or remove lefthook first, then re-run /fwd:setup-precommit." >&2
+    exit 2
+fi
 
 # ── Write the config ──────────────────────────────────────────────────────────
 
@@ -231,7 +237,17 @@ describe() {
     echo "$parts"
 }
 
+# Hooks of the repo's own below this line survive a re-run.
+OWN_MARKER="  # Own hooks below this line: a re-run of /fwd:setup-precommit keeps them."
 NEW="$(write_config)"
+# A top-level exclude (generated files no hook may touch) survives too; it goes
+# right above repos:.
+if [[ -f "$CONFIG" ]] && own_exclude="$(grep -E '^exclude:' "$CONFIG")"; then
+    NEW="$(awk -v x="$own_exclude" '$0 == "repos:" { print x } { print }' <<<"$NEW")"
+fi
+if [[ -f "$CONFIG" ]] && grep -qxF -- "$OWN_MARKER" "$CONFIG"; then
+    NEW="$NEW"$'\n'"$(awk -v m="$OWN_MARKER" 'f || $0 == m { f = 1; print }' "$CONFIG")"
+fi
 if [[ ! -f "$CONFIG" ]]; then
     printf '%s\n' "$NEW" > "$CONFIG"
     echo "✔ $(describe) → $CONFIG"

@@ -142,3 +142,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Na PR #28 moest de nieuwe smartlint-hook naar `~/.claude/hooks/`; het plan zei "draai `/fwd:setup` opnieuw".
 **Observation**: `/fwd:setup` installeert smartlint op `--scope project`, dus in de map van de sessie, en niet in `~/.claude/hooks/`. De actieve globale hook hoort bij de Stop-hook in `~/.claude/settings.json`. Bovendien gebruikt `/fwd:setup` de geïnstalleerde pluginversie: die stond op 2.4.0 en bevatte de fix niet. De skill staat ook op `disable-model-invocation`, dus Claude kan hem niet aanroepen.
 **Lesson**: Ververs de globale hook met `skills/engineering/setup/scripts/smartlint/install.sh --scope user` vanuit een bijgewerkte checkout. Controleer daarna met `cmp` tegen de payload.
+
+### 2026-11-04 | insight | setup-precommit
+**Context**: Running the new Prettier baseline on fwdos and open-subsea.
+**Observation**: Prettier left two fwdos files that changed again on a second pass. open-subsea already formatted with Biome and ran lefthook, and `pre-commit install` moved lefthook's hook to `pre-commit.legacy`. A test run of `pre-commit run --all-files` rewrote 49 files, among them drizzle-kit output, and osv-scanner blocked the first push on 9 old CVEs.
+**Lesson**: Before running setup-precommit on a repo, look for another formatter or hook manager (biome.json, lefthook.yml, husky). Never run `pre-commit run --all-files` on main as a check; do it on a branch. Expect osv-scanner to block the first push in a repo with an older lockfile.

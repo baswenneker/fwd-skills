@@ -88,6 +88,44 @@ echo '{"prettier": {"semi": false}}' > package.json
 install >/dev/null
 assert_contains "$(cat .pre-commit-config.yaml)" "mirrors-prettier" "a prettier key in package.json counts as a config"
 
+# Biome next to a Prettier config: Biome formats, no Prettier hook.
+repo="$(make_repo biome)"
+cd "$repo"
+echo 'export const a = 1' >a.ts
+echo '{}' >biome.json
+echo '{}' >.prettierrc.json
+install >/dev/null
+assert_not_contains "$(cat .pre-commit-config.yaml)" "id: prettier" "no Prettier hook next to Biome"
+
+# Own hooks below the marker survive a re-run.
+repo="$(make_repo own)"
+cd "$repo"
+install >/dev/null
+printf '%s\n' "  # Own hooks below this line: a re-run of /fwd:setup-precommit keeps them." \
+    "  - repo: local" "    hooks:" "      - id: typecheck" >>.pre-commit-config.yaml
+echo 'print(1)' >tool.py
+install >/dev/null
+cfg="$(cat .pre-commit-config.yaml)"
+assert_contains "$cfg" "id: ruff-check" "re-run still adds new stacks"
+assert_contains "$cfg" "id: typecheck" "own hooks kept on a re-run"
+assert_eq "$(grep -c 'Own hooks below' .pre-commit-config.yaml)" 1 "marker kept once"
+sed -i.bak 's/^repos:$/exclude: '"'"'^gen\/'"'"'\nrepos:/' .pre-commit-config.yaml && rm -f .pre-commit-config.yaml.bak
+install >/dev/null
+assert_eq "$(grep -c "^exclude: '^gen/'" .pre-commit-config.yaml)" 1 "top-level exclude kept once"
+assert_eq "$(grep -A1 '^exclude:' .pre-commit-config.yaml | tail -1)" "repos:" "exclude stays right above repos"
+before="$(cat .pre-commit-config.yaml)"
+install >/dev/null
+assert_eq "$(cat .pre-commit-config.yaml)" "$before" "re-run with own hooks changes nothing"
+
+# lefthook owns the git hooks: collision, nothing written.
+repo="$(make_repo lefthook)"
+cd "$repo"
+echo 'pre-commit: {}' >lefthook.yml
+err="$(install 2>&1 >/dev/null)"; code=$?
+assert_eq "$code" 2 "lefthook is a collision"
+assert_contains "$err" "lefthook" "stderr names lefthook"
+[[ -f .pre-commit-config.yaml ]] && fail "no config next to lefthook"
+
 # Shell scripts indented with tabs, or with 2 spaces, keep that indent.
 repo="$(make_repo tabs)"
 cd "$repo"
