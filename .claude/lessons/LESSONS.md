@@ -137,3 +137,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: De gebruiker vroeg welke repos op de Workcenter de setup-review-vlag hadden; ik probeerde `ssh workcenter`.
 **Observation**: De sessie draaide al op de Workcenter (hostname `workcenter`); ssh faalde met publickey en de gebruiker moest me erop wijzen.
 **Lesson**: Draai eerst `hostname` voordat je naar een genoemde machine ssh't; ben je er al, zoek dan lokaal (ook buiten `~/Development`).
+
+### 2026-11-04 | insight | fwd:setup (smartlint uitrol)
+**Context**: Na PR #28 moest de nieuwe smartlint-hook naar `~/.claude/hooks/`; het plan zei "draai `/fwd:setup` opnieuw".
+**Observation**: `/fwd:setup` installeert smartlint op `--scope project`, dus in de map van de sessie, en niet in `~/.claude/hooks/`. De actieve globale hook hoort bij de Stop-hook in `~/.claude/settings.json`. Bovendien gebruikt `/fwd:setup` de geïnstalleerde pluginversie: die stond op 2.4.0 en bevatte de fix niet. De skill staat ook op `disable-model-invocation`, dus Claude kan hem niet aanroepen.
+**Lesson**: Ververs de globale hook met `skills/engineering/setup/scripts/smartlint/install.sh --scope user` vanuit een bijgewerkte checkout. Controleer daarna met `cmp` tegen de payload.
