@@ -97,6 +97,26 @@ echo '{}' >.prettierrc.json
 install >/dev/null
 assert_not_contains "$(cat .pre-commit-config.yaml)" "id: prettier" "no Prettier hook next to Biome"
 
+# Own hooks below the marker survive a re-run.
+repo="$(make_repo own)"
+cd "$repo"
+install >/dev/null
+printf '%s\n' "  # Own hooks below this line: a re-run of /fwd:setup-precommit keeps them." \
+    "  - repo: local" "    hooks:" "      - id: typecheck" >>.pre-commit-config.yaml
+echo 'print(1)' >tool.py
+install >/dev/null
+cfg="$(cat .pre-commit-config.yaml)"
+assert_contains "$cfg" "id: ruff-check" "re-run still adds new stacks"
+assert_contains "$cfg" "id: typecheck" "own hooks kept on a re-run"
+assert_eq "$(grep -c 'Own hooks below' .pre-commit-config.yaml)" 1 "marker kept once"
+sed -i.bak 's/^repos:$/exclude: '"'"'^gen\/'"'"'\nrepos:/' .pre-commit-config.yaml && rm -f .pre-commit-config.yaml.bak
+install >/dev/null
+assert_eq "$(grep -c "^exclude: '^gen/'" .pre-commit-config.yaml)" 1 "top-level exclude kept once"
+assert_eq "$(grep -A1 '^exclude:' .pre-commit-config.yaml | tail -1)" "repos:" "exclude stays right above repos"
+before="$(cat .pre-commit-config.yaml)"
+install >/dev/null
+assert_eq "$(cat .pre-commit-config.yaml)" "$before" "re-run with own hooks changes nothing"
+
 # lefthook owns the git hooks: collision, nothing written.
 repo="$(make_repo lefthook)"
 cd "$repo"

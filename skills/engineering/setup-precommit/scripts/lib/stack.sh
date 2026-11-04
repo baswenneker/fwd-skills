@@ -56,9 +56,17 @@ has_prettier_config() {
     root_has package.json && jq -e 'has("prettier")' "$PROJECT_ROOT/package.json" >/dev/null 2>&1
 }
 
-# Biome formats JS/TS/JSON/CSS itself; a Prettier next to it would undo its
-# work on every commit.
-has_biome() { has_file '^biome\.jsonc?$'; }
+# Biome formats JS/TS/JSON/CSS itself, unless biome.json turns its formatter
+# off (Biome as linter only); a Prettier next to a Biome formatter would undo
+# its work on every commit. A biome.jsonc jq cannot read counts as formatting.
+has_biome() {
+    local f
+    for f in biome.json biome.jsonc; do
+        root_has "$f" || continue
+        [[ "$(jq -r '.formatter.enabled' "$PROJECT_ROOT/$f" 2>/dev/null)" == "false" ]] || return 0
+    done
+    return 1
+}
 
 # lefthook manages .git/hooks itself; pre-commit install would move its hook
 # aside, and the next `lefthook install` would overwrite pre-commit's.

@@ -237,7 +237,17 @@ describe() {
     echo "$parts"
 }
 
+# Hooks of the repo's own below this line survive a re-run.
+OWN_MARKER="  # Own hooks below this line: a re-run of /fwd:setup-precommit keeps them."
 NEW="$(write_config)"
+# A top-level exclude (generated files no hook may touch) survives too; it goes
+# right above repos:.
+if [[ -f "$CONFIG" ]] && own_exclude="$(grep -E '^exclude:' "$CONFIG")"; then
+    NEW="$(awk -v x="$own_exclude" '$0 == "repos:" { print x } { print }' <<<"$NEW")"
+fi
+if [[ -f "$CONFIG" ]] && grep -qxF -- "$OWN_MARKER" "$CONFIG"; then
+    NEW="$NEW"$'\n'"$(awk -v m="$OWN_MARKER" 'f || $0 == m { f = 1; print }' "$CONFIG")"
+fi
 if [[ ! -f "$CONFIG" ]]; then
     printf '%s\n' "$NEW" > "$CONFIG"
     echo "✔ $(describe) → $CONFIG"

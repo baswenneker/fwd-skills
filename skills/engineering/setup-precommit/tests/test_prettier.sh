@@ -130,6 +130,14 @@ out="$(install)"
 assert_contains "$out" "Biome" "Biome repo: skipped"
 [[ -f .prettierrc.json ]] && fail "no Prettier config next to Biome"
 
+repo="$(make_repo biomelint)"
+cd "$repo"
+echo '{"formatter": {"enabled": false}}' >biome.json
+echo 'export const a = 1' >a.ts
+git add -A && git commit -q -m "feat: code"
+install >/dev/null 2>&1
+[[ -f .prettierrc.json ]] || fail "Biome as linter only: Prettier baseline written"
+
 # ── With the precommit installer: the hook follows the config ────────────────
 pcstub="$WORK/pc"
 mkdir -p "$pcstub"
