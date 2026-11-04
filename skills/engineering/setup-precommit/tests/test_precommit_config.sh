@@ -88,6 +88,24 @@ echo '{"prettier": {"semi": false}}' > package.json
 install >/dev/null
 assert_contains "$(cat .pre-commit-config.yaml)" "mirrors-prettier" "a prettier key in package.json counts as a config"
 
+# Biome next to a Prettier config: Biome formats, no Prettier hook.
+repo="$(make_repo biome)"
+cd "$repo"
+echo 'export const a = 1' >a.ts
+echo '{}' >biome.json
+echo '{}' >.prettierrc.json
+install >/dev/null
+assert_not_contains "$(cat .pre-commit-config.yaml)" "id: prettier" "no Prettier hook next to Biome"
+
+# lefthook owns the git hooks: collision, nothing written.
+repo="$(make_repo lefthook)"
+cd "$repo"
+echo 'pre-commit: {}' >lefthook.yml
+err="$(install 2>&1 >/dev/null)"; code=$?
+assert_eq "$code" 2 "lefthook is a collision"
+assert_contains "$err" "lefthook" "stderr names lefthook"
+[[ -f .pre-commit-config.yaml ]] && fail "no config next to lefthook"
+
 # Shell scripts indented with tabs, or with 2 spaces, keep that indent.
 repo="$(make_repo tabs)"
 cd "$repo"

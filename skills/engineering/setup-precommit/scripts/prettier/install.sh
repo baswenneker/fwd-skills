@@ -64,6 +64,10 @@ if ! has_file "$WEB_MARKERS" && ! root_has package.json; then
     echo "↷ no JS, TS, CSS or HTML files, no Prettier needed"
     exit 0
 fi
+if has_biome; then
+    echo "↷ the repo formats with Biome (biome.json), no Prettier next to it"
+    exit 0
+fi
 if has_prettier_config; then
     echo "↷ the repo has a Prettier config already, left alone"
     exit 0
@@ -120,15 +124,34 @@ while IFS= read -r -d '' f; do
 done < <(g ls-files -z)
 files+=("$RC")
 
-# Word splitting of PRETTIER_CMD is intended: it is a command with arguments.
-# shellcheck disable=SC2086
-if ! out="$(cd "$PROJECT_ROOT" && printf '%s\0' "${files[@]}" |
-    xargs -0 $PRETTIER_CMD --write --ignore-unknown --log-level warn 2>&1)"; then
+restore() {
     g checkout -q -- .
     rm -f "$PROJECT_ROOT/$RC"
-    echo "⚠  Prettier failed, every file is restored and no baseline was written:" >&2
-    printf '%s\n' "$out" | head -n 20 | sed 's/^/   /' >&2
-    echo "   Fix the file it names (often a syntax error), then re-run /fwd:setup-precommit." >&2
+}
+
+# Prettier is not always stable in one pass: some long expressions get their
+# final layout only on the second run. Run it until nothing changes (at most 4
+# passes), or the next commit of such a file would carry formatting again.
+state() { { g diff; cat "$PROJECT_ROOT/$RC"; } | git hash-object --stdin; }
+stable=false
+for _ in 1 2 3 4; do
+    before="$(state)"
+    # Word splitting of PRETTIER_CMD is intended: it is a command with arguments.
+    # shellcheck disable=SC2086
+    if ! out="$(cd "$PROJECT_ROOT" && printf '%s\0' "${files[@]}" |
+        xargs -0 $PRETTIER_CMD --write --ignore-unknown --log-level warn 2>&1)"; then
+        restore
+        echo "⚠  Prettier failed, every file is restored and no baseline was written:" >&2
+        printf '%s\n' "$out" | head -n 20 | sed 's/^/   /' >&2
+        echo "   Fix the file it names (often a syntax error), then re-run /fwd:setup-precommit." >&2
+        exit 2
+    fi
+    if [[ "$(state)" == "$before" ]]; then stable=true; break; fi
+done
+if ! $stable; then
+    restore
+    echo "⚠  Prettier kept changing files after 4 passes; every file is restored and no baseline was written." >&2
+    echo "   Run Prettier by hand to find the file, then re-run /fwd:setup-precommit." >&2
     exit 2
 fi
 

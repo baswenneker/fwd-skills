@@ -56,6 +56,14 @@ has_prettier_config() {
     root_has package.json && jq -e 'has("prettier")' "$PROJECT_ROOT/package.json" >/dev/null 2>&1
 }
 
+# Biome formats JS/TS/JSON/CSS itself; a Prettier next to it would undo its
+# work on every commit.
+has_biome() { has_file '^biome\.jsonc?$'; }
+
+# lefthook manages .git/hooks itself; pre-commit install would move its hook
+# aside, and the next `lefthook install` would overwrite pre-commit's.
+has_lefthook() { has_file '^\.?lefthook(-local)?\.(ya?ml|json|toml)$'; }
+
 pkg_has_dep() {
     jq -e --arg d "$1" '[.dependencies, .devDependencies] | map(. // {} | has($d)) | any' \
         "$PROJECT_ROOT/package.json" >/dev/null 2>&1
