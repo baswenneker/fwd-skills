@@ -61,13 +61,18 @@ require_jq
 # ── Detect stacks ─────────────────────────────────────────────────────────────
 
 PYTHON=false; SHELL_FILES=false; WEB=false; WORKFLOWS=false; DOCKER=false; LOCKFILE=false
-PKG_PRETTIER=false; PKG_ESLINT=false
+PKG_PRETTIER=false; PKG_ESLINT=false; PRETTIER_CONFIG=false
 if has_file "$PYTHON_MARKERS"; then PYTHON=true; fi
 if has_file "$SHELL_MARKERS"; then SHELL_FILES=true; fi
 if has_file "$WEB_MARKERS" || root_has package.json; then WEB=true; fi
 if has_file "$WORKFLOW_MARKERS"; then WORKFLOWS=true; fi
 if has_file "$DOCKER_MARKERS"; then DOCKER=true; fi
 if has_file "$LOCKFILE_MARKERS"; then LOCKFILE=true; fi
+# The pinned Prettier comes in only next to a Prettier config: without one the
+# code was never formatted that way, and the hook would rewrite every file a
+# commit touches. The prettier installer writes that config with a one-off
+# formatting commit.
+if has_prettier_config; then PRETTIER_CONFIG=true; fi
 if root_has package.json; then
     if pkg_has_dep prettier; then PKG_PRETTIER=true; fi
     if pkg_has_dep eslint; then PKG_ESLINT=true; fi
@@ -75,8 +80,6 @@ fi
 JS_RUNNER="$(js_runner)"
 SHELL_INDENT="$(shell_indent)"
 
-# Generated and vendored files the fixers must not rewrite.
-FIXER_EXCLUDE='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lock|uv\.lock|poetry\.lock|Pipfile\.lock|Cargo\.lock|composer\.lock|vendor/.*|.*\.min\.(js|css))$'
 PRETTIER_TYPES='[javascript, jsx, ts, tsx, css, scss, less, html, vue, json]'
 
 # ── Write the config ──────────────────────────────────────────────────────────
@@ -164,7 +167,7 @@ EOF
       - id: hadolint
 EOF
     fi
-    if $WEB && ! $PKG_PRETTIER; then
+    if $WEB && $PRETTIER_CONFIG && ! $PKG_PRETTIER; then
         cat <<EOF
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: $PRETTIER_REV
@@ -222,7 +225,7 @@ describe() {
     $SHELL_FILES && parts+=", shfmt, shellcheck"
     $WORKFLOWS && parts+=", actionlint"
     $DOCKER && parts+=", hadolint"
-    $WEB && parts+=", prettier"
+    if $PKG_PRETTIER || { $WEB && $PRETTIER_CONFIG; }; then parts+=", prettier"; fi
     $PKG_ESLINT && parts+=", eslint"
     $LOCKFILE && parts+=", osv-scanner on push"
     echo "$parts"

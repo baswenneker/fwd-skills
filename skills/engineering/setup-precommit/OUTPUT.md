@@ -10,11 +10,12 @@ sections, reorder, or write a free-form summary instead.
 
 | slug (from `### <feature>`) | label in the report |
 |---|---|
+| `prettier` | Prettier-basis (eenmalig formatteren) |
 | `precommit` | pre-commit hooks |
 | `readme` | README-sectie "Git hooks" |
 | `legacy` | Resten van setup-review opgeruimd |
 
-List features in this exact order, always all three.
+List features in this exact order, always all four.
 
 ## How to fill each line
 
@@ -24,7 +25,9 @@ List features in this exact order, always all three.
   installed.
 - other `exit=0` → icon `✓`. Trailing text = the path after the `→` on the
   feature's **first** `stdout:` line; for `precommit` add the hook list from that
-  line in parentheses. `legacy` with "nothing left" → trailing text "niets gevonden".
+  line in parentheses. For `prettier` use the commit instead of the path:
+  "<n> bestanden geformatteerd in commit <id>", or "alleen .prettierrc.json, de
+  code klopte al". `legacy` with "nothing left" → trailing text "niets gevonden".
   `legacy` with `removed` lines → "<n> bestanden".
 - `exit=2` → icon `⚠`. Trailing text = a short paraphrase of the first line of
   `stderr:` (the full stderr goes under "Aandachtspunten").
@@ -42,7 +45,8 @@ each `→`, one per line.
 
 **Aandachtspunten** — include when at least one feature is `⚠`/`✗`, or a `✓`
 feature left a non-empty `stderr:`. One bullet per such feature: its Dutch label, the
-full `stderr:` verbatim, then "Los op en draai `/fwd:setup-precommit` opnieuw."
+full `stderr:` verbatim, then "Los op en draai `/fwd:setup-precommit` opnieuw." For the `prettier` warning
+about older branches (stderr on a `✓`) leave that last sentence out.
 
 **Onder versiebeheer** — when the `### tracked` block is non-empty, list those paths,
 followed by: "Deze staan onder versiebeheer en zijn nu gewijzigd in je werkboom —
@@ -60,6 +64,7 @@ pull en `pre-commit install`."
 Scope: Project-lokaal
 
 Geïnstalleerd:
+- ✓ Prettier-basis (eenmalig formatteren) → 212 bestanden geformatteerd in commit 7ede35e0
 - ✓ pre-commit hooks → /pad/.pre-commit-config.yaml (gitleaks, file checks, Conventional Commits, ruff, prettier, osv-scanner on push)
 - ✓ README-sectie "Git hooks" → /pad/README.md
 - ✓ Resten van setup-review opgeruimd → 3 bestanden
@@ -72,6 +77,9 @@ Verwijderd:
 - /pad/.github/workflows/fwd-review.yml
 - /pad/.claude/fwd/review-push.sh
 - /pad/.claude/fwd/plugin.json
+
+Aandachtspunten:
+- Prettier-basis (eenmalig formatteren) — Branches that started before commit 7ede35e0 get merge conflicts in the files it reformatted: merge them first, or run Prettier on them before merging.
 
 Onder versiebeheer:
 - .pre-commit-config.yaml
@@ -90,6 +98,7 @@ Je kan /fwd:setup-precommit opnieuw draaien — het herschrijft alleen een confi
 Scope: Project-lokaal
 
 Geïnstalleerd:
+- – Prettier-basis (eenmalig formatteren) → de repo heeft al een Prettier-config
 - ⚠ pre-commit hooks → core.hooksPath staat aan (husky)
 - ✓ README-sectie "Git hooks" → /pad/README.md
 - ✓ Resten van setup-review opgeruimd → niets gevonden
