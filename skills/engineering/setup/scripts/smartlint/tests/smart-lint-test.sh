@@ -290,6 +290,31 @@ else
     fail "tool resolution got: $(calls "$TMP/pyF.log")"
 fi
 
+# ── F2. pyright gets the project's interpreter from .venv ────────────────────
+
+# pyright takes its import paths from the first python on PATH, not from the
+# venv it is installed in, so without the flag every import fails.
+new_repo "$TMP/pyF2"
+echo 'x = 2' > "$TMP/pyF2/a.py"
+make_stub "$TMP/pyF2/.venv/bin/pyright" 0 venv-pyright
+make_stub "$TMP/pyF2/.venv/bin/python" 0 venv-python
+run_lint "$TMP/pyF2" "$TMP/pyF2.log" "" --files a.py
+if called "$TMP/pyF2.log" "venv-pyright --pythonpath .venv/bin/python ."; then
+    pass ".venv/bin/pyright is pointed at .venv/bin/python"
+else
+    fail ".venv/bin/pyright got: $(calls "$TMP/pyF2.log")"
+fi
+
+new_repo "$TMP/pyF3"
+echo 'x = 2' > "$TMP/pyF3/a.py"
+make_stub "$TMP/pyF3/.venv/bin/python" 0 venv-python
+run_lint "$TMP/pyF3" "$TMP/pyF3.log" "" --files a.py
+if called "$TMP/pyF3.log" "pyright --pythonpath .venv/bin/python ."; then
+    pass "a global pyright is pointed at .venv/bin/python too"
+else
+    fail "global pyright with a .venv got: $(calls "$TMP/pyF3.log")"
+fi
+
 # ── G. A tool in uv.lock runs through uv run --frozen ────────────────────────
 
 new_repo "$TMP/pyG"
