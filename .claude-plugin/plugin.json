@@ -1,6 +1,6 @@
 {
   "name": "fwd",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "skills": [
     "./skills/engineering/changelog",
     "./skills/engineering/git-commit",
