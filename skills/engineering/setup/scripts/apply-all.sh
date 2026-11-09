@@ -38,13 +38,16 @@ for feature in "${FEATURES[@]}"; do
     rm -f "$stdout_file" "$stderr_file"
 done
 
-# Which of the files we may have touched are under version control? Those changes
-# land in someone else's merge request unless the user decides otherwise, so the
-# report must name them. Silent on a repo where none are tracked.
+# Which of the files we may have touched are under version control and now
+# differ from HEAD? Those changes land in someone else's merge request unless the
+# user decides otherwise, so the report must name them. A tracked file that an
+# idempotent re-run left byte-identical is not listed: the report would otherwise
+# claim a change the working tree does not show.
 echo "### tracked"
 if rtk git rev-parse --git-dir >/dev/null 2>&1; then
-    for f in CLAUDE.md .gitignore .claude/settings.local.json; do
-        if rtk git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+    for f in CLAUDE.md .gitignore .claude/settings.local.json .claude/hooks/smart-lint.sh .claude/hooks/smart-lint-wrapper.sh .claude/lessons/LESSONS.md; do
+        if rtk git ls-files --error-unmatch "$f" >/dev/null 2>&1 &&
+            ! rtk git diff --quiet HEAD -- "$f" 2>/dev/null; then
             echo "$f"
         fi
     done
