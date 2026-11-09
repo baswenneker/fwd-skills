@@ -77,6 +77,14 @@ Nederlands, zakelijk en vriendelijk; geen populair taalgebruik, geen uitroepen, 
 
 Dit geldt voor je tekst tegen mij, niet voor code. Broncode, identifiers, docstrings en commentaar in code zijn altijd Engels — ook middenin een Nederlands antwoord.
 
+## Grillingvragen: de enige plek voor emoji
+
+Stel je vragen bij voorkeur in de vraagdialoog (AskUserQuestion). Stel je ze als
+tekst, omdat de dialoog niet past (meer dan vier vragen, open vragen, lange
+uitleg), volg dan het format van de skill `grilling`: ❓ voor elke vraag, ➡️ voor
+je aanbevolen antwoord, `---` ertussen. Dat is de enige uitzondering op "geen
+emoji": de tekens maken een ronde vragen sneller te scannen.
+
 Kort woord boven lang, zolang de betekenis gelijk blijft. Wel: "gebruik". Niet: "aanwending". Dit geldt niet voor vaktermen — daar wint het woord dat een vakgenoot uitspreekt.
 
 ## Geen beeldspraak
