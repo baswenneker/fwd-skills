@@ -87,13 +87,26 @@ js_runner() {
     fi
 }
 
+# True when .editorconfig sets an indent for shell scripts, in a [*] section or a
+# section whose glob names sh. shfmt reads .editorconfig itself, but only when no
+# -i is given, so the config then leaves -i out and the repo's own choice wins.
+shell_indent_pinned() {
+    root_has .editorconfig || return 1
+    awk '/^[[:space:]]*\[/ { sec = ($0 ~ /^[[:space:]]*\[\*\]/ || $0 ~ /sh/) ; next }
+         sec && tolower($0) ~ /^[[:space:]]*indent_(style|size)[[:space:]]*=/ { found = 1 }
+         END { exit !found }' "$PROJECT_ROOT/.editorconfig"
+}
+
 # The indent the repo's shell scripts already use, as a shfmt -i value: 0 for tabs,
 # else the smallest space indent found. Without it shfmt would re-indent every
 # script it touches to tabs.
 shell_indent() {
     local files
     files="$(grep -E "$SHELL_MARKERS" <<<"$FILES" || true)"
-    [[ -n "$files" ]] || { echo 4; return; }
+    [[ -n "$files" ]] || {
+        echo 4
+        return
+    }
     (cd "$PROJECT_ROOT" && while IFS= read -r f; do [[ -f "$f" ]] && cat -- "$f"; done <<<"$files") |
         awk '/^\t/ { tabs++; next }
              /^ +[^ ]/ { match($0, /^ +/); n = RLENGTH; if (n > 1 && (min == 0 || n < min)) min = n; spaces++ }

@@ -138,3 +138,28 @@ See [CLAUDE.md](CLAUDE.md) for repo conventions and [CONTEXT.md](CONTEXT.md) for
 
 - [baswenneker/fwd-claude-code](https://github.com/baswenneker/fwd-claude-code) — full `fwd` workflow plugin (agents, hooks, CLI tooling); these skills are a slimmed-down subset.
 - [mattpocock/skills](https://github.com/mattpocock/skills/tree/main) — layout and conventions inspiration.
+
+<!-- fwd:setup-precommit:start -->
+## Git hooks
+
+This repo checks every commit with [pre-commit](https://pre-commit.com). After
+a clone, run this once:
+
+```sh
+pre-commit install
+```
+
+No `pre-commit` yet? `uv tool install pre-commit` (or `pipx install pre-commit`).
+The hook tools install themselves on the first commit, at the versions pinned in
+`.pre-commit-config.yaml`.
+
+- **Every commit:** gitleaks blocks secrets. File checks stop merge-conflict
+  markers, large files, private keys and broken YAML, JSON or TOML. Formatters
+  fix whitespace, line endings and code style.
+- **Commit message:** follows [Conventional Commits](https://www.conventionalcommits.org)
+  (`feat: ...`, `fix: ...`).
+
+When a formatter changes a file, the commit stops: check the change, `git add`
+it and commit again. To skip the hooks once: `git commit --no-verify` or
+`git push --no-verify`.
+<!-- fwd:setup-precommit:end -->

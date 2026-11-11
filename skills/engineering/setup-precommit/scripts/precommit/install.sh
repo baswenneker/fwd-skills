@@ -25,7 +25,10 @@ SCOPE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --scope)
-            [[ $# -ge 2 ]] || { echo "install: --scope needs an argument" >&2; exit 64; }
+            [[ $# -ge 2 ]] || {
+                echo "install: --scope needs an argument" >&2
+                exit 64
+            }
             SCOPE="$2"
             shift 2
             ;;
@@ -60,8 +63,15 @@ require_jq
 
 # ── Detect stacks ─────────────────────────────────────────────────────────────
 
-PYTHON=false; SHELL_FILES=false; WEB=false; WORKFLOWS=false; DOCKER=false; LOCKFILE=false
-PKG_PRETTIER=false; PKG_ESLINT=false; PRETTIER_CONFIG=false
+PYTHON=false
+SHELL_FILES=false
+WEB=false
+WORKFLOWS=false
+DOCKER=false
+LOCKFILE=false
+PKG_PRETTIER=false
+PKG_ESLINT=false
+PRETTIER_CONFIG=false
 if has_file "$PYTHON_MARKERS"; then PYTHON=true; fi
 if has_file "$SHELL_MARKERS"; then SHELL_FILES=true; fi
 if has_file "$WEB_MARKERS" || root_has package.json; then WEB=true; fi
@@ -78,7 +88,13 @@ if root_has package.json; then
     if pkg_has_dep eslint; then PKG_ESLINT=true; fi
 fi
 JS_RUNNER="$(js_runner)"
-SHELL_INDENT="$(shell_indent)"
+if shell_indent_pinned; then
+    SHFMT_ARGS='[--write]'
+    SHFMT_NOTE='# No -i: shfmt takes the indent from .editorconfig.'
+else
+    SHFMT_ARGS="[--write, -i, '$(shell_indent)']"
+    SHFMT_NOTE='# -i: the indent the scripts already use, so shfmt does not re-indent them.'
+fi
 
 PRETTIER_TYPES='[javascript, jsx, ts, tsx, css, scss, less, html, vue, json]'
 
@@ -147,9 +163,9 @@ EOF
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: $SHFMT_REV
     hooks:
-      # -i: the indent the scripts already use, so shfmt does not re-indent them.
+      $SHFMT_NOTE
       - id: shfmt
-        args: [--write, -i, '$SHELL_INDENT']
+        args: $SHFMT_ARGS
         stages: [pre-commit]
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: $SHELLCHECK_REV
@@ -249,13 +265,16 @@ if [[ -f "$CONFIG" ]] && grep -qxF -- "$OWN_MARKER" "$CONFIG"; then
     NEW="$NEW"$'\n'"$(awk -v m="$OWN_MARKER" 'f || $0 == m { f = 1; print }' "$CONFIG")"
 fi
 if [[ ! -f "$CONFIG" ]]; then
-    printf '%s\n' "$NEW" > "$CONFIG"
+    printf '%s\n' "$NEW" >"$CONFIG"
     echo "✔ $(describe) → $CONFIG"
-elif first="$(head -n 1 "$CONFIG")"; [[ "$first" == "$MARKER"* || "$first" == "$OLD_MARKER"* ]]; then
+elif
+    first="$(head -n 1 "$CONFIG")"
+    [[ "$first" == "$MARKER"* || "$first" == "$OLD_MARKER"* ]]
+then
     if [[ "$(cat "$CONFIG")" == "$NEW" ]]; then
         echo "✔ already up to date, no change → $CONFIG"
     else
-        printf '%s\n' "$NEW" > "$CONFIG"
+        printf '%s\n' "$NEW" >"$CONFIG"
         echo "✔ rewritten: $(describe) → $CONFIG"
     fi
 else

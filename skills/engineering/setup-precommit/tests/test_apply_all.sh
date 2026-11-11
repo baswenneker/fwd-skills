@@ -7,13 +7,14 @@ source "$(dirname "$0")/lib.sh"
 
 stub="$WORK/stub"
 mkdir -p "$stub"
-printf '#!/usr/bin/env bash\nexit 0\n' > "$stub/pre-commit"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$stub/pre-commit"
 chmod +x "$stub/pre-commit"
 export PATH="$stub:$PATH"
 
 repo="$(make_repo apply)"
 cd "$repo"
-out="$(bash "$SCRIPTS/apply-all.sh")"; code=$?
+out="$(bash "$SCRIPTS/apply-all.sh")"
+code=$?
 assert_eq "$code" 0 "apply-all exits 0"
 order="$(printf '%s\n' "$out" | sed -n 's/^### //p' | tr '\n' ' ')"
 assert_eq "$order" "prettier precommit readme legacy tracked " "feature blocks in order"
@@ -26,8 +27,14 @@ assert_eq "$(snapshot "$repo")" "$before" "second run changes nothing"
 git add -A && git commit -q -m setup --no-verify
 out="$(bash "$SCRIPTS/apply-all.sh")"
 tracked="$(printf '%s\n' "$out" | sed -n '/^### tracked/,$p')"
-assert_contains "$tracked" ".pre-commit-config.yaml" "tracked block lists the config"
-assert_contains "$tracked" "README.md" "tracked block lists the README"
+assert_not_contains "$tracked" ".pre-commit-config.yaml" "unchanged config not listed"
+assert_not_contains "$tracked" "README.md" "unchanged README not listed"
+
+echo "local note" >>README.md
+out="$(bash "$SCRIPTS/apply-all.sh")"
+tracked="$(printf '%s\n' "$out" | sed -n '/^### tracked/,$p')"
+assert_contains "$tracked" "README.md" "changed README listed"
+assert_not_contains "$tracked" ".pre-commit-config.yaml" "unchanged config still not listed"
 
 # ── fwd:setup follow-up ───────────────────────────────────────────────────────
 home="$WORK/home"
