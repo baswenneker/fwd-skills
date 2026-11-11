@@ -147,3 +147,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Running the new Prettier baseline on fwdos and open-subsea.
 **Observation**: Prettier left two fwdos files that changed again on a second pass. open-subsea already formatted with Biome and ran lefthook, and `pre-commit install` moved lefthook's hook to `pre-commit.legacy`. A test run of `pre-commit run --all-files` rewrote 49 files, among them drizzle-kit output, and osv-scanner blocked the first push on 9 old CVEs.
 **Lesson**: Before running setup-precommit on a repo, look for another formatter or hook manager (biome.json, lefthook.yml, husky). Never run `pre-commit run --all-files` on main as a check; do it on a branch. Expect osv-scanner to block the first push in a repo with an older lockfile.
+
+### 2026-11-11 | insight | setup-precommit
+**Context**: Committing in this repo after /fwd:setup-precommit installed shfmt.
+**Observation**: shell_indent took the smallest indent anywhere, so 2-space YAML inside a heredoc in a 4-space repo produced `shfmt -i 2`; counting per file did not help either, because the 2-space scripts under obsolete/ outnumber the live 4-space ones. Separately, `git stash` + `git stash pop` without `--index` silently unstaged a staged fix, and a following `git checkout --` then threw it away.
+**Lesson**: Pin a repo's shell style in .editorconfig (setup-precommit then leaves -i out and shfmt reads it). Never stash to inspect a tree with staged work; use `git show HEAD:<file>` or `git diff --cached` instead.
