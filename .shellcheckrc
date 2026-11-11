@@ -1,0 +1,3 @@
+# Follow `source` to files next to the script, so sourced helpers are checked too.
+external-sources=true
+source-path=SCRIPTDIR

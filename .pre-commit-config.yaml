@@ -39,9 +39,9 @@ repos:
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.14.1-1
     hooks:
-      # -i: the indent the scripts already use, so shfmt does not re-indent them.
+      # No -i: shfmt takes the indent from .editorconfig.
       - id: shfmt
-        args: [--write, -i, '2']
+        args: [--write]
         stages: [pre-commit]
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
