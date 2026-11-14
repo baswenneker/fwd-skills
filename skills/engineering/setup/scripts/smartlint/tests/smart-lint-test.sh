@@ -19,7 +19,10 @@ trap 'rm -rf "$TMP"' EXIT
 FAILS=0
 
 pass() { echo "ok   - $*"; }
-fail() { echo "FAIL - $*" >&2; FAILS=$((FAILS + 1)); }
+fail() {
+    echo "FAIL - $*" >&2
+    FAILS=$((FAILS + 1))
+}
 
 # ── Stub linters ──────────────────────────────────────────────────────────────
 
@@ -30,7 +33,7 @@ fail() { echo "FAIL - $*" >&2; FAILS=$((FAILS + 1)); }
 make_stub() {
     local path="$1" fails="${2:-0}" label="${3:-$(basename "$1")}"
     mkdir -p "$(dirname "$path")"
-    cat > "$path" <<EOF
+    cat >"$path" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$@" >> "\$LINT_LOG"
 echo "$label \$*" >> "\$LINT_LOG.calls"
@@ -56,16 +59,28 @@ git_t() { git -c user.name=test -c user.email=test@example.com "$@"; }
 # new_repo <dir>: git repo with one commit holding <dir>/a.py
 new_repo() {
     git init -q "$1"
-    echo 'x = 1' > "$1/a.py"
+    echo 'x = 1' >"$1/a.py"
     git_t -C "$1" add a.py
     git_t -C "$1" commit -q -m init
 }
 
-# run_wrapper <cwd> <log>: run the wrapper as the Stop hook would, from <cwd>
+# run_wrapper <cwd> <log> [hook input]: run the wrapper as the Stop hook
+# would, from <cwd>, with <hook input> (default {}) on stdin. stdout goes to
+# <log>.stdout, stderr to <log>.stderr, both to <log>.out; the exit code to WRC.
+export CLAUDE_HOOKS_CACHE_DIR="$TMP/lint-cache"
 run_wrapper() {
-    : > "$2"
+    : >"$2"
     (cd "$1" && LINT_LOG="$2" CLAUDE_PROJECT_DIR="$1" \
-        "$PAYLOAD/smart-lint-wrapper.sh" <<< '{}') > "$2.out" 2>&1
+        "$PAYLOAD/smart-lint-wrapper.sh" <<<"${3:-\{\}}") >"$2.stdout" 2>"$2.stderr"
+    WRC=$?
+    cat "$2.stdout" "$2.stderr" >"$2.out"
+    return $WRC
+}
+
+# tool_use_line <name> <input json>: one transcript line with that tool call
+tool_use_line() {
+    jq -cn --arg n "$1" --argjson i "$2" \
+        '{type: "assistant", message: {content: [{type: "tool_use", name: $n, input: $i}]}}'
 }
 
 # linted <log> <path>: the stub linters got <path> as one argument
@@ -81,7 +96,7 @@ not_called() { ! grep -qE "^$2( |\$)" "$1.calls" 2>/dev/null; }
 call_count() { grep -cE "^$2( |\$)" "$1.calls" 2>/dev/null; }
 
 # calls <log>: the recorded calls on one line, for failure messages
-calls() { tr '\n' '|' < "$1.calls" 2>/dev/null; }
+calls() { tr '\n' '|' <"$1.calls" 2>/dev/null; }
 
 # run_lint <dir> <log> <path> <smart-lint args...>: run smart-lint.sh in <dir>
 # with PATH=<path> (empty: the current PATH). Output goes to <log>.out, the
@@ -89,9 +104,9 @@ calls() { tr '\n' '|' < "$1.calls" 2>/dev/null; }
 run_lint() {
     local dir="$1" log="$2" path="${3:-$PATH}"
     shift 3
-    : > "$log"
-    : > "$log.calls"
-    (cd "$dir" && PATH="$path" LINT_LOG="$log" "$PAYLOAD/smart-lint.sh" "$@") > "$log.out" 2>&1
+    : >"$log"
+    : >"$log.calls"
+    (cd "$dir" && PATH="$path" LINT_LOG="$log" "$PAYLOAD/smart-lint.sh" "$@") >"$log.out" 2>&1
     RC=$?
 }
 
@@ -99,7 +114,7 @@ run_lint() {
 
 new_repo "$TMP/main"
 git_t -C "$TMP/main" worktree add -q "$TMP/wt" 2>/dev/null
-echo 'x = 2' > "$TMP/wt/a.py"
+echo 'x = 2' >"$TMP/wt/a.py"
 run_wrapper "$TMP/wt" "$TMP/wt.log"
 if linted "$TMP/wt.log" a.py; then
     pass "wrapper lints a changed file in a git worktree"
@@ -111,17 +126,17 @@ fi
 
 new_repo "$TMP/space"
 mkdir -p "$TMP/space/docs"
-echo 'y = 1' > "$TMP/space/docs/my notes.py"
-echo 'z = 1' > "$TMP/space/b c.py"
+echo 'y = 1' >"$TMP/space/docs/my notes.py"
+echo 'z = 1' >"$TMP/space/b c.py"
 git_t -C "$TMP/space" add "b c.py"
 git_t -C "$TMP/space" commit -q -m "add b c"
-echo 'z = 2' > "$TMP/space/b c.py"
+echo 'z = 2' >"$TMP/space/b c.py"
 run_wrapper "$TMP/space" "$TMP/space.log"
-if linted "$TMP/space.log" "docs/my notes.py" && linted "$TMP/space.log" "b c.py" \
-    && ! linted "$TMP/space.log" "docs/my" && ! linted "$TMP/space.log" "notes.py"; then
+if linted "$TMP/space.log" "docs/my notes.py" && linted "$TMP/space.log" "b c.py" &&
+    ! linted "$TMP/space.log" "docs/my" && ! linted "$TMP/space.log" "notes.py"; then
     pass "untracked and modified files with spaces are linted as one file each"
 else
-    fail "file names with spaces were split: $(tr '\n' '|' < "$TMP/space.log")"
+    fail "file names with spaces were split: $(tr '\n' '|' <"$TMP/space.log")"
 fi
 
 # ── 3. Session started in a subfolder ─────────────────────────────────────────
@@ -130,19 +145,19 @@ fi
 # lints that folder's changes, with paths relative to it.
 new_repo "$TMP/sub"
 mkdir -p "$TMP/sub/pkg"
-echo 'w = 1' > "$TMP/sub/pkg/m.py"
-echo 'x = 3' > "$TMP/sub/a.py"
+echo 'w = 1' >"$TMP/sub/pkg/m.py"
+echo 'x = 3' >"$TMP/sub/a.py"
 run_wrapper "$TMP/sub/pkg" "$TMP/sub.log"
 if linted "$TMP/sub.log" m.py && ! grep -q 'a\.py' "$TMP/sub.log"; then
     pass "wrapper started in a subfolder lints that folder's changes, relative to it"
 else
-    fail "wrapper in a subfolder got: $(tr '\n' '|' < "$TMP/sub.log")"
+    fail "wrapper in a subfolder got: $(tr '\n' '|' <"$TMP/sub.log")"
 fi
 
 # ── 4. Outside a git repo: silent no-op ──────────────────────────────────────
 
 mkdir -p "$TMP/nogit"
-echo 'v = 1' > "$TMP/nogit/n.py"
+echo 'v = 1' >"$TMP/nogit/n.py"
 if run_wrapper "$TMP/nogit" "$TMP/nogit.log" && [[ ! -s "$TMP/nogit.log" ]]; then
     pass "wrapper outside a git repo exits 0 without linting"
 else
@@ -152,14 +167,14 @@ fi
 # ── 5. Whole-project mode (no --files) keeps found paths whole ───────────────
 
 mkdir -p "$TMP/whole/node_modules"
-echo 'echo hi' > "$TMP/whole/s p.sh"
-echo 'echo hi' > "$TMP/whole/node_modules/dep.sh"
-: > "$TMP/whole.log"
-(cd "$TMP/whole" && LINT_LOG="$TMP/whole.log" "$PAYLOAD/smart-lint.sh") > "$TMP/whole.out" 2>&1
+echo 'echo hi' >"$TMP/whole/s p.sh"
+echo 'echo hi' >"$TMP/whole/node_modules/dep.sh"
+: >"$TMP/whole.log"
+(cd "$TMP/whole" && LINT_LOG="$TMP/whole.log" "$PAYLOAD/smart-lint.sh") >"$TMP/whole.out" 2>&1
 if linted "$TMP/whole.log" "./s p.sh" && ! grep -q "node_modules" "$TMP/whole.log"; then
     pass "whole-project mode lints found files with spaces and skips node_modules"
 else
-    fail "whole-project mode got: $(tr '\n' '|' < "$TMP/whole.log")"
+    fail "whole-project mode got: $(tr '\n' '|' <"$TMP/whole.log")"
 fi
 
 # ── 6. hooks.json timeout is in seconds ──────────────────────────────────────
@@ -179,12 +194,12 @@ OLD_CMD="test -f \"\$HOME/.claude/hooks/smart-lint-wrapper.sh\" || exit 0; \"\$H
 # A second Stop entry without a hooks array must not break the update.
 jq -n --arg cmd "$OLD_CMD" \
     '{hooks: {Stop: [{matcher: "x"}, {hooks: [{type: "command", command: $cmd, timeout: 180000}]}]}}' \
-    > "$HOME/.claude/settings.json"
+    >"$HOME/.claude/settings.json"
 rm -f "$HOME/.claude/hooks/smart-lint.sh"
-"$SMARTLINT_DIR/install.sh" --scope user > "$TMP/install.out" 2>&1
+"$SMARTLINT_DIR/install.sh" --scope user >"$TMP/install.out" 2>&1
 INSTALLED=$(jq '[.hooks.Stop[].hooks[]? | select(.command | test("smart-lint-wrapper"))]' "$HOME/.claude/settings.json")
-if [[ "$(jq 'length' <<< "$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<< "$INSTALLED")" == "180" ]] \
-    && [[ -f "$HOME/.claude/hooks/smart-lint.sh" ]]; then
+if [[ "$(jq 'length' <<<"$INSTALLED")" == "1" && "$(jq '.[0].timeout' <<<"$INSTALLED")" == "180" ]] &&
+    [[ -f "$HOME/.claude/hooks/smart-lint.sh" ]]; then
     pass "installer re-run sets an installed hook's timeout to 180 seconds and refreshes the payload"
 else
     fail "installer re-run left: $INSTALLED; output: $(cat "$TMP/install.out")"
@@ -195,17 +210,17 @@ fi
 # new_pc_repo <dir>: new_repo plus a pre-commit config, a.py changed and s.sh
 new_pc_repo() {
     new_repo "$1"
-    echo 'repos: []' > "$1/.pre-commit-config.yaml"
-    echo 'x = 2' > "$1/a.py"
-    echo 'echo hi' > "$1/s.sh"
+    echo 'repos: []' >"$1/.pre-commit-config.yaml"
+    echo 'x = 2' >"$1/a.py"
+    echo 'echo hi' >"$1/s.sh"
 }
 
 new_pc_repo "$TMP/pcA"
 run_lint "$TMP/pcA" "$TMP/pcA.log" "" --files a.py s.sh
-if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcA.log" pre-commit)" == "1" ]] \
-    && called "$TMP/pcA.log" "pre-commit run --config .pre-commit-config.yaml --files a.py s.sh" \
-    && not_called "$TMP/pcA.log" ruff && not_called "$TMP/pcA.log" black \
-    && not_called "$TMP/pcA.log" shellcheck && called "$TMP/pcA.log" "pyright ."; then
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcA.log" pre-commit)" == "1" ]] &&
+    called "$TMP/pcA.log" "pre-commit run --config .pre-commit-config.yaml --files a.py s.sh" &&
+    not_called "$TMP/pcA.log" ruff && not_called "$TMP/pcA.log" black &&
+    not_called "$TMP/pcA.log" shellcheck && called "$TMP/pcA.log" "pyright ."; then
     pass "a pre-commit config runs pre-commit on the changed files instead of own linters"
 else
     fail "pre-commit mode (rc $RC) got: $(calls "$TMP/pcA.log")"
@@ -213,10 +228,10 @@ fi
 
 # Config at the git root, session in a subfolder: pre-commit gets the root config.
 mkdir -p "$TMP/pcA/pkg"
-echo 'w = 1' > "$TMP/pcA/pkg/m.py"
+echo 'w = 1' >"$TMP/pcA/pkg/m.py"
 run_lint "$TMP/pcA/pkg" "$TMP/pcAsub.log" "" --files m.py
-if called "$TMP/pcAsub.log" "pre-commit run --config $(cd "$TMP/pcA" && pwd -P)/.pre-commit-config.yaml --files m.py" \
-    || called "$TMP/pcAsub.log" "pre-commit run --config $TMP/pcA/.pre-commit-config.yaml --files m.py"; then
+if called "$TMP/pcAsub.log" "pre-commit run --config $(cd "$TMP/pcA" && pwd -P)/.pre-commit-config.yaml --files m.py" ||
+    called "$TMP/pcAsub.log" "pre-commit run --config $TMP/pcA/.pre-commit-config.yaml --files m.py"; then
     pass "a pre-commit config at the git root is used from a subfolder"
 else
     fail "pre-commit from a subfolder got: $(calls "$TMP/pcAsub.log")"
@@ -227,8 +242,8 @@ fi
 new_pc_repo "$TMP/pcB1"
 make_stub "$TMP/pcB1-bin/pre-commit" 1
 run_lint "$TMP/pcB1" "$TMP/pcB1.log" "$TMP/pcB1-bin:$PATH" --files a.py
-if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcB1.log" pre-commit)" == "2" ]] \
-    && grep -q "(auto-fixed)" "$TMP/pcB1.log.out"; then
+if [[ $RC -eq 0 ]] && [[ "$(call_count "$TMP/pcB1.log" pre-commit)" == "2" ]] &&
+    grep -q "(auto-fixed)" "$TMP/pcB1.log.out"; then
     pass "pre-commit failing once (a fixer changed files) passes on the second run"
 else
     fail "pre-commit failing once: rc $RC, calls $(calls "$TMP/pcB1.log")"
@@ -237,9 +252,9 @@ fi
 new_pc_repo "$TMP/pcB2"
 make_stub "$TMP/pcB2-bin/pre-commit" 2
 run_lint "$TMP/pcB2" "$TMP/pcB2.log" "$TMP/pcB2-bin:$PATH" --files a.py
-if [[ $RC -eq 2 ]] && [[ "$(call_count "$TMP/pcB2.log" pre-commit)" == "2" ]] \
-    && grep -q "pre-commit hooks failed" "$TMP/pcB2.log.out" \
-    && grep -q "pre-commit failed (call 2)" "$TMP/pcB2.log.out"; then
+if [[ $RC -eq 2 ]] && [[ "$(call_count "$TMP/pcB2.log" pre-commit)" == "2" ]] &&
+    grep -q "pre-commit hooks failed" "$TMP/pcB2.log.out" &&
+    grep -q "pre-commit failed (call 2)" "$TMP/pcB2.log.out"; then
     pass "pre-commit failing twice is an error that shows the hook output"
 else
     fail "pre-commit failing twice: rc $RC, calls $(calls "$TMP/pcB2.log")"
@@ -258,9 +273,9 @@ for cmd in bash env git find grep head cat date dirname basename tr sort mkdir r
 done
 new_pc_repo "$TMP/pcC"
 run_lint "$TMP/pcC" "$TMP/pcC.log" "$NOPC" --files a.py s.sh
-if [[ $RC -eq 0 ]] && grep -q "pre-commit not found" "$TMP/pcC.log.out" \
-    && not_called "$TMP/pcC.log" ruff && not_called "$TMP/pcC.log" shellcheck \
-    && called "$TMP/pcC.log" "pyright ."; then
+if [[ $RC -eq 0 ]] && grep -q "pre-commit not found" "$TMP/pcC.log.out" &&
+    not_called "$TMP/pcC.log" ruff && not_called "$TMP/pcC.log" shellcheck &&
+    called "$TMP/pcC.log" "pyright ."; then
     pass "missing pre-commit skips lint and format, keeps the typecheck"
 else
     fail "missing pre-commit: rc $RC, calls $(calls "$TMP/pcC.log"), out $(tail -5 "$TMP/pcC.log.out")"
@@ -269,10 +284,10 @@ fi
 # ── D. No pre-commit: ruff formats, not black ────────────────────────────────
 
 new_repo "$TMP/pyD"
-echo 'x = 2' > "$TMP/pyD/a.py"
+echo 'x = 2' >"$TMP/pyD/a.py"
 run_lint "$TMP/pyD" "$TMP/pyD.log" "" --files a.py
-if called "$TMP/pyD.log" "ruff format --check --quiet a.py" && not_called "$TMP/pyD.log" black \
-    && called "$TMP/pyD.log" "ruff check --fix a.py"; then
+if called "$TMP/pyD.log" "ruff format --check --quiet a.py" && not_called "$TMP/pyD.log" black &&
+    called "$TMP/pyD.log" "ruff check --fix a.py"; then
     pass "without pre-commit, Python is formatted with ruff format, not black"
 else
     fail "Python formatter got: $(calls "$TMP/pyD.log")"
@@ -281,7 +296,7 @@ fi
 # ── F. A tool in .venv/bin wins over the global one ──────────────────────────
 
 new_repo "$TMP/pyF"
-echo 'x = 2' > "$TMP/pyF/a.py"
+echo 'x = 2' >"$TMP/pyF/a.py"
 make_stub "$TMP/pyF/.venv/bin/ruff" 0 venv-ruff
 run_lint "$TMP/pyF" "$TMP/pyF.log" "" --files a.py
 if called "$TMP/pyF.log" "venv-ruff check --fix a.py" && not_called "$TMP/pyF.log" ruff; then
@@ -295,7 +310,7 @@ fi
 # pyright takes its import paths from the first python on PATH, not from the
 # venv it is installed in, so without the flag every import fails.
 new_repo "$TMP/pyF2"
-echo 'x = 2' > "$TMP/pyF2/a.py"
+echo 'x = 2' >"$TMP/pyF2/a.py"
 make_stub "$TMP/pyF2/.venv/bin/pyright" 0 venv-pyright
 make_stub "$TMP/pyF2/.venv/bin/python" 0 venv-python
 run_lint "$TMP/pyF2" "$TMP/pyF2.log" "" --files a.py
@@ -306,7 +321,7 @@ else
 fi
 
 new_repo "$TMP/pyF3"
-echo 'x = 2' > "$TMP/pyF3/a.py"
+echo 'x = 2' >"$TMP/pyF3/a.py"
 make_stub "$TMP/pyF3/.venv/bin/python" 0 venv-python
 run_lint "$TMP/pyF3" "$TMP/pyF3.log" "" --files a.py
 if called "$TMP/pyF3.log" "pyright --pythonpath .venv/bin/python ."; then
@@ -318,8 +333,8 @@ fi
 # ── G. A tool in uv.lock runs through uv run --frozen ────────────────────────
 
 new_repo "$TMP/pyG"
-echo 'x = 2' > "$TMP/pyG/a.py"
-printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyG/uv.lock"
+echo 'x = 2' >"$TMP/pyG/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' >"$TMP/pyG/uv.lock"
 run_lint "$TMP/pyG" "$TMP/pyG.log" "" --files a.py
 if called "$TMP/pyG.log" "uv run --frozen pyright ." && not_called "$TMP/pyG.log" pyright; then
     pass "a tool listed in uv.lock runs through uv run --frozen"
@@ -330,12 +345,12 @@ fi
 # ── H. Python typecheck covers the whole project, only after a .py change ─────
 
 new_repo "$TMP/pyH"
-echo 'x = 2' > "$TMP/pyH/a.py"
-echo 'echo hi' > "$TMP/pyH/s.sh"
+echo 'x = 2' >"$TMP/pyH/a.py"
+echo 'echo hi' >"$TMP/pyH/s.sh"
 run_lint "$TMP/pyH" "$TMP/pyH.log" "" --files a.py
 run_lint "$TMP/pyH" "$TMP/pyHsh.log" "" --files s.sh
-if called "$TMP/pyH.log" "pyright ." && ! called "$TMP/pyH.log" "pyright a.py" \
-    && not_called "$TMP/pyHsh.log" pyright; then
+if called "$TMP/pyH.log" "pyright ." && ! called "$TMP/pyH.log" "pyright a.py" &&
+    not_called "$TMP/pyHsh.log" pyright; then
     pass "Python typecheck runs on the whole project, only when a .py file changed"
 else
     fail "Python typecheck got: $(calls "$TMP/pyH.log") / $(calls "$TMP/pyHsh.log")"
@@ -346,10 +361,10 @@ fi
 # new_ts_repo <dir> <package.json>: git repo with tsconfig.json, a changed a.ts
 new_ts_repo() {
     new_repo "$1"
-    echo '{}' > "$1/tsconfig.json"
-    echo "$2" > "$1/package.json"
-    echo 'export const a = 1;' > "$1/a.ts"
-    echo 'module.exports = 1;' > "$1/b.js"
+    echo '{}' >"$1/tsconfig.json"
+    echo "$2" >"$1/package.json"
+    echo 'export const a = 1;' >"$1/a.ts"
+    echo 'module.exports = 1;' >"$1/b.js"
 }
 
 new_ts_repo "$TMP/tsI" '{"scripts": {"typecheck": "tsc -b"}}'
@@ -382,8 +397,8 @@ run_lint "$TMP/tsL" "$TMP/tsLjs.log" "" --files b.js
 export CLAUDE_HOOKS_TS_TYPECHECK_ENABLED=false
 run_lint "$TMP/tsL" "$TMP/tsLoff.log" "" --files a.ts
 unset CLAUDE_HOOKS_TS_TYPECHECK_ENABLED
-if not_called "$TMP/tsLjs.log" npm && not_called "$TMP/tsLjs.log" npx \
-    && not_called "$TMP/tsLoff.log" npm && not_called "$TMP/tsLoff.log" npx; then
+if not_called "$TMP/tsLjs.log" npm && not_called "$TMP/tsLjs.log" npx &&
+    not_called "$TMP/tsLoff.log" npm && not_called "$TMP/tsLoff.log" npx; then
     pass "no TS typecheck for a .js-only change or with the switch off"
 else
     fail "TS typecheck ran: $(calls "$TMP/tsLjs.log") / $(calls "$TMP/tsLoff.log")"
@@ -392,7 +407,7 @@ fi
 # ── M. Without pre-commit, the project's own prettier is used ────────────────
 
 new_ts_repo "$TMP/tsM" '{}'
-echo '{}' > "$TMP/tsM/.prettierrc"
+echo '{}' >"$TMP/tsM/.prettierrc"
 make_stub "$TMP/tsM/node_modules/.bin/prettier" 0 local-prettier
 run_lint "$TMP/tsM" "$TMP/tsM.log" "" --files a.ts
 if called "$TMP/tsM.log" "local-prettier --check a.ts"; then
@@ -404,13 +419,13 @@ fi
 # ── O. A change that only deletes a source file still runs the typecheck ────
 
 new_ts_repo "$TMP/delO" '{"scripts": {"typecheck": "tsc -b"}}'
-echo 'y = 1' > "$TMP/delO/b.py"
+echo 'y = 1' >"$TMP/delO/b.py"
 git_t -C "$TMP/delO" add -A
 git_t -C "$TMP/delO" commit -q -m files
 rm "$TMP/delO/a.ts" "$TMP/delO/b.py"
 run_lint "$TMP/delO" "$TMP/delO.log" "" --files a.ts b.py
-if called "$TMP/delO.log" "pyright ." && called "$TMP/delO.log" "npm run typecheck" \
-    && not_called "$TMP/delO.log" ruff; then
+if called "$TMP/delO.log" "pyright ." && called "$TMP/delO.log" "npm run typecheck" &&
+    not_called "$TMP/delO.log" ruff; then
     pass "deleting a .py or .ts file still type-checks the project, without per-file tools"
 else
     fail "delete-only change got: $(calls "$TMP/delO.log")"
@@ -421,8 +436,8 @@ fi
 new_ts_repo "$TMP/tsP" '{}'
 make_stub "$TMP/tsP-bin/npx" 99
 run_lint "$TMP/tsP" "$TMP/tsP.log" "$TMP/tsP-bin:$PATH" --files a.ts
-if [[ $RC -eq 0 ]] && grep -q "tsc not found" "$TMP/tsP.log.out" \
-    && ! called "$TMP/tsP.log" "npx --no-install tsc --noEmit"; then
+if [[ $RC -eq 0 ]] && grep -q "tsc not found" "$TMP/tsP.log.out" &&
+    ! called "$TMP/tsP.log" "npx --no-install tsc --noEmit"; then
     pass "no TypeScript install gives an info line instead of a type error"
 else
     fail "npx without TypeScript: rc $RC, calls $(calls "$TMP/tsP.log")"
@@ -433,15 +448,15 @@ fi
 # Python is checked before TypeScript, so the TS typecheck is the one a
 # fail-fast break after the first language would skip.
 new_pc_repo "$TMP/pcQ"
-echo '{}' > "$TMP/pcQ/tsconfig.json"
-echo '{"scripts": {"typecheck": "tsc -b"}}' > "$TMP/pcQ/package.json"
-echo 'export const a = 1;' > "$TMP/pcQ/a.ts"
+echo '{}' >"$TMP/pcQ/tsconfig.json"
+echo '{"scripts": {"typecheck": "tsc -b"}}' >"$TMP/pcQ/package.json"
+echo 'export const a = 1;' >"$TMP/pcQ/a.ts"
 make_stub "$TMP/pcQ-bin/pre-commit" 2
 export CLAUDE_HOOKS_FAIL_FAST=true
 run_lint "$TMP/pcQ" "$TMP/pcQ.log" "$TMP/pcQ-bin:$PATH" --files a.py a.ts
 unset CLAUDE_HOOKS_FAIL_FAST
-if [[ $RC -eq 2 ]] && called "$TMP/pcQ.log" "pyright ." \
-    && called "$TMP/pcQ.log" "npm run typecheck"; then
+if [[ $RC -eq 2 ]] && called "$TMP/pcQ.log" "pyright ." &&
+    called "$TMP/pcQ.log" "npm run typecheck"; then
     pass "fail fast still type-checks after pre-commit fails"
 else
     fail "fail fast after pre-commit: rc $RC, calls $(calls "$TMP/pcQ.log")"
@@ -452,8 +467,8 @@ fi
 new_pc_repo "$TMP/pcR"
 git_t -C "$TMP/pcR" add -A
 git_t -C "$TMP/pcR" commit -q -m files
-echo '{"a": 1}' > "$TMP/pcR/config.json"
-: > "$TMP/pcR.log.calls"
+echo '{"a": 1}' >"$TMP/pcR/config.json"
+: >"$TMP/pcR.log.calls"
 run_wrapper "$TMP/pcR" "$TMP/pcR.log"
 if called "$TMP/pcR.log" "pre-commit run --config .pre-commit-config.yaml --files config.json"; then
     pass "with a pre-commit config, a JSON-only change reaches pre-commit"
@@ -477,8 +492,8 @@ fi
 # ── T. A tool locked in uv.lock but not installed falls through ──────────────
 
 new_repo "$TMP/pyT"
-echo 'x = 2' > "$TMP/pyT/a.py"
-printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' > "$TMP/pyT/uv.lock"
+echo 'x = 2' >"$TMP/pyT/a.py"
+printf '[[package]]\nname = "pyright"\nversion = "1.1.400"\n' >"$TMP/pyT/uv.lock"
 make_stub "$TMP/pyT-bin/uv" 99
 run_lint "$TMP/pyT" "$TMP/pyT.log" "$TMP/pyT-bin:$PATH" --files a.py
 if called "$TMP/pyT.log" "pyright ." && ! called "$TMP/pyT.log" "uv run --frozen pyright ."; then
@@ -491,18 +506,18 @@ fi
 
 # This nbqa stub also records which ruff its PATH finds first.
 new_repo "$TMP/nbU"
-echo '{"cells": []}' > "$TMP/nbU/n.ipynb"
+echo '{"cells": []}' >"$TMP/nbU/n.ipynb"
 make_stub "$TMP/nbU/.venv/bin/ruff" 0 venv-ruff
 mkdir -p "$TMP/nbU-bin"
-cat > "$TMP/nbU-bin/nbqa" <<'EOF'
+cat >"$TMP/nbU-bin/nbqa" <<'EOF'
 #!/usr/bin/env bash
 echo "nbqa $* | ruff=$(command -v ruff)" >> "$LINT_LOG.calls"
 EOF
 chmod +x "$TMP/nbU-bin/nbqa"
 run_lint "$TMP/nbU" "$TMP/nbU.log" "$TMP/nbU-bin:$PATH" --files n.ipynb
 VENV_RUFF="$(cd "$TMP/nbU" && pwd)/.venv/bin/ruff"
-if called "$TMP/nbU.log" "nbqa --nbqa-shell ruff format n.ipynb --check --quiet | ruff=$VENV_RUFF" \
-    && called "$TMP/nbU.log" "nbqa --nbqa-shell ruff n.ipynb --fix | ruff=$VENV_RUFF"; then
+if called "$TMP/nbU.log" "nbqa --nbqa-shell ruff format n.ipynb --check --quiet | ruff=$VENV_RUFF" &&
+    called "$TMP/nbU.log" "nbqa --nbqa-shell ruff n.ipynb --fix | ruff=$VENV_RUFF"; then
     pass "nbqa keeps the plain tool name and finds the project's .venv/bin/ruff first"
 else
     fail "nbqa tool resolution got: $(calls "$TMP/nbU.log")"
@@ -511,8 +526,8 @@ fi
 # ── V. A uv tool runs nbqa under uv run ──────────────────────────────────────
 
 new_repo "$TMP/nbV"
-echo '{"cells": []}' > "$TMP/nbV/n.ipynb"
-printf '[[package]]\nname = "ruff"\nversion = "0.6.0"\n' > "$TMP/nbV/uv.lock"
+echo '{"cells": []}' >"$TMP/nbV/n.ipynb"
+printf '[[package]]\nname = "ruff"\nversion = "0.6.0"\n' >"$TMP/nbV/uv.lock"
 run_lint "$TMP/nbV" "$TMP/nbV.log" "" --files n.ipynb
 if called "$TMP/nbV.log" "uv run --frozen nbqa --nbqa-shell ruff format n.ipynb --check --quiet"; then
     pass "a uv-locked tool runs nbqa under uv run, so the project environment comes first"
@@ -520,11 +535,96 @@ else
     fail "nbqa with a uv tool got: $(calls "$TMP/nbV.log")"
 fi
 
+# ── W. With a transcript, only files this session touched are linted ────────
+
+# new_session_repo <dir>: git repo with a.py..e.py committed, then all changed
+new_session_repo() {
+    new_repo "$1"
+    for f in b c d e; do echo "$f = 1" >"$1/$f.py"; done
+    git_t -C "$1" add -A
+    git_t -C "$1" commit -q -m files
+    for f in a b c d e; do echo "$f = 2" >"$1/$f.py"; done
+}
+
+new_session_repo "$TMP/sesW"
+SESW="$(cd "$TMP/sesW" && pwd)"
+mkdir -p "$TMP/transcripts/sesW/subagents"
+{
+    tool_use_line Edit "{\"file_path\": \"$SESW/a.py\", \"old_string\": \"x\", \"new_string\": \"y\"}"
+    tool_use_line Bash '{"command": "sed -i s/1/2/ b.py"}'
+    tool_use_line Read "{\"file_path\": \"$SESW/e.py\"}"
+} >"$TMP/transcripts/sesW.jsonl"
+tool_use_line Write "{\"file_path\": \"$SESW/c.py\", \"content\": \"c = 2\"}" \
+    >"$TMP/transcripts/sesW/subagents/agent-1.jsonl"
+run_wrapper "$TMP/sesW" "$TMP/sesW.log" "{\"transcript_path\": \"$TMP/transcripts/sesW.jsonl\"}"
+if linted "$TMP/sesW.log" a.py && linted "$TMP/sesW.log" b.py && linted "$TMP/sesW.log" c.py &&
+    ! linted "$TMP/sesW.log" d.py && ! linted "$TMP/sesW.log" e.py; then
+    pass "with a transcript, only files edited, written or named in Bash (subagents too) are linted"
+else
+    fail "session scope got: $(tr '\n' '|' <"$TMP/sesW.log")"
+fi
+
+# A session that changed nothing is not blocked on another session's changes.
+new_session_repo "$TMP/sesW2"
+tool_use_line Bash '{"command": "git status"}' >"$TMP/transcripts/sesW2.jsonl"
+make_stub "$TMP/sesW2-bin/pyright" 99
+PATH="$TMP/sesW2-bin:$PATH" run_wrapper "$TMP/sesW2" "$TMP/sesW2.log" \
+    "{\"transcript_path\": \"$TMP/transcripts/sesW2.jsonl\"}"
+if [[ $WRC -eq 0 && ! -s "$TMP/sesW2.log" ]]; then
+    pass "a session that touched no changed file lints nothing and does not block"
+else
+    fail "untouched session: rc $WRC, linted $(tr '\n' '|' <"$TMP/sesW2.log")"
+fi
+
+# ── X. A failing run: capped output, no colour codes, no revert pressure ─────
+
+new_repo "$TMP/failX"
+echo 'x = 2' >"$TMP/failX/a.py"
+mkdir -p "$TMP/failX-bin"
+cat >"$TMP/failX-bin/pyright" <<'EOF'
+#!/usr/bin/env bash
+echo "pyright $*" >> "$LINT_LOG.calls"
+for i in $(seq 1 300); do echo "  a.py:$i:1 - error: problem $i"; done
+exit 1
+EOF
+chmod +x "$TMP/failX-bin/pyright"
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failX.log"
+if [[ $WRC -eq 2 ]] && [[ $(wc -l <"$TMP/failX.log.stderr") -le 90 ]] &&
+    grep -q "lines cut" "$TMP/failX.log.stderr" &&
+    grep -q "problem 1$" "$TMP/failX.log.stderr" &&
+    grep -q "Type errors found (pyright)" "$TMP/failX.log.stderr" &&
+    ! grep -q $'\033' "$TMP/failX.log.stderr" &&
+    grep -q "do not revert" "$TMP/failX.log.stderr" &&
+    ! grep -q "ALL ISSUES ARE BLOCKING" "$TMP/failX.log.stderr"; then
+    pass "a failing run blocks with capped output, no ANSI codes and the don't-revert rule"
+else
+    fail "failing run: rc $WRC, $(wc -l <"$TMP/failX.log.stderr") lines: $(head -c 600 "$TMP/failX.log.stderr")"
+fi
+
+# ── Y. The same failure again does not block a second time ───────────────────
+
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failY.log"
+if [[ $WRC -eq 0 ]] && not_called "$TMP/failY.log" pyright &&
+    jq -e '.systemMessage | test("same")' "$TMP/failY.log.stdout" >/dev/null 2>&1; then
+    pass "an unchanged failing state does not block again and tells the user in one line"
+else
+    fail "repeat failure: rc $WRC, out $(cat "$TMP/failY.log.out")"
+fi
+
+# A new change after the failure is checked and blocks again.
+echo 'x = 3' >"$TMP/failX/a.py"
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failZ.log"
+if [[ $WRC -eq 2 ]]; then
+    pass "a new change after a failure is checked again and blocks"
+else
+    fail "change after failure: rc $WRC"
+fi
+
 # ── N. The repo's own hook copy matches the payload ──────────────────────────
 
 REPO_ROOT="$(cd "$SMARTLINT_DIR/../../../../.." && pwd)"
-if cmp -s "$PAYLOAD/smart-lint.sh" "$REPO_ROOT/.claude/hooks/smart-lint.sh" \
-    && cmp -s "$PAYLOAD/smart-lint-wrapper.sh" "$REPO_ROOT/.claude/hooks/smart-lint-wrapper.sh"; then
+if cmp -s "$PAYLOAD/smart-lint.sh" "$REPO_ROOT/.claude/hooks/smart-lint.sh" &&
+    cmp -s "$PAYLOAD/smart-lint-wrapper.sh" "$REPO_ROOT/.claude/hooks/smart-lint-wrapper.sh"; then
     pass ".claude/hooks/ holds the same smart-lint scripts as the payload"
 else
     fail ".claude/hooks/ differs from the payload: copy the payload over"
