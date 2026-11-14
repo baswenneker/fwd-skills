@@ -3,7 +3,9 @@
 #
 # This script is designed to be called by the Stop hook.
 # It detects modified files via git and runs smart-lint.sh only on relevant code files.
-# Content-hash caching prevents redundant runs when nothing changed.
+# With a transcript_path in the hook input, only files this session touched
+# count. Content-hash caching prevents redundant runs when nothing changed,
+# and an unchanged failing state blocks only once.
 #
 # Disable auto-lint by setting "smart-lint": false in .claude/fwd/plugin.json
 
@@ -76,6 +78,38 @@ done < <(
     } 2>/dev/null | sort -zu
 )
 
+# Session scope: keep only files this session touched, so a session is never
+# blocked on changes another session or process made in the same checkout.
+# A file counts as touched when its path (relative to here) appears in an
+# Edit, MultiEdit, Write or NotebookEdit path or in a Bash command, in the
+# session's transcript or in one of its subagents' transcripts. Without a
+# readable transcript every changed file counts, as before.
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && [ ${#RELEVANT_FILES[@]} -gt 0 ]; then
+    TOUCHED=$(
+        for t in "$TRANSCRIPT" "${TRANSCRIPT%.jsonl}"/subagents/*.jsonl; do
+            [ -f "$t" ] && cat "$t"
+        done | jq -r 'select(.type == "assistant") | .message.content[]?
+      | select(.type == "tool_use")
+      | if (.name | test("^(Edit|MultiEdit|Write|NotebookEdit)$"))
+          then (.input.file_path // .input.notebook_path // empty)
+        elif .name == "Bash" then (.input.command // empty)
+        else empty end' 2>/dev/null
+    )
+    SESSION_FILES=()
+    for f in "${RELEVANT_FILES[@]}"; do
+        case "$TOUCHED" in *"$f"*) SESSION_FILES+=("$f") ;; esac
+    done
+    UNTRACKED_SESSION=()
+    for f in "${UNTRACKED_RELEVANT[@]}"; do
+        case "$TOUCHED" in *"$f"*) UNTRACKED_SESSION+=("$f") ;; esac
+    done
+    RELEVANT_FILES=()
+    UNTRACKED_RELEVANT=()
+    [ ${#SESSION_FILES[@]} -gt 0 ] && RELEVANT_FILES=("${SESSION_FILES[@]}")
+    [ ${#UNTRACKED_SESSION[@]} -gt 0 ] && UNTRACKED_RELEVANT=("${UNTRACKED_SESSION[@]}")
+fi
+
 if [ ${#RELEVANT_FILES[@]} -eq 0 ]; then
     exit 0
 fi
@@ -95,38 +129,78 @@ CONTENT_HASH=$(
         printf '%s\n' "${RELEVANT_FILES[@]}"
         git --literal-pathspecs diff HEAD -- "${RELEVANT_FILES[@]}" 2>/dev/null
         git --literal-pathspecs diff --cached -- "${RELEVANT_FILES[@]}" 2>/dev/null
-        for f in "${UNTRACKED_RELEVANT[@]}"; do
+        for f in ${UNTRACKED_RELEVANT[@]+"${UNTRACKED_RELEVANT[@]}"}; do
             [ -f "$f" ] && cat "$f"
         done
     } | hash_cmd
 )
 
-# Cache location: /tmp/claude/lint-cache/lint-hash-<project-key>
-CACHE_DIR="/tmp/claude/lint-cache"
+# Cache location: /tmp/claude/lint-cache/lint-{hash,fail}-<project-key>
+CACHE_DIR="${CLAUDE_HOOKS_CACHE_DIR:-/tmp/claude/lint-cache}"
 CACHE_FILE="$CACHE_DIR/lint-hash-$PROJECT_HASH"
+FAIL_FILE="$CACHE_DIR/lint-fail-$PROJECT_HASH"
 
 if [ -f "$CACHE_FILE" ] && [ "$(cat "$CACHE_FILE")" = "$CONTENT_HASH" ]; then
     exit 0
 fi
 
-# --- End caching check ---
-
-# Display which files will be checked
-echo ""
-echo "Running lint checks on modified and untracked files:"
-printf '  - %s\n' "${RELEVANT_FILES[@]}"
-echo ""
-
-# Run smart-lint.sh with specific files
-"$SCRIPT_DIR/smart-lint.sh" --files "${RELEVANT_FILES[@]}"
-EXIT_CODE=$?
-
-# Cache the hash only after a successful lint run (exit 0).
-# Exit 1 (missing deps) and exit 2 (lint issues) should NOT be cached,
-# so lint re-runs next time to re-check.
-if [ "$EXIT_CODE" -eq 0 ]; then
-    mkdir -p "$CACHE_DIR"
-    echo "$CONTENT_HASH" >"$CACHE_FILE"
+# The same files failed last time and nothing changed since: the issues were
+# already reported. Blocking again would only cost a turn per prompt, so tell
+# the user in one line and let Claude stop.
+if [ -f "$FAIL_FILE" ] && [ "$(cat "$FAIL_FILE")" = "$CONTENT_HASH" ]; then
+    echo '{"systemMessage": "smart-lint: same issues as the previous check, no file changed since; not blocking again."}'
+    exit 0
 fi
 
-exit $EXIT_CODE
+# --- End caching check ---
+
+# Run smart-lint.sh with specific files; its output is collected so it can be
+# cleaned (no ANSI colour codes: Claude reads this) and capped.
+OUTPUT=$(
+    echo ""
+    echo "Running lint checks on modified and untracked files:"
+    printf '  - %s\n' "${RELEVANT_FILES[@]}"
+    echo ""
+    "$SCRIPT_DIR/smart-lint.sh" --files "${RELEVANT_FILES[@]}" 2>&1
+    echo "__SMART_LINT_EXIT=$?"
+)
+EXIT_CODE=$(printf '%s\n' "$OUTPUT" | sed -n 's/^__SMART_LINT_EXIT=//p' | tail -n 1)
+OUTPUT=$(printf '%s\n' "$OUTPUT" | grep -v '^__SMART_LINT_EXIT=' | sed $'s/\x1b\\[[0-9;]*m//g')
+
+# cap_output: at most MAX_LINES lines; the cut is in the middle, because the
+# first errors and the summary at the end matter most.
+MAX_LINES="${CLAUDE_HOOKS_MAX_OUTPUT_LINES:-80}"
+cap_output() {
+    local total
+    total=$(printf '%s\n' "$OUTPUT" | wc -l | tr -d ' ')
+    if [ "$total" -le "$MAX_LINES" ]; then
+        printf '%s\n' "$OUTPUT"
+        return
+    fi
+    local tail_n=20
+    local head_n=$((MAX_LINES - tail_n - 1))
+    printf '%s\n' "$OUTPUT" | head -n "$head_n"
+    echo "... ($((total - head_n - tail_n)) lines cut; run the failing check yourself for all of them) ..."
+    printf '%s\n' "$OUTPUT" | tail -n "$tail_n"
+}
+
+mkdir -p "$CACHE_DIR"
+case "$EXIT_CODE" in
+    0)
+        # Cache the hash only after a successful run, so lint re-runs next time
+        # after exit 1 (missing deps) or 2 (lint issues).
+        echo "$CONTENT_HASH" >"$CACHE_FILE"
+        rm -f "$FAIL_FILE"
+        printf '%s\n' "$OUTPUT"
+        exit 0
+        ;;
+    2)
+        echo "$CONTENT_HASH" >"$FAIL_FILE"
+        cap_output >&2
+        exit 2
+        ;;
+    *)
+        cap_output >&2
+        exit "${EXIT_CODE:-1}"
+        ;;
+esac

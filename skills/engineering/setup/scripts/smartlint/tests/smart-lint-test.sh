@@ -64,11 +64,23 @@ new_repo() {
     git_t -C "$1" commit -q -m init
 }
 
-# run_wrapper <cwd> <log>: run the wrapper as the Stop hook would, from <cwd>
+# run_wrapper <cwd> <log> [hook input]: run the wrapper as the Stop hook
+# would, from <cwd>, with <hook input> (default {}) on stdin. stdout goes to
+# <log>.stdout, stderr to <log>.stderr, both to <log>.out; the exit code to WRC.
+export CLAUDE_HOOKS_CACHE_DIR="$TMP/lint-cache"
 run_wrapper() {
     : >"$2"
     (cd "$1" && LINT_LOG="$2" CLAUDE_PROJECT_DIR="$1" \
-        "$PAYLOAD/smart-lint-wrapper.sh" <<<'{}') >"$2.out" 2>&1
+        "$PAYLOAD/smart-lint-wrapper.sh" <<<"${3:-\{\}}") >"$2.stdout" 2>"$2.stderr"
+    WRC=$?
+    cat "$2.stdout" "$2.stderr" >"$2.out"
+    return $WRC
+}
+
+# tool_use_line <name> <input json>: one transcript line with that tool call
+tool_use_line() {
+    jq -cn --arg n "$1" --argjson i "$2" \
+        '{type: "assistant", message: {content: [{type: "tool_use", name: $n, input: $i}]}}'
 }
 
 # linted <log> <path>: the stub linters got <path> as one argument
@@ -521,6 +533,91 @@ if called "$TMP/nbV.log" "uv run --frozen nbqa --nbqa-shell ruff format n.ipynb 
     pass "a uv-locked tool runs nbqa under uv run, so the project environment comes first"
 else
     fail "nbqa with a uv tool got: $(calls "$TMP/nbV.log")"
+fi
+
+# ── W. With a transcript, only files this session touched are linted ────────
+
+# new_session_repo <dir>: git repo with a.py..e.py committed, then all changed
+new_session_repo() {
+    new_repo "$1"
+    for f in b c d e; do echo "$f = 1" >"$1/$f.py"; done
+    git_t -C "$1" add -A
+    git_t -C "$1" commit -q -m files
+    for f in a b c d e; do echo "$f = 2" >"$1/$f.py"; done
+}
+
+new_session_repo "$TMP/sesW"
+SESW="$(cd "$TMP/sesW" && pwd)"
+mkdir -p "$TMP/transcripts/sesW/subagents"
+{
+    tool_use_line Edit "{\"file_path\": \"$SESW/a.py\", \"old_string\": \"x\", \"new_string\": \"y\"}"
+    tool_use_line Bash '{"command": "sed -i s/1/2/ b.py"}'
+    tool_use_line Read "{\"file_path\": \"$SESW/e.py\"}"
+} >"$TMP/transcripts/sesW.jsonl"
+tool_use_line Write "{\"file_path\": \"$SESW/c.py\", \"content\": \"c = 2\"}" \
+    >"$TMP/transcripts/sesW/subagents/agent-1.jsonl"
+run_wrapper "$TMP/sesW" "$TMP/sesW.log" "{\"transcript_path\": \"$TMP/transcripts/sesW.jsonl\"}"
+if linted "$TMP/sesW.log" a.py && linted "$TMP/sesW.log" b.py && linted "$TMP/sesW.log" c.py &&
+    ! linted "$TMP/sesW.log" d.py && ! linted "$TMP/sesW.log" e.py; then
+    pass "with a transcript, only files edited, written or named in Bash (subagents too) are linted"
+else
+    fail "session scope got: $(tr '\n' '|' <"$TMP/sesW.log")"
+fi
+
+# A session that changed nothing is not blocked on another session's changes.
+new_session_repo "$TMP/sesW2"
+tool_use_line Bash '{"command": "git status"}' >"$TMP/transcripts/sesW2.jsonl"
+make_stub "$TMP/sesW2-bin/pyright" 99
+PATH="$TMP/sesW2-bin:$PATH" run_wrapper "$TMP/sesW2" "$TMP/sesW2.log" \
+    "{\"transcript_path\": \"$TMP/transcripts/sesW2.jsonl\"}"
+if [[ $WRC -eq 0 && ! -s "$TMP/sesW2.log" ]]; then
+    pass "a session that touched no changed file lints nothing and does not block"
+else
+    fail "untouched session: rc $WRC, linted $(tr '\n' '|' <"$TMP/sesW2.log")"
+fi
+
+# ── X. A failing run: capped output, no colour codes, no revert pressure ─────
+
+new_repo "$TMP/failX"
+echo 'x = 2' >"$TMP/failX/a.py"
+mkdir -p "$TMP/failX-bin"
+cat >"$TMP/failX-bin/pyright" <<'EOF'
+#!/usr/bin/env bash
+echo "pyright $*" >> "$LINT_LOG.calls"
+for i in $(seq 1 300); do echo "  a.py:$i:1 - error: problem $i"; done
+exit 1
+EOF
+chmod +x "$TMP/failX-bin/pyright"
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failX.log"
+if [[ $WRC -eq 2 ]] && [[ $(wc -l <"$TMP/failX.log.stderr") -le 90 ]] &&
+    grep -q "lines cut" "$TMP/failX.log.stderr" &&
+    grep -q "problem 1$" "$TMP/failX.log.stderr" &&
+    grep -q "Type errors found (pyright)" "$TMP/failX.log.stderr" &&
+    ! grep -q $'\033' "$TMP/failX.log.stderr" &&
+    grep -q "do not revert" "$TMP/failX.log.stderr" &&
+    ! grep -q "ALL ISSUES ARE BLOCKING" "$TMP/failX.log.stderr"; then
+    pass "a failing run blocks with capped output, no ANSI codes and the don't-revert rule"
+else
+    fail "failing run: rc $WRC, $(wc -l <"$TMP/failX.log.stderr") lines: $(head -c 600 "$TMP/failX.log.stderr")"
+fi
+
+# ── Y. The same failure again does not block a second time ───────────────────
+
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failY.log"
+if [[ $WRC -eq 0 ]] && not_called "$TMP/failY.log" pyright &&
+    jq -e '.systemMessage | test("same")' "$TMP/failY.log.stdout" >/dev/null 2>&1; then
+    pass "an unchanged failing state does not block again and tells the user in one line"
+else
+    fail "repeat failure: rc $WRC, out $(cat "$TMP/failY.log.out")"
+fi
+
+# A new change after the failure is checked and blocks again.
+echo 'x = 3' >"$TMP/failX/a.py"
+PATH="$TMP/failX-bin:$PATH" run_wrapper "$TMP/failX" "$TMP/failZ.log"
+if [[ $WRC -eq 2 ]]; then
+    pass "a new change after a failure is checked again and blocks"
+else
+    fail "change after failure: rc $WRC"
 fi
 
 # ── N. The repo's own hook copy matches the payload ──────────────────────────

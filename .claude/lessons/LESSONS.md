@@ -152,3 +152,8 @@ Persistent learnings from prior sessions. Append-only, newest at the bottom.
 **Context**: Committing in this repo after /fwd:setup-precommit installed shfmt.
 **Observation**: shell_indent took the smallest indent anywhere, so 2-space YAML inside a heredoc in a 4-space repo produced `shfmt -i 2`; counting per file did not help either, because the 2-space scripts under obsolete/ outnumber the live 4-space ones. Separately, `git stash` + `git stash pop` without `--index` silently unstaged a staged fix, and a following `git checkout --` then threw it away.
 **Lesson**: Pin a repo's shell style in .editorconfig (setup-precommit then leaves -i out and shfmt reads it). Never stash to inspect a tree with staged work; use `git show HEAD:<file>` or `git diff --cached` instead.
+
+### 2026-11-14 | insight | fwd:setup (smartlint)
+**Context**: Transcript review of smart-lint Stop-hook runs, 4 to 13 November: 58 passes, 10 blocks.
+**Observation**: A blocking hook that lints every dirty file in git blocked a read-only session on a factory job's changes in the same worktree. Its "ALL ISSUES ARE BLOCKING / Fix EVERYTHING" wording led another session to reset a worktree without waiting for the user. Uncapped pyright output cost about 35,000 tokens per block, sent again every turn.
+**Lesson**: A Stop hook that blocks must judge only what this session did (read `transcript_path`), cap its output, block an unchanged failure only once, and say "report, don't revert" for issues the session did not cause.

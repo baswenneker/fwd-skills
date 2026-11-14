@@ -6,7 +6,7 @@
 #
 # DESCRIPTION
 #   Automatically detects project type and runs ALL quality checks.
-#   Every issue found is blocking - code must be 100% clean to proceed.
+#   Any issue found makes it exit 2, which blocks Claude's stop.
 #
 #   With a .pre-commit-config.yaml (current folder or git root), lint and
 #   format go through `pre-commit run` instead of smartlint's own tools, so
@@ -203,11 +203,7 @@ print_summary() {
             fi
         done
 
-        echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
-        echo -e "${RED}============================================${NC}" >&2
-        echo -e "${RED}ALL ISSUES ARE BLOCKING${NC}" >&2
-        echo -e "${RED}============================================${NC}" >&2
-        echo -e "${RED}Fix EVERYTHING above until all checks are GREEN${NC}" >&2
+        echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s).${NC}" >&2
     fi
     # Don't print success summary - we'll handle that in the final message
 }
@@ -1073,11 +1069,10 @@ exit_code=$?
 
 # Final message and exit
 if [[ $exit_code -eq 2 ]]; then
-    echo -e "\n${RED}FAILED - Fix all issues above!${NC}" >&2
-    echo -e "${YELLOW}NEXT STEPS:${NC}" >&2
-    echo -e "${YELLOW}  1. Fix the issues listed above${NC}" >&2
-    echo -e "${YELLOW}  2. Verify the fix by running the lint command again${NC}" >&2
-    echo -e "${YELLOW}  3. Continue with your original task${NC}" >&2
+    echo -e "\n${RED}FAILED${NC}" >&2
+    echo -e "${YELLOW}Fix the issues that come from your own changes, then run the failing check again.${NC}" >&2
+    echo -e "${YELLOW}Issues you did not cause (another session's work, the environment, a missing package):${NC}" >&2
+    echo -e "${YELLOW}do not revert, reset or stash anyone's work to make this check pass. Tell the user what fails and why, and stop.${NC}" >&2
     exit 2
 else
     echo -e "\n${GREEN}All checks passed!${NC}" >&2
