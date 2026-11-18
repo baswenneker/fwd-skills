@@ -1,15 +1,10 @@
 {
   "name": "fwd",
-  "version": "2.6.0",
+  "version": "3.0.0",
   "skills": [
-    "./skills/engineering/changelog",
     "./skills/engineering/git-commit",
     "./skills/engineering/setup",
     "./skills/engineering/setup-precommit",
-    "./skills/engineering/rules-audit",
-    "./skills/productivity/caveman",
-    "./skills/productivity/jip-janneke",
-    "./skills/productivity/explainer",
-    "./skills/productivity/next-steps"
+    "./skills/productivity/explainer"
   ]
 }
