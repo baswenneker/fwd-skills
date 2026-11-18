@@ -22,8 +22,8 @@ README.md                                 # Public-facing index
 
 Skills live under `skills/<category>/`. Pick the existing category that fits; only create a new one if no existing category covers it.
 
-- **`engineering/`** — workflow tooling that touches code, git, builds, or repo state. Examples: `fwd:git-commit`, `fwd:rules-audit`. Side effects on the repo are expected.
-- **`productivity/`** — interaction patterns and communication modes. Examples: `fwd:caveman`, `fwd:jip-janneke`. These shape how Claude responds; they don't touch the codebase.
+- **`engineering/`** — workflow tooling that touches code, git, builds, or repo state. Examples: `fwd:git-commit`, `fwd:setup`. Side effects on the repo are expected.
+- **`productivity/`** — interaction patterns and communication modes. Example: `fwd:explainer`. These shape how Claude responds; they don't touch the codebase.
 
 When adding a new category, add a one-line description here too.
 
@@ -65,7 +65,7 @@ Frontmatter: `name`, `description`, optional `tools` / `disallowedTools` (a `too
 
 ## Obsolete
 
-Retired on 2026-09-10 and moved to `obsolete/` (layout mirrors the live tree): the `fwd:mission-*` family (unattended multi-agent missions), the `fwd:steps-*` family (attended step-by-step runs), `fwd:plan`, `fwd:codex-review-plan`, `fwd:codex-review-implementation`, `fwd:skill-eval`, `fwd:explain`, `fwd:premortem`, `fwd:unsure`, the six agents listed above, and `scripts/check-agent-norms.sh`. They are not registered in `plugin.json` and Claude Code does not load them. See `obsolete/README.md` for the table and the way back (`git mv` + a `plugin.json` line). `CONTEXT.md` keeps the mission/steps vocabulary as reference for that archived code.
+Retired on 2026-09-10 and moved to `obsolete/` (layout mirrors the live tree): the `fwd:mission-*` family (unattended multi-agent missions), the `fwd:steps-*` family (attended step-by-step runs), `fwd:plan`, `fwd:codex-review-plan`, `fwd:codex-review-implementation`, `fwd:skill-eval`, `fwd:explain`, `fwd:premortem`, `fwd:unsure`, the six agents listed above, and `scripts/check-agent-norms.sh`. They are not registered in `plugin.json` and Claude Code does not load them. See `obsolete/README.md` for the table and the way back (`git mv` + a `plugin.json` line). `CONTEXT.md` keeps the mission/steps vocabulary as reference for that archived code. On 2026-11-18 `fwd:changelog`, `fwd:rules-audit`, `fwd:caveman`, `fwd:jip-janneke` and `fwd:next-steps` followed: little or no use in the session logs, and the output style already ends every finished turn with the next-steps block.
 
 ## Moved out
 
@@ -81,8 +81,8 @@ were retired, not for ones that live on elsewhere.
 Most skills here originate in [baswenneker/fwd-claude-code](https://github.com/baswenneker/fwd-claude-code) at `fwd/skills/<skill>/SKILL.md`. To mirror one into this repo:
 
 1. Copy the source `SKILL.md` to `skills/<category>/fwd:<name>/SKILL.md`.
-2. Verify frontmatter `name:` uses the `fwd:` prefix — rename if the upstream version is bare (e.g. `caveman` → `fwd:caveman`).
-3. Update any bare-slash trigger references in the description (`/caveman` → `/fwd:caveman`).
+2. Verify frontmatter `name:` uses the `fwd:` prefix — rename if the upstream version is bare (e.g. `explainer` → `fwd:explainer`).
+3. Update any bare-slash trigger references in the description (`/explainer` → `/fwd:explainer`).
 4. Register the folder in `.claude-plugin/plugin.json` and add a row to `README.md`.
 5. Check `ls ~/.claude/skills/<name>` — a personal-scope copy with the same `name` and `description` can shadow the plugin skill (Claude Code picks one), silently making every improvement made here invisible. Remove or rename the personal copy if found.
 
@@ -92,12 +92,12 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 
 ## Conventions
 
-- **Skill names follow `<field-or-context>-<name>`** (e.g. `git-commit`, `rules-audit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `rules`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — no prefix, no colon.
+- **Skill names follow `<field-or-context>-<name>`** (e.g. `git-commit`, `setup-precommit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `setup`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — no prefix, no colon.
 - **The `fwd:` prefix comes from the plugin, not the skill name.** The plugin is named `fwd` in `.claude-plugin/plugin.json`, so Claude Code registers each skill as `/<plugin>:<skill-name>` — `/fwd:git-commit`. Do **not** put `fwd:` in a skill's `name` or folder: Claude Code rewrites the colon to a dash and you end up with `/fwd:fwd-git-commit`. Same rule for agents: `agents/foo-bar.md` → `fwd:foo-bar`.
 - Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
 - All git commands route through `rtk git ...` (no conditional fallback to plain `git`). **Exception:** `skills/engineering/setup-precommit/` uses plain `git` in its scripts, its tests and the files it generates; so do the smartlint payload and its tests under `skills/engineering/setup/scripts/smartlint/`. Those run in other people's repos and on other machines, where rtk may be missing; a missing rtk would make a repo read as "not a git repository". None of that git output reaches Claude, so rtk would save nothing there.
 - **Cross-skill script references:** a skill may invoke a sibling skill's scripts via `${CLAUDE_SKILL_DIR}/../<sibling-skill>/scripts/<name>.sh`. Two live uses: `setup-precommit/tests/lib.sh` runs `setup/scripts/apply-all.sh` to test its follow-up line, and `setup` names `setup-precommit` in that line; `setup-precommit/scripts/readme/install.sh` runs `setup/scripts/lib/md-block.sh`. Two more exist under `obsolete/` (`codex-review-implementation` → `codex-review-plan`, `mission-plan` → `mission-run`). Renaming a referenced skill folder breaks its referrers — check for cross-skill dependents before renaming or moving a skill folder.
-- **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch — `fwd:rules-audit` is the current example).
+- **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.
 
 <!-- fwd:lessons:start -->

@@ -52,7 +52,7 @@ Zal ik beginnen met 1-2?
 - De afsluitvraag noemt de stappen die Claude direct kan doen. Staat er geen Ik-stap in, laat de vraag dan weg. Staat er geen JIJ-stap in, dan hoeft de gebruiker niets te doen.
 - Is alles af, vervang dan het hele blok door één regel: `Alles is af: <feit>. Er staat niets meer open.`
 - Geen emoji, geen tabel, geen extra koppen.
-- Controleer eerst wat de beurt niet meer kan bewijzen (`git status`, `gh pr view`, een achtergrondtaak) en noem het gecontroleerde feit. Wil de gebruiker de volledige versie met voorbeelden, of het autocoder-aanbod, roep dan de skill `fwd:next-steps` aan.
+- Controleer eerst wat de beurt niet meer kan bewijzen (`git status`, `gh pr view`, een achtergrondtaak) en noem het gecontroleerde feit.
 
 ## Zeg de inhoud, niet het label
 

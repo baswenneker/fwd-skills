@@ -13,6 +13,9 @@ skills no longer exist after a plugin update.
 | skill | `codex-review-plan`, `codex-review-implementation` | adversarial Codex reviews of a plan / a diff, retired |
 | skill | `skill-eval` | black-box skill self-evaluation, retired |
 | skill | `explain`, `premortem`, `unsure` | interaction modes, retired |
+| skill | `changelog`, `rules-audit` | retired 2026-11-18: one use and no use since install |
+| skill | `caveman`, `jip-janneke` | retired 2026-11-18: the output style already sets tone and length |
+| skill | `next-steps` | retired 2026-11-18: the output style ends every finished turn with the same block |
 | agent | `mission-coder`, `mission-reviewer`, `mission-scribe`, `mission-user-tester` | only spawned by `mission-run` |
 | agent | `steps-reviewer`, `steps-doubt` | only spawned by `steps-run` |
 | script | `scripts/check-agent-norms.sh` | drift guard for the shared blocks in the files above |
