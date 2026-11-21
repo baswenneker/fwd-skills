@@ -15,7 +15,7 @@ assert_contains "$(toggle "$other")" "Idle summary: off" "another repo keeps its
 assert_eq "$(git -C "$repo" status --porcelain)" "" "the choice is not stored in the repo"
 
 toggle "$repo" on >/dev/null
-assert_eq "$(grep -c . "$XDG_STATE_HOME/fwd-idle-summary/enabled")" "1" "on twice stores one line"
+assert_eq "$(grep -c . "$CLAUDE_PLUGIN_DATA/idle-summary/enabled")" "1" "on twice stores one line"
 
 toggle "$WORK/widget-wt" off >/dev/null
 assert_contains "$(toggle "$repo")" "Idle summary: off" "off from the worktree turns it off for the repo"
@@ -27,5 +27,10 @@ assert_contains "$(toggle "$plain")" "Idle summary: on" "outside git the choice 
 
 toggle "$repo" bogus >/dev/null 2>&1
 assert_eq "$?" "1" "an unknown argument fails"
+
+if out="$(cd "$repo" && env -u CLAUDE_PLUGIN_DATA bash "$SCRIPTS/toggle.sh" on 2>&1)"; then
+    fail "without CLAUDE_PLUGIN_DATA toggle must fail"
+fi
+assert_contains "$out" "CLAUDE_PLUGIN_DATA" "without CLAUDE_PLUGIN_DATA toggle says why"
 
 finish

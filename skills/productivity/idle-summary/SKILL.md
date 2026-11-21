@@ -9,7 +9,7 @@ allowed-tools: Bash
 Run this and show its one line of output to the user, nothing else:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/toggle.sh" $ARGUMENTS
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" bash "${CLAUDE_SKILL_DIR}/scripts/toggle.sh" $ARGUMENTS
 ```
 
 An argument other than `on`, `off` or nothing: show the usage line the script prints.
@@ -27,5 +27,6 @@ repo where this is off.
 - **UserPromptSubmit** (`scripts/prompt.sh`): a prompt from the user cancels a waiting
   hook and opens a new quiet period.
 
-State lives in `${XDG_STATE_HOME:-~/.local/state}/fwd-idle-summary/`. Tests shorten the
+State lives in the plugin's data dir, `~/.claude/plugins/data/<plugin id>/idle-summary/`
+(`CLAUDE_PLUGIN_DATA`); uninstalling the plugin removes it. Tests shorten the
 wait with `FWD_IDLE_SUMMARY_WAIT` (seconds).

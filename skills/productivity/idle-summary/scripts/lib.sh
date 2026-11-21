@@ -4,12 +4,15 @@
 # Plain git, not rtk: these scripts run on other machines where rtk may be missing, and
 # their git output never reaches Claude.
 #
-# State lives outside the repo, under $XDG_STATE_HOME/fwd-idle-summary:
+# State lives outside the repo, in the plugin's data dir that Claude Code keeps per plugin
+# (~/.claude/plugins/data/<plugin id>/idle-summary/). Hooks get CLAUDE_PLUGIN_DATA in their
+# environment; the skill passes it to toggle.sh. Uninstalling the plugin removes it.
+# Files:
 #   enabled              one repo key per line (repo has idle summary on)
 #   sessions/<id>.seq    turn counter of a session; a waiting hook with an old number stops
 #   sessions/<id>.done   this quiet period already got its summary
 
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fwd-idle-summary"
+STATE_DIR="${CLAUDE_PLUGIN_DATA:?CLAUDE_PLUGIN_DATA is not set; run this through the fwd plugin}/idle-summary"
 ENABLED_FILE="$STATE_DIR/enabled"
 SESSIONS_DIR="$STATE_DIR/sessions"
 
