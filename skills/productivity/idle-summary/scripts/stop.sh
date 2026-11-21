@@ -19,6 +19,8 @@ is_enabled "$dir" || exit 0
 
 session="$(field .session_id)"
 valid_session "$session" || exit 0
+# Drop state of sessions untouched for 30 days; a session idle longer may get a second summary.
+find "$SESSIONS_DIR" -type f -mtime +30 -delete 2>/dev/null
 # A new number first, so a hook still waiting from an earlier turn stands down, also when
 # this turn starts no wait itself.
 seq="$(bump_seq "$session")"
