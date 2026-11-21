@@ -53,4 +53,16 @@ quick_skip "factory job typed plain" "$(stop_input c-job2 "$WORK/job-plain.jsonl
 quick_skip "background task" "$(stop_input c-bg "$t" "$repo" '[{"id":"b1","status":"running"}]')"
 quick_skip "scheduled task" "$(stop_input c-cron "$t" "$repo" '[]' '[{"id":"c1"}]')"
 
+# Transcripts without origin markers (older Claude Code): the same rules hold.
+export FWD_IDLE_SUMMARY_WAIT=1
+NO_ORIGIN=1 make_transcript "$WORK/old.jsonl" 3
+run_stop "$(stop_input o-three "$WORK/old.jsonl" "$repo")"
+assert_eq "$RC" "2" "no origin: three typed prompts wake"
+export FWD_IDLE_SUMMARY_WAIT=5
+NO_ORIGIN=1 make_transcript "$WORK/old-two.jsonl" 2
+quick_skip "no origin: two typed prompts" "$(stop_input o-two "$WORK/old-two.jsonl" "$repo")"
+NO_ORIGIN=1 make_transcript "$WORK/old-job.jsonl" 3 1h \
+    $'<command-message>factory:job</command-message>\n<command-name>/factory:job</command-name>\n<command-args>fwdos#42</command-args>'
+quick_skip "no origin: factory job" "$(stop_input o-job "$WORK/old-job.jsonl" "$repo")"
+
 finish

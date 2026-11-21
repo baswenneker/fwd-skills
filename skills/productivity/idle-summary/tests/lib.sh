@@ -32,9 +32,20 @@ make_repo() {
     echo "$dir"
 }
 
-# typed_prompt <text> → one transcript line for a prompt the user typed.
+# typed_prompt <text> → one transcript line for a prompt the user typed. With NO_ORIGIN=1
+# the line lacks the origin marker, as in transcripts of older Claude Code versions.
 typed_prompt() {
-    jq -cn --arg t "$1" '{type: "user", origin: {kind: "human"}, message: {role: "user", content: $t}}'
+    if [[ -n "${NO_ORIGIN:-}" ]]; then
+        jq -cn --arg t "$1" '{type: "user", message: {role: "user", content: $t}}'
+    else
+        jq -cn --arg t "$1" '{type: "user", origin: {kind: "human"}, message: {role: "user", content: $t}}'
+    fi
+}
+
+# wake_message → the transcript line Claude Code writes when the Stop hook wakes the session.
+wake_message() {
+    jq -cn --rawfile p "$SCRIPTS/prompt.txt" '{type: "user", message: {role: "user",
+        content: ("<task-notification>\n<summary>Stop hook feedback</summary>\n</task-notification>\n<system-reminder>\nStop hook blocking error from command \"Stop\": " + $p + "\n</system-reminder>")}}'
 }
 
 # assistant_turn <1h|5m> → one transcript line for an answer that wrote the cache with that TTL.

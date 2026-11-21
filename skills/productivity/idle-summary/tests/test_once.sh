@@ -50,6 +50,21 @@ run_prompt "$(prompt_input s-once "$repo" $'<task-notification>\n<task-id>b1</ta
 run_stop "$(stop_input s-once "$t" "$repo")"
 assert_eq "$RC" "0" "once: a task notification does not reset"
 
+# The marker is gone (pruned after 30 days) but the transcript shows the wake after the
+# last typed prompt: still no new wait.
+cp "$t" "$WORK/woken.jsonl"
+wake_message >>"$WORK/woken.jsonl"
+assistant_turn 1h >>"$WORK/woken.jsonl"
+export FWD_IDLE_SUMMARY_WAIT=5
+run_stop "$(stop_input s-pruned "$WORK/woken.jsonl" "$repo")"
+assert_eq "$RC" "0" "pruned marker: the wake in the transcript counts"
+((ELAPSED < 3)) || fail "pruned marker: waited ${ELAPSED}s"
+typed_prompt "back again" >>"$WORK/woken.jsonl"
+assistant_turn 1h >>"$WORK/woken.jsonl"
+export FWD_IDLE_SUMMARY_WAIT=1
+run_stop "$(stop_input s-pruned "$WORK/woken.jsonl" "$repo")"
+assert_eq "$RC" "2" "pruned marker: a typed prompt after the wake opens a new period"
+
 # A prompt from the user clears the marker: the next turn waits again.
 export FWD_IDLE_SUMMARY_WAIT=1
 run_prompt "$(prompt_input s-once "$repo")"
