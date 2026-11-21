@@ -42,11 +42,14 @@ verdict="$(jq -rs '
          else (.message.content | type == "string" and (startswith("<") | not)) end);
     def text: .message.content | if type == "string" then . else ([.[]? | .text? // empty] | join("")) end;
     [.[] | select(typed)] as $p |
+    # The first prompt, slash commands included: without an origin marker a command starts with "<".
+    ([.[] | select(.type == "user" and (.isMeta | not) and ((.origin.kind // "human") == "human")
+        and (.message.content | type == "string"))] | first) as $first |
     ([.[] | select(.type == "assistant") | .message.usage.cache_creation? // empty
         | select((.ephemeral_1h_input_tokens // 0) + (.ephemeral_5m_input_tokens // 0) > 0)]
         | last) as $c |
     if ($p | length) < 3 then "few"
-    elif ($p[0] | text | startswith("/factory:job") or contains("<command-name>/factory:job</command-name>")) then "job"
+    elif ($first | text | startswith("/factory:job") or contains("<command-name>/factory:job</command-name>")) then "job"
     elif (($c.ephemeral_1h_input_tokens // 0) > 0) then "go"
     else "short-cache" end
 ' "$transcript" 2>/dev/null)"
