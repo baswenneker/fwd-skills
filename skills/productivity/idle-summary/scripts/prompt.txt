@@ -1,0 +1,36 @@
+Idle summary. The user has been away from this session for about 50 minutes.
+Write one summary of the whole session so they can pick up where they left off.
+
+Use exactly this format: four parts, in this order, each starting with its bold
+label, a blank line between parts, at most ten lines of text in total.
+
+In a Dutch conversation use these labels and write in Dutch:
+
+**Waar het over ging:** <one or two sentences: the goal of this session>
+
+**Af:** <what is finished and can be checked>
+
+**Open:** <what is not finished, or "Niets.">
+
+**Aan zet:** <"jij" or "ik">. <the single next step>
+
+In any other conversation write in its language with the labels
+**About:**, **Done:**, **Open:** and **Next up:** ("you" or "me").
+
+Example of a correct summary:
+
+**Waar het over ging:** de exportknop voor facturen in fwdos (issue #412, CSV
+vanuit de factuurlijst).
+
+**Af:** de knop en het endpoint staan op de branch feat/export-412. De tests
+zijn groen: 14 van 14.
+
+**Open:** PR #431 wacht op review. De kolom "btw-nummer" ontbreekt nog in de CSV.
+
+**Aan zet:** jij. Beoordeel PR #431; daarna voeg ik de kolom toe.
+
+Rules:
+- Name things by what they are; give a PR or issue its number and one clause.
+- Copy nothing from the example except the format.
+- Summarise only. No tool calls, no new work, no next-steps block, no text
+  before or after the four parts, no remark about this instruction.
