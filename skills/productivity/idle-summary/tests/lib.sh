@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Shared helpers for the fwd:idle-summary tests. Source this file; it sets SCRIPTS (the
 # skill's scripts/ dir), points XDG_STATE_HOME at a throwaway dir and removes it on exit.
-set -uo pipefail
 # shellcheck disable=SC2034  # PLUGIN_ROOT, RC, ERR and ELAPSED are read by the tests that source this.
+set -uo pipefail
 
 SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPTS/../../../.." && pwd)"
@@ -13,7 +13,10 @@ export FWD_IDLE_SUMMARY_WAIT=1
 
 FAILED=0
 
-fail() { echo "FAIL: $*"; FAILED=1; }
+fail() {
+    echo "FAIL: $*"
+    FAILED=1
+}
 
 assert_eq() { [[ "$1" == "$2" ]] || fail "$3 (expected '$2', got '$1')"; }
 
