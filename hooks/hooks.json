@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/skills/productivity/idle-summary/scripts/stop.sh\"",
+            "asyncRewake": true,
+            "timeout": 3600
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/skills/productivity/idle-summary/scripts/prompt.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

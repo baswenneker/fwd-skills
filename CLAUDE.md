@@ -10,6 +10,7 @@ Repo-level instructions for agents working in `fwd-skills`.
 
 ```
 .claude-plugin/plugin.json                # Plugin manifest (skill paths)
+hooks/hooks.json                          # Hooks the plugin ships (see "Hooks")
 skills/<category>/<field>-<name>/         # One folder per skill
   SKILL.md                                # Required: YAML frontmatter + markdown body
   scripts/                                # Optional: bash helpers (no Node tooling)
@@ -23,7 +24,7 @@ README.md                                 # Public-facing index
 Skills live under `skills/<category>/`. Pick the existing category that fits; only create a new one if no existing category covers it.
 
 - **`engineering/`** — workflow tooling that touches code, git, builds, or repo state. Examples: `fwd:git-commit`, `fwd:setup`. Side effects on the repo are expected.
-- **`productivity/`** — interaction patterns and communication modes. Example: `fwd:explainer`. These shape how Claude responds; they don't touch the codebase.
+- **`productivity/`** — interaction patterns and communication modes. Examples: `fwd:explainer`, `fwd:idle-summary`. These shape how Claude responds; they don't touch the codebase.
 
 When adding a new category, add a one-line description here too.
 
@@ -52,6 +53,15 @@ updates an installed plugin only when that number changes, so a change that is n
 followed by a raised version never reaches anyone. Raise it with every change that
 users should get: patch for fixes, minor for a new skill or feature, major for a
 removed or renamed skill.
+
+## Hooks
+
+The plugin ships hooks in `hooks/hooks.json` at the plugin root (since 3.1.0). Claude Code
+loads that file by default; it is **not** listed in `plugin.json`. Every session with the
+plugin enabled runs these hooks, also on other people's machines, so a hook must do
+nothing but one quick check where its feature is off. Scripts stay in the skill that owns
+them and are referenced as `${CLAUDE_PLUGIN_ROOT}/skills/<category>/<skill>/scripts/<name>.sh`.
+Current hooks: `fwd:idle-summary` (Stop with `asyncRewake`, UserPromptSubmit).
 
 ## Agents
 
@@ -95,7 +105,7 @@ Do not back-port edits made here into `fwd-claude-code` automatically — that r
 - **Skill names follow `<field-or-context>-<name>`** (e.g. `git-commit`, `setup-precommit`). The `<field-or-context>` segment groups related skills (e.g. `git`, `setup`); the `<name>` segment is kebab-case. The folder name matches the `name` field in frontmatter exactly — no prefix, no colon.
 - **The `fwd:` prefix comes from the plugin, not the skill name.** The plugin is named `fwd` in `.claude-plugin/plugin.json`, so Claude Code registers each skill as `/<plugin>:<skill-name>` — `/fwd:git-commit`. Do **not** put `fwd:` in a skill's `name` or folder: Claude Code rewrites the colon to a dash and you end up with `/fwd:fwd-git-commit`. Same rule for agents: `agents/foo-bar.md` → `fwd:foo-bar`.
 - Keep `SKILL.md` focused; split supporting material into sibling files. Bash helpers go in a `scripts/` subfolder; reference them from `SKILL.md` via `${CLAUDE_SKILL_DIR}/scripts/<name>.sh` (resolves to the skill's own folder, works for personal, project, and plugin scopes). **No Node tooling** — bash only.
-- All git commands route through `rtk git ...` (no conditional fallback to plain `git`). **Exception:** `skills/engineering/setup-precommit/` uses plain `git` in its scripts, its tests and the files it generates; so do the smartlint payload and its tests under `skills/engineering/setup/scripts/smartlint/`. Those run in other people's repos and on other machines, where rtk may be missing; a missing rtk would make a repo read as "not a git repository". None of that git output reaches Claude, so rtk would save nothing there.
+- All git commands route through `rtk git ...` (no conditional fallback to plain `git`). **Exception:** `skills/engineering/setup-precommit/` uses plain `git` in its scripts, its tests and the files it generates; so do the smartlint payload and its tests under `skills/engineering/setup/scripts/smartlint/`, and the `idle-summary` hook scripts and tests. Those run in other people's repos and on other machines, where rtk may be missing; a missing rtk would make a repo read as "not a git repository". None of that git output reaches Claude, so rtk would save nothing there.
 - **Cross-skill script references:** a skill may invoke a sibling skill's scripts via `${CLAUDE_SKILL_DIR}/../<sibling-skill>/scripts/<name>.sh`. Two live uses: `setup-precommit/tests/lib.sh` runs `setup/scripts/apply-all.sh` to test its follow-up line, and `setup` names `setup-precommit` in that line; `setup-precommit/scripts/readme/install.sh` runs `setup/scripts/lib/md-block.sh`. Two more exist under `obsolete/` (`codex-review-implementation` → `codex-review-plan`, `mission-plan` → `mission-run`). Renaming a referenced skill folder breaks its referrers — check for cross-skill dependents before renaming or moving a skill folder.
 - **README body language is English.** Skill descriptions in the README skills table mirror the SKILL.md frontmatter (so they may be Dutch when the frontmatter is Dutch).
 - See [CONTEXT.md](CONTEXT.md) for project vocabulary.

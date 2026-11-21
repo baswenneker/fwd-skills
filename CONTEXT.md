@@ -56,6 +56,10 @@ Het stopmoment na elke stap in een attended steps-run. De gebruiker reageert pla
 
 Een pad naar een bestaand, exemplarisch bestand in de repo dat een regel in de praktijk demonstreert. Agents en skills verwijzen naar een golden example in plaats van de regel opnieuw uit te leggen.
 
+### idle summary
+
+Eén samenvatting van de hele sessie, geschreven als laatste bericht in het gesprek terwijl de sessie op de gebruiker wacht, kort voordat de prompt cache verloopt. Eenmaal per stille periode: een volgende komt pas nadat de gebruiker weer een prompt heeft getypt. Niet hetzelfde als de ingebouwde session recap van Claude Code, die al na 3 minuten komt en hoogstens 400 tekens telt.
+
 ### rule-kandidaat
 
 Een patroon dat tijdens de mission-finalisatiefase wordt gedestilleerd uit gevonden issues of lessons, en wordt voorgesteld als mogelijke nieuwe `.claude/rules/`-regel. De mens beslist; de runner schrijft zelf nooit regels.
