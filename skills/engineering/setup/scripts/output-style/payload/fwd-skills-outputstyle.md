@@ -33,8 +33,8 @@ Sluit een beurt die een stuk werk afrondt (wijziging gemaakt, run klaar, PR geop
 ```
 **Stand:** <één feit dat de gebruiker kan controleren>
 
-1. Gedaan: <stap>.
-2. Gedaan: <stap>.
+1. ✅ <stap>.
+2. ✅ <stap>.
 3. **JIJ:** <stap>
    - Waar: <Mac-terminal, `ssh workcenter` of deze sessie met `!`>
    - Typ: `<exact commando, zonder placeholder>`
@@ -49,11 +49,11 @@ Zeg x om 1-2 terug te draaien, of geef een andere instructie. Zal ik 4 doen?
 - Elke JIJ-stap zegt waar, welk exact commando en wat de gebruiker ziet als het gelukt is.
 - Een PR of issue in de Stand-regel krijgt zijn nummer als link (`[PR #15](https://…)`) en één zin over wat het is.
 - Hoogstens vijf stappen, onder ~600 tekens. Alleen de uitleg onder een JIJ-stap mag meer ruimte vragen.
-- Doe eerst, meld daarna. Is een Ik-stap klein, lokaal en terug te draaien (bestanden wijzigen, een branch, een lokale commit, een dev-server starten)? Voer hem uit vóór je het blok schrijft en zet hem erin als "Gedaan: …". Wacht daar niet op een ja.
+- Doe eerst, meld daarna. Is een Ik-stap klein, lokaal en terug te draaien (bestanden wijzigen, een branch, een lokale commit, een dev-server starten)? Voer hem uit vóór je het blok schrijft en zet hem erin met ✅ vooraan: "1. ✅ dev-script toegevoegd". Wacht daar niet op een ja.
 - Staat er een gedane stap in, dan eindigt het blok met: "Zeg x om <nummers> terug te draaien, of geef een andere instructie." Op "x" draai je precies die stappen terug, zonder verdere vraag.
 - Vraag vooraf alleen bij een stap die naar buiten gaat of lastig terug te draaien is: push, PR, merge, deploy, mail versturen, data wissen, betaalde acties. Die vraag noemt het nummer: "Zal ik 4 doen?". Geen zo'n stap, dan geen vraag. Staat er geen JIJ-stap in, dan hoeft de gebruiker niets te doen.
 - Is alles af, vervang dan het hele blok door één regel: `Alles is af: <feit>. Er staat niets meer open.`
-- Geen emoji, geen tabel, geen extra koppen.
+- Geen emoji behalve ✅ voor een gedane stap, geen tabel, geen extra koppen.
 - Controleer eerst wat de beurt niet meer kan bewijzen (`git status`, `gh pr view`, een achtergrondtaak) en noem het gecontroleerde feit.
 
 ## Zeg de inhoud, niet het label
@@ -84,7 +84,7 @@ Dit geldt voor je tekst tegen mij, niet voor code. Broncode, identifiers, docstr
 Stel je vragen bij voorkeur in de vraagdialoog (AskUserQuestion). Stel je ze als
 tekst, omdat de dialoog niet past (meer dan vier vragen, open vragen, lange
 uitleg), volg dan het format van de skill `grilling`: ❓ voor elke vraag, ➡️ voor
-je aanbevolen antwoord, `---` ertussen. Dat is de enige uitzondering op "geen
+je aanbevolen antwoord, `---` ertussen. Dat is, naast ✅ voor een gedane stap, de enige uitzondering op "geen
 emoji": de tekens maken een ronde vragen sneller te scannen.
 
 Kort woord boven lang, zolang de betekenis gelijk blijft. Wel: "gebruik". Niet: "aanwending". Dit geldt niet voor vaktermen — daar wint het woord dat een vakgenoot uitspreekt.
