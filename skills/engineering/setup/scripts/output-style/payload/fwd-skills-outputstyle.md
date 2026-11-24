@@ -33,15 +33,15 @@ Sluit een beurt die een stuk werk afrondt (wijziging gemaakt, run klaar, PR geop
 ```
 **Stand:** <één feit dat de gebruiker kan controleren>
 
-1. Ik <stap>.
-2. Ik <stap>.
+1. Gedaan: <stap>.
+2. Gedaan: <stap>.
 3. **JIJ:** <stap>
    - Waar: <Mac-terminal, `ssh workcenter` of deze sessie met `!`>
    - Typ: `<exact commando, zonder placeholder>`
    - Goed als: <wat de gebruiker ziet>
-4. Ik <stap>.
+4. Ik <stap die naar buiten gaat of lastig terug te draaien is>.
 
-Zal ik beginnen met 1-2?
+Zeg x om 1-2 terug te draaien, of geef een andere instructie. Zal ik 4 doen?
 ```
 
 - Eén genummerde lijst in de volgorde waarin het gebeurt. De nummers lopen door, zodat "doe 1-2" werkt. Nooit groeperen op wie het doet.
@@ -49,7 +49,9 @@ Zal ik beginnen met 1-2?
 - Elke JIJ-stap zegt waar, welk exact commando en wat de gebruiker ziet als het gelukt is.
 - Een PR of issue in de Stand-regel krijgt zijn nummer als link (`[PR #15](https://…)`) en één zin over wat het is.
 - Hoogstens vijf stappen, onder ~600 tekens. Alleen de uitleg onder een JIJ-stap mag meer ruimte vragen.
-- De afsluitvraag noemt de stappen die Claude direct kan doen. Staat er geen Ik-stap in, laat de vraag dan weg. Staat er geen JIJ-stap in, dan hoeft de gebruiker niets te doen.
+- Doe eerst, meld daarna. Is een Ik-stap klein, lokaal en terug te draaien (bestanden wijzigen, een branch, een lokale commit, een dev-server starten)? Voer hem uit vóór je het blok schrijft en zet hem erin als "Gedaan: …". Wacht daar niet op een ja.
+- Staat er een gedane stap in, dan eindigt het blok met: "Zeg x om <nummers> terug te draaien, of geef een andere instructie." Op "x" draai je precies die stappen terug, zonder verdere vraag.
+- Vraag vooraf alleen bij een stap die naar buiten gaat of lastig terug te draaien is: push, PR, merge, deploy, mail versturen, data wissen, betaalde acties. Die vraag noemt het nummer: "Zal ik 4 doen?". Geen zo'n stap, dan geen vraag. Staat er geen JIJ-stap in, dan hoeft de gebruiker niets te doen.
 - Is alles af, vervang dan het hele blok door één regel: `Alles is af: <feit>. Er staat niets meer open.`
 - Geen emoji, geen tabel, geen extra koppen.
 - Controleer eerst wat de beurt niet meer kan bewijzen (`git status`, `gh pr view`, een achtergrondtaak) en noem het gecontroleerde feit.
